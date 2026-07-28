@@ -426,3 +426,16 @@ D:\uyumsoftproje\Uyumsoft.RouteOptimizer\obj\Debug\net10.0\refint\Uyumsoft.Route
 D:\uyumsoftproje\Uyumsoft.RouteOptimizer\obj\Debug\net10.0\Uyumsoft.RouteOptimizer.pdb
 D:\uyumsoftproje\Uyumsoft.RouteOptimizer\obj\Debug\net10.0\Uyumsoft.RouteOptimizer.genruntimeconfig.cache
 D:\uyumsoftproje\Uyumsoft.RouteOptimizer\obj\Debug\net10.0\ref\Uyumsoft.RouteOptimizer.dll
+D:\uyumsoftproje\Uyumsoft.RouteOptimizer\bin\Debug\net10.0\Uyumsoft.RouteOptimizer.staticwebassets.endpoints.json
+D:\uyumsoftproje\Uyumsoft.RouteOptimizer\obj\Debug\net10.0\rpswa.dswa.cache.json
+D:\uyumsoftproje\Uyumsoft.RouteOptimizer\obj\Debug\net10.0\Uyumsoft.RouteOptimizer.MvcApplicationPartsAssemblyInfo.cache
+D:\uyumsoftproje\Uyumsoft.RouteOptimizer\obj\Debug\net10.0\Uyumsoft.RouteOptimizer.sourcelink.json
+D:\uyumsoftproje\Uyumsoft.RouteOptimizer\obj\Debug\net10.0\rjimswa.dswa.cache.json
+D:\uyumsoftproje\Uyumsoft.RouteOptimizer\obj\Debug\net10.0\rjsmrazor.dswa.cache.json
+D:\uyumsoftproje\Uyumsoft.RouteOptimizer\obj\Debug\net10.0\rjsmcshtml.dswa.cache.json
+D:\uyumsoftproje\Uyumsoft.RouteOptimizer\obj\Debug\net10.0\scopedcss\bundle\Uyumsoft.RouteOptimizer.styles.css
+D:\uyumsoftproje\Uyumsoft.RouteOptimizer\obj\Debug\net10.0\staticwebassets.build.json
+D:\uyumsoftproje\Uyumsoft.RouteOptimizer\obj\Debug\net10.0\staticwebassets.build.json.cache
+D:\uyumsoftproje\Uyumsoft.RouteOptimizer\obj\Debug\net10.0\staticwebassets.development.json
+D:\uyumsoftproje\Uyumsoft.RouteOptimizer\obj\Debug\net10.0\staticwebassets.build.endpoints.json
+D:\uyumsoftproje\Uyumsoft.RouteOptimizer\obj\Debug\net10.0\swae.build.ex.cache

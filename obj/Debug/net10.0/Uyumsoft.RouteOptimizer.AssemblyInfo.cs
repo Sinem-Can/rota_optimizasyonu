@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Uyumsoft.RouteOptimizer")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e4886deb2ac85c3f3394b5dfa4e0b3736d4ae799")]
 [assembly: System.Reflection.AssemblyProductAttribute("Uyumsoft.RouteOptimizer")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Uyumsoft.RouteOptimizer")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
