@@ -3,13 +3,11 @@
 import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Map, Server, Wrench } from "lucide-react"
+import { ListTodo, MapPin, PlayCircle } from "lucide-react"
 
 export function OnboardingModal() {
-  // Modalın açık mı kapalı mı olduğunu tutan state (SwiftUI'daki @State isPresented gibi)
   const [isOpen, setIsOpen] = useState(false)
 
-  // Sayfa yüklendiğinde (onAppear gibi) yarım saniye bekleyip modalı açan fonksiyon
   useEffect(() => {
     const timer = setTimeout(() => setIsOpen(true), 500)
     return () => clearTimeout(timer)
@@ -20,48 +18,48 @@ export function OnboardingModal() {
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-center">
-            Yeni Nesil Komuta Merkezine Hoş Geldiniz
+            Operasyon Ekranına Hoş Geldiniz
           </DialogTitle>
           <DialogDescription className="text-center text-muted-foreground pt-2">
-            Sistemi kullanmaya başlamadan önce öne çıkan 3 kritik özelliğe göz atın.
+            Günlük rota planlamanızı başlatmak için aşağıdaki 3 adımı izleyin.
           </DialogDescription>
         </DialogHeader>
         
         <div className="flex flex-col gap-4 py-4">
           <div className="flex items-center gap-4 p-3 bg-secondary/50 rounded-lg">
             <div className="bg-primary/10 p-2 rounded-full">
-              <Map className="w-6 h-6 text-primary" />
+              <ListTodo className="w-6 h-6 text-primary" />
             </div>
             <div>
-              <h4 className="font-semibold">Harita Üzerinden Planlama</h4>
-              <p className="text-sm text-muted-foreground">Sürükle-bırak ile rotaları optimize edin ve zaman pencerelerini yönetin.</p>
+              <h4 className="font-semibold">1. Siparişleri Kontrol Edin</h4>
+              <p className="text-sm text-muted-foreground">Sol paneldeki "Atanmamışlar" listesinden bekleyen teslimatları ve aciliyet durumlarını inceleyin.</p>
             </div>
           </div>
           
           <div className="flex items-center gap-4 p-3 bg-secondary/50 rounded-lg">
             <div className="bg-primary/10 p-2 rounded-full">
-              <Server className="w-6 h-6 text-primary" />
+              <MapPin className="w-6 h-6 text-primary" />
             </div>
             <div>
-              <h4 className="font-semibold">Merkezi ERP Entegrasyonu</h4>
-              <p className="text-sm text-muted-foreground">Cari, stok ve fatura verilerini LioXERP uyumlu tek noktadan yönetin.</p>
+              <h4 className="font-semibold">2. Araçlara Görev Dağıtın</h4>
+              <p className="text-sm text-muted-foreground">Siparişleri sürükleyerek veya harita üzerinden seçerek uygun kapasitedeki araçlara atayın.</p>
             </div>
           </div>
           
           <div className="flex items-center gap-4 p-3 bg-secondary/50 rounded-lg">
             <div className="bg-primary/10 p-2 rounded-full">
-              <Wrench className="w-6 h-6 text-destructive" />
+              <PlayCircle className="w-6 h-6 text-emerald-500" />
             </div>
             <div>
-              <h4 className="font-semibold">Anlık Arıza Takibi</h4>
-              <p className="text-sm text-muted-foreground">Araç arızalarını anında bildirip kalan siparişleri açığa düşürün.</p>
+              <h4 className="font-semibold">3. Rotaları Başlatın</h4>
+              <p className="text-sm text-muted-foreground">Atamalar bitince üstteki "Rotaları Optimize Et" butonuna basarak şoförlerin iş emirlerini sisteme gönderin.</p>
             </div>
           </div>
         </div>
 
         <DialogFooter>
           <Button className="w-full" size="lg" onClick={() => setIsOpen(false)}>
-            Hadi Başlayalım
+            Planlamaya Başla
           </Button>
         </DialogFooter>
       </DialogContent>
