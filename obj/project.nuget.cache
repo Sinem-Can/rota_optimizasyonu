@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "dgSpecHash": "DyURUXMYw+c=",
+  "success": true,
+  "projectFilePath": "D:\\uyumsoftproje\\Uyumsoft.RouteOptimizer\\Uyumsoft.RouteOptimizer.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Sinem Can\\.nuget\\packages\\google.ortools\\9.15.6755\\google.ortools.9.15.6755.nupkg.sha512",
+    "C:\\Users\\Sinem Can\\.nuget\\packages\\google.ortools.runtime.linux-arm64\\9.15.6755\\google.ortools.runtime.linux-arm64.9.15.6755.nupkg.sha512",
+    "C:\\Users\\Sinem Can\\.nuget\\packages\\google.ortools.runtime.linux-x64\\9.15.6755\\google.ortools.runtime.linux-x64.9.15.6755.nupkg.sha512",
+    "C:\\Users\\Sinem Can\\.nuget\\packages\\google.ortools.runtime.osx-arm64\\9.15.6755\\google.ortools.runtime.osx-arm64.9.15.6755.nupkg.sha512",
+    "C:\\Users\\Sinem Can\\.nuget\\packages\\google.ortools.runtime.osx-x64\\9.15.6755\\google.ortools.runtime.osx-x64.9.15.6755.nupkg.sha512",
+    "C:\\Users\\Sinem Can\\.nuget\\packages\\google.ortools.runtime.win-x64\\9.15.6755\\google.ortools.runtime.win-x64.9.15.6755.nupkg.sha512",
+    "C:\\Users\\Sinem Can\\.nuget\\packages\\google.protobuf\\3.33.1\\google.protobuf.3.33.1.nupkg.sha512"
+  ],
+  "logs": []
+}
