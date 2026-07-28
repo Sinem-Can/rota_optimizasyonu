@@ -102,13 +102,11 @@ namespace UyumsoftETL
                             {
                                 NpgsqlCommand cmd = new NpgsqlCommand("", conn);
                                 string val(int index) => (row.Table.Columns.Count > index && row[index] != DBNull.Value && row[index] != null) ? row[index].ToString().Trim() : "";
-                                int toInt(int index) => (row.Table.Columns.Count > index && row[index] != DBNull.Value && int.TryParse(row[index].ToString(), out int v)) ? v : 0;
-                                decimal toDec(int index) => (row.Table.Columns.Count > index && row[index] != DBNull.Value && decimal.TryParse(row[index].ToString(), out decimal v)) ? v : 0m;
 
                                 switch (sheet)
                                 {
                                     case "Depo":
-                                        cmd.CommandText = "INSERT INTO depo (depo_kodu, depo_adi) VALUES (@p1, @p2) ON CONFLICT DO NOTHING";
+                                        cmd.CommandText = "INSERT INTO depo (kod, depo) VALUES (@p1, @p2) ON CONFLICT DO NOTHING";
                                         cmd.Parameters.AddWithValue("p1", val(0));
                                         cmd.Parameters.AddWithValue("p2", val(1));
                                         break;
@@ -118,17 +116,17 @@ namespace UyumsoftETL
                                         cmd.Parameters.AddWithValue("p1", val(0));
                                         cmd.Parameters.AddWithValue("p2", val(1));
                                         cmd.Parameters.AddWithValue("p3", val(2));
-                                        cmd.Parameters.AddWithValue("p4", toDec(3));
-                                        cmd.Parameters.AddWithValue("p5", toDec(4));
+                                        cmd.Parameters.AddWithValue("p4", row[3] != DBNull.Value ? Convert.ToInt32(row[3]) : 0);
+                                        cmd.Parameters.AddWithValue("p5", row[4] != DBNull.Value ? Convert.ToDecimal(row[4]) : 0m);
                                         break;
 
                                     case "Cari Kart":
-                                        cmd.CommandText = "INSERT INTO cari_kart (cari_kodu, cari_adi, tip, mal_kabul_baslangic, mal_kabul_bitis) VALUES (@p1, @p2, @p3, @p4, @p5) ON CONFLICT DO NOTHING";
-                                        cmd.Parameters.AddWithValue("p1", val(0));
+                                        cmd.CommandText = "INSERT INTO cari_kart (cari_kodu, cari_adi, tip) VALUES (@p1, @p2, @p3) ON CONFLICT DO NOTHING";
+                                        string cariKod = row[0] != DBNull.Value ? val(0) : val(1);
+                                        if (string.IsNullOrEmpty(cariKod)) break;
+                                        cmd.Parameters.AddWithValue("p1", cariKod);
                                         cmd.Parameters.AddWithValue("p2", val(1));
                                         cmd.Parameters.AddWithValue("p3", val(2));
-                                        cmd.Parameters.AddWithValue("p4", val(3));
-                                        cmd.Parameters.AddWithValue("p5", val(4));
                                         break;
 
                                     case "Banka":
@@ -156,97 +154,83 @@ namespace UyumsoftETL
                                         break;
 
                                     case "Arac Kartlari":
-                                        cmd.CommandText = "INSERT INTO arac_kartlari (arac_kodu, plaka, marka_model, kasa_tipi, maks_agirlik_kg, maks_hacim_m3, km_maliyeti_tl, maks_mesai_suresi_dk, maks_durak_sayisi, kopru_gecis_izni) VALUES (@p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10) ON CONFLICT DO NOTHING";
+                                        cmd.CommandText = "INSERT INTO arac_kartlari (arac_kodu, plaka, marka_model, kasa_tipi, maks_agirlik_kg, maks_hacim_m3, km_maliyeti_tl) VALUES (@p1, @p2, @p3, @p4, @p5, @p6, @p7) ON CONFLICT DO NOTHING";
                                         cmd.Parameters.AddWithValue("p1", val(0));
                                         cmd.Parameters.AddWithValue("p2", val(1));
                                         cmd.Parameters.AddWithValue("p3", val(2));
                                         cmd.Parameters.AddWithValue("p4", val(3));
-                                        cmd.Parameters.AddWithValue("p5", toDec(4));
-                                        cmd.Parameters.AddWithValue("p6", toDec(5));
-                                        cmd.Parameters.AddWithValue("p7", toDec(6));
-                                        cmd.Parameters.AddWithValue("p8", toInt(7));
-                                        cmd.Parameters.AddWithValue("p9", toInt(8));
-                                        cmd.Parameters.AddWithValue("p10", val(9));
+                                        cmd.Parameters.AddWithValue("p5", row[4] != DBNull.Value ? Convert.ToInt32(row[4]) : 0);
+                                        cmd.Parameters.AddWithValue("p6", row[5] != DBNull.Value ? Convert.ToDecimal(row[5]) : 0m);
+                                        cmd.Parameters.AddWithValue("p7", row[6] != DBNull.Value ? Convert.ToDecimal(row[6]) : 0m);
                                         break;
 
                                     case "İşyeri Stok":
-                                        cmd.CommandText = "INSERT INTO isyeri_stok (depo_kodu, depo_adi, stok, miktar) VALUES (@p1, @p2, @p3, @p4) ON CONFLICT DO NOTHING";
+                                        cmd.CommandText = "INSERT INTO isyeri_stok (depo, stok, miktar) VALUES (@p1, @p2, @p3) ON CONFLICT DO NOTHING";
                                         cmd.Parameters.AddWithValue("p1", val(0));
                                         cmd.Parameters.AddWithValue("p2", val(1));
-                                        cmd.Parameters.AddWithValue("p3", val(2));
-                                        cmd.Parameters.AddWithValue("p4", toInt(3));
+                                        cmd.Parameters.AddWithValue("p3", row[2] != DBNull.Value ? Convert.ToInt32(row[2]) : 0);
                                         break;
 
                                     case "Fiyat Listesi":
                                         cmd.CommandText = "INSERT INTO fiyat_listesi (stok, liste, fiyat) VALUES (@p1, @p2, @p3) ON CONFLICT DO NOTHING";
                                         cmd.Parameters.AddWithValue("p1", val(0));
                                         cmd.Parameters.AddWithValue("p2", val(1));
-                                        cmd.Parameters.AddWithValue("p3", toDec(2));
+                                        cmd.Parameters.AddWithValue("p3", row[2] != DBNull.Value ? Convert.ToDecimal(row[2]) : 0m);
                                         break;
 
                                     case "Satış Teklifi":
-                                        cmd.CommandText = "INSERT INTO satis_teklifi (teklif_no, cari_kodu, cari_adi) VALUES (@p1, @p2, @p3) ON CONFLICT DO NOTHING";
+                                        cmd.CommandText = "INSERT INTO satis_teklifi (teklif_no, cari) VALUES (@p1, @p2) ON CONFLICT DO NOTHING";
                                         cmd.Parameters.AddWithValue("p1", val(0));
                                         cmd.Parameters.AddWithValue("p2", val(1));
-                                        cmd.Parameters.AddWithValue("p3", val(2));
                                         break;
 
                                     case "Satış Siparişi":
-                                        cmd.CommandText = "INSERT INTO satis_siparisi (siparis_no, teklif, cari_kodu, cari_adi, arac_kodu, plaka, toplam_kg, toplam_hacim_m3, kapasite_durumu, siparis_durumu, teslimat_pencere_baslangic, teslimat_penceresi_bitis) VALUES (@p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10, @p11, @p12) ON CONFLICT DO NOTHING";
+                                        cmd.CommandText = "INSERT INTO satis_siparisi (siparis_no, teklif, cari, arac_kodu, plaka, toplam_kg, toplam_hacim_m3, kapasite_durumu) VALUES (@p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8) ON CONFLICT DO NOTHING";
                                         cmd.Parameters.AddWithValue("p1", val(0));
                                         cmd.Parameters.AddWithValue("p2", val(1));
                                         cmd.Parameters.AddWithValue("p3", val(2));
                                         cmd.Parameters.AddWithValue("p4", val(3));
                                         cmd.Parameters.AddWithValue("p5", val(4));
-                                        cmd.Parameters.AddWithValue("p6", val(5));
-                                        cmd.Parameters.AddWithValue("p7", toDec(6));
-                                        cmd.Parameters.AddWithValue("p8", toDec(7));
-                                        cmd.Parameters.AddWithValue("p9", val(8));
-                                        cmd.Parameters.AddWithValue("p10", val(9));
-                                        cmd.Parameters.AddWithValue("p11", val(10));
-                                        cmd.Parameters.AddWithValue("p12", val(11));
+                                        cmd.Parameters.AddWithValue("p6", row[5] != DBNull.Value ? Convert.ToInt32(row[5]) : 0);
+                                        cmd.Parameters.AddWithValue("p7", row[6] != DBNull.Value ? Convert.ToDecimal(row[6]) : 0m);
+                                        cmd.Parameters.AddWithValue("p8", val(7));
                                         break;
 
                                     case "Stok Hareketleri":
                                         cmd.CommandText = "INSERT INTO stok_hareketleri (siparis, stok, miktar) VALUES (@p1, @p2, @p3) ON CONFLICT DO NOTHING";
                                         cmd.Parameters.AddWithValue("p1", val(0));
                                         cmd.Parameters.AddWithValue("p2", val(1));
-                                        cmd.Parameters.AddWithValue("p3", toInt(2));
+                                        cmd.Parameters.AddWithValue("p3", row[2] != DBNull.Value ? Convert.ToInt32(row[2]) : 0);
                                         break;
 
                                     case "İrsaliye":
-                                        cmd.CommandText = "INSERT INTO irsaliye (irsaliye_no, siparis, depo_kodu, depo_adi, arac_kodu, plaka, toplam_kg, toplam_hacim_m3, kapasite_durumu, teslimat_durumu, aciklama_iade_nedeni) VALUES (@p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10, @p11) ON CONFLICT DO NOTHING";
+                                        cmd.CommandText = "INSERT INTO irsaliye (irsaliye_no, siparis, depo, arac_kodu, plaka, toplam_kg, toplam_hacim_m3, kapasite_durumu) VALUES (@p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8) ON CONFLICT DO NOTHING";
                                         cmd.Parameters.AddWithValue("p1", val(0));
                                         cmd.Parameters.AddWithValue("p2", val(1));
                                         cmd.Parameters.AddWithValue("p3", val(2));
-                                        cmd.Parameters.AddWithValue("p4", val(3));
-                                        cmd.Parameters.AddWithValue("p5", val(4));
-                                        cmd.Parameters.AddWithValue("p6", val(5));
-                                        cmd.Parameters.AddWithValue("p7", toDec(6));
-                                        cmd.Parameters.AddWithValue("p8", toDec(7));
-                                        cmd.Parameters.AddWithValue("p9", val(8));
-                                        cmd.Parameters.AddWithValue("p10", val(9));
-                                        cmd.Parameters.AddWithValue("p11", val(10));
+                                        cmd.Parameters.AddWithValue("p4", val(4));
+                                        cmd.Parameters.AddWithValue("p5", val(5));
+                                        cmd.Parameters.AddWithValue("p6", row[6] != DBNull.Value ? Convert.ToInt32(row[6]) : 0);
+                                        cmd.Parameters.AddWithValue("p7", row[7] != DBNull.Value ? Convert.ToDecimal(row[7]) : 0m);
+                                        cmd.Parameters.AddWithValue("p8", val(8));
                                         break;
 
                                     case "Fatura":
-                                        cmd.CommandText = "INSERT INTO fatura (fatura_no, irsaliye_no, cari_kodu, cari_adi, tutar, odeme) VALUES (@p1, @p2, @p3, @p4, @p5, @p6) ON CONFLICT DO NOTHING";
+                                        cmd.CommandText = "INSERT INTO fatura (fatura_no, irsaliye_no, cari, tutar, odeme) VALUES (@p1, @p2, @p3, @p4, @p5) ON CONFLICT DO NOTHING";
                                         cmd.Parameters.AddWithValue("p1", val(0));
                                         cmd.Parameters.AddWithValue("p2", val(1));
                                         cmd.Parameters.AddWithValue("p3", val(2));
-                                        cmd.Parameters.AddWithValue("p4", val(3));
-                                        cmd.Parameters.AddWithValue("p5", toDec(4));
-                                        cmd.Parameters.AddWithValue("p6", val(5));
+                                        cmd.Parameters.AddWithValue("p4", row[3] != DBNull.Value ? Convert.ToDecimal(row[3]) : 0m);
+                                        cmd.Parameters.AddWithValue("p5", val(4));
                                         break;
 
                                     case "Sevkiyat_Plani":
-                                        cmd.CommandText = "INSERT INTO sevkiyat_plani (sevkiyat_no, arac_kodu, plaka, toplam_kg, toplam_hacim_m3, sevkiyat_durumu) VALUES (@p1, @p2, @p3, @p4, @p5, @p6) ON CONFLICT DO NOTHING";
+                                        cmd.CommandText = "INSERT INTO sevkiyat_plani (sevkiyat_no, arac_kodu, plaka, toplam_kg, toplam_hacim_m3) VALUES (@p1, @p2, @p3, @p4, @p5) ON CONFLICT DO NOTHING";
                                         cmd.Parameters.AddWithValue("p1", val(0));
                                         cmd.Parameters.AddWithValue("p2", val(1));
                                         cmd.Parameters.AddWithValue("p3", val(2));
-                                        cmd.Parameters.AddWithValue("p4", toDec(3));
-                                        cmd.Parameters.AddWithValue("p5", toDec(4));
-                                        cmd.Parameters.AddWithValue("p6", val(5));
+                                        cmd.Parameters.AddWithValue("p4", row[3] != DBNull.Value ? Convert.ToDecimal(row[3]) : 0m);
+                                        cmd.Parameters.AddWithValue("p5", row[4] != DBNull.Value ? Convert.ToDecimal(row[4]) : 0m);
                                         break;
                                 }
 
@@ -256,9 +240,9 @@ namespace UyumsoftETL
                                 }
                                 cmd.Dispose();
                             }
-                            catch (Exception ex)
+                            catch (Exception)
                             {
-                                Console.WriteLine($"⚠️ [Row Skipped - {sheet}]: {ex.Message}");
+                                Console.WriteLine($"⚠️ [Row Skipped - {sheet}]: Missing Data Reference (e.g., Foreign Key not found in DB)");
                             }
                         }
                         Console.WriteLine($"✅ '{sheet}' transferred.");
