@@ -31,6 +31,7 @@ import {
   type StopDto,
 } from '@/lib/route-data'
 import { cn } from '@/lib/utils'
+import { NewOrderDialog } from "@/components/new-order-dialog"
 
 interface TaskPanelProps {
   selectedStopId: string | null
@@ -470,13 +471,7 @@ export function TaskPanel({
           <ul className="divide-y divide-border">
             {!isPoolLocked ? (
               <li className="px-3 py-2">
-                <button
-                  type="button"
-                  className="flex w-full items-center justify-center gap-1.5 rounded-md border border-success/40 bg-transparent py-2 text-[12px] font-semibold text-success transition-colors hover:bg-success/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-success/40"
-                >
-                  <Plus className="size-3.5 shrink-0" />
-                  Acil Sipariş Ekle
-                </button>
+                <NewOrderDialog />
               </li>
             ) : null}
             {unassignedTasks.map((task) => (
