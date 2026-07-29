@@ -428,3 +428,5 @@ FodyWeavers.xsd
 *.msm
 *.msp
 .vercel
+
+.next
