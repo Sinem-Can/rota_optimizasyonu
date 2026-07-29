@@ -1,47 +1,44 @@
-﻿#nullable disable
 using System;
-using DotNetEnv;
 
-namespace UyumsoftETL
+namespace Uyumsoft.RouteOptimizer
 {
     class Program
     {
         static void Main(string[] args)
         {
-            // .env dosyasını yükle
-            Env.Load();
+            // 1. ERP'den geliyormuş gibi SAHTE VERİ (Mock Data) üretiyoruz
+            var data = new VrpDataModel();
             
-            // Değişkenleri çek
-            string connString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
-            string erpFilePath = Environment.GetEnvironmentVariable("ERP_EXCEL_PATH");
-            string matrisFilePath = Environment.GetEnvironmentVariable("MATRIX_EXCEL_PATH");
+            // 4 noktalı bir dünya (0: Avcılar Depo, 1, 2, 3: Müşteriler)
+            data.TimeMatrix = new long[,] {
+                {0, 10, 20, 15}, // Depodan müşterilere dakikalar
+                {10, 0, 15, 30}, // 1. Müşteriden diğerlerine...
+                {20, 15, 0, 10},
+                {15, 30, 10, 0}
+            };
 
-            if (string.IsNullOrEmpty(connString) || string.IsNullOrEmpty(erpFilePath) || string.IsNullOrEmpty(matrisFilePath))
-            {
-                Console.WriteLine("❌ ERROR: Missing configuration in .env file! Ensure DB string and file paths are set.");
-                return;
-            }
+            // Müşterilerin sipariş ağırlıkları (Kg) - Deponun (0. indeks) siparişi 0 olur
+            data.WeightDemands = new long[] { 0, 50, 80, 40 }; 
+            
+            // Müşterilerin sipariş hacimleri (m3)
+            data.VolumeDemands = new long[] { 0, 10, 20, 200 };
 
-            try
-            {
-                // 1. Veritabanı Yöneticisini Başlat
-                DatabaseManager dbManager = new DatabaseManager(connString);
-                Console.WriteLine("✅ Successfully configured Database connection.");
+            // 2 Aracımız var. Kapasitelerini tanımlıyoruz
+            data.VehicleNumber = 2;
+            data.VehicleWeightCapacities = new long[] { 100, 100 }; // İkisi de max 100 Kg taşır
+            data.VehicleVolumeCapacities = new long[] { 50, 50 };   // İkisi de max 50 m3 taşır
 
-                // 2. Excel İşlemcisini Başlat
-                ExcelProcessor excelProcessor = new ExcelProcessor(dbManager);
-                Console.WriteLine("✅ Initialization complete. Starting transfer processes...\n");
+            // İki araç da Avcılar Depo'dan (0) çıkıp, Avcılar Depo'da (0) bitsin
+            data.Starts = new int[] { 0, 0 };
+            data.Ends = new int[] { 0, 0 };
 
-                // 3. Verileri Aktar
-                excelProcessor.TransferDistanceMatrix(matrisFilePath);
-                excelProcessor.TransferErpData(erpFilePath);
-
-                Console.WriteLine("\n🎉 All transfer processes completed successfully!");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"❌ General Error: {ex.Message}");
-            }
+            // 2. MOTORU ÇALIŞTIR
+            Console.WriteLine("Uyumsoft Rotalama Motoru Çalışıyor...\n");
+            
+            var optimizer = new VrpOptimizer();
+            optimizer.Solve(data);
+            
+            Console.ReadLine(); // Ekran kapanmasın diye
         }
     }
 }
