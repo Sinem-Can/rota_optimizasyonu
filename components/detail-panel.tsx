@@ -18,6 +18,7 @@ import {
   Wallet,
   Weight,
 } from 'lucide-react'
+import { toast } from "sonner"
 import { driverTheme, drivers, statusMeta, type StopDto } from '@/lib/route-data'
 import { cn } from '@/lib/utils'
 
@@ -357,15 +358,28 @@ export function DetailPanel({ stop, driverId }: DetailPanelProps) {
 
       {/* Eylemler */}
       <div className="shrink-0 space-y-2 border-t border-border p-3">
+        {/* Sürücüye Gönder Butonu */}
         <button
           type="button"
+          onClick={() => {
+            toast.success("Görev sürücüye başarıyla iletildi!", {
+              description: `${driver.fullName} (${driver.plate}) - Cihazına gönderildi.`,
+            })
+          }}
           className="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-3 py-2.5 text-[13px] font-bold text-primary-foreground transition-all hover:brightness-110 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           <Send className="size-4" />
           Sürücüye Gönder
         </button>
+        
+        {/* SMS/Mail Butonu */}
         <button
           type="button"
+          onClick={() => {
+            toast.info("Müşteriye yola çıktı bildirimi gönderildi.", {
+              description: `SMS & Mail: ${stop.customerName} (${stop.phone})`,
+            })
+          }}
           className="flex w-full items-center justify-center gap-2 rounded-md border border-input bg-secondary/50 px-3 py-2 text-[12px] font-semibold text-foreground transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           <BellRing className="size-3.5 shrink-0" />
@@ -373,15 +387,29 @@ export function DetailPanel({ stop, driverId }: DetailPanelProps) {
             Sipariş Yola Çıktı (SMS/Mail) Bildirimi Gönder
           </span>
         </button>
+
         <div className="flex gap-2">
+          {/* Kaydet Butonu */}
           <button
             type="button"
+            onClick={() => {
+              toast.success("Değişiklikler kaydedildi.", {
+                description: `${stop.customerName} rotası güncellendi.`,
+              })
+            }}
             className="flex-1 rounded-md border border-input bg-background py-2 text-[12px] font-semibold text-foreground transition-colors hover:bg-secondary"
           >
             Değişiklikleri Kaydet
           </button>
+          
+          {/* Durağı Kaldır Butonu */}
           <button
             type="button"
+            onClick={() => {
+              toast.error("Durak rotadan çıkarıldı!", {
+                description: `${stop.customerName} siparişi tekrar havuza düştü.`,
+              })
+            }}
             className="rounded-md border border-destructive/30 bg-background px-3 py-2 text-[12px] font-semibold text-destructive transition-colors hover:bg-destructive/10"
           >
             Durağı Kaldır
