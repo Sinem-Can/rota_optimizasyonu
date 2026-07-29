@@ -1,4 +1,5 @@
 using System;
+using DotNetEnv;
 
 namespace Uyumsoft.RouteOptimizer
 {
@@ -6,39 +7,95 @@ namespace Uyumsoft.RouteOptimizer
     {
         static void Main(string[] args)
         {
-            // 1. ERP'den geliyormuş gibi SAHTE VERİ (Mock Data) üretiyoruz
-            var data = new VrpDataModel();
+            // 1. .env dosyasını yükle
+            Env.Load();
             
-            // 4 noktalı bir dünya (0: Avcılar Depo, 1, 2, 3: Müşteriler)
-            data.TimeMatrix = new long[,] {
-                {0, 10, 20, 15}, // Depodan müşterilere dakikalar
-                {10, 0, 15, 30}, // 1. Müşteriden diğerlerine...
-                {20, 15, 0, 10},
-                {15, 30, 10, 0}
-            };
+            // 2. Değişkenleri çek
+            string? connString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
+            string? erpFilePath = Environment.GetEnvironmentVariable("ERP_EXCEL_PATH");
+            string? matrisFilePath = Environment.GetEnvironmentVariable("MATRIX_EXCEL_PATH");
 
-            // Müşterilerin sipariş ağırlıkları (Kg) - Deponun (0. indeks) siparişi 0 olur
-            data.WeightDemands = new long[] { 0, 50, 80, 40 }; 
-            
-            // Müşterilerin sipariş hacimleri (m3)
-            data.VolumeDemands = new long[] { 0, 10, 20, 200 };
+            if (string.IsNullOrEmpty(connString) || string.IsNullOrEmpty(erpFilePath) || string.IsNullOrEmpty(matrisFilePath))
+            {
+                Console.WriteLine("⚠️ UYARI: .env dosyasındaki veritabanı veya excel yolları eksik. Sadece Rotalama Motoru çalıştırılacak.");
+            }
+            else
+            {
+                Console.Write("Excel'deki yeni veriler veritabanına aktarılsın mı? (E/H): ");
+                string? cevap = Console.ReadLine();
+                if (cevap?.Trim().ToUpper() == "E")
+                {
+                    try
+                    {
+                        // 3. Veritabanı Yöneticisini Başlat
+                        DatabaseManager dbManager = new DatabaseManager(connString);
+                        Console.WriteLine("✅ Veritabanı bağlantısı yapılandırıldı.");
 
-            // 2 Aracımız var. Kapasitelerini tanımlıyoruz
-            data.VehicleNumber = 2;
-            data.VehicleWeightCapacities = new long[] { 100, 100 }; // İkisi de max 100 Kg taşır
-            data.VehicleVolumeCapacities = new long[] { 50, 50 };   // İkisi de max 50 m3 taşır
+                        // 4. Excel İşlemcisini Başlat
+                        ExcelProcessor excelProcessor = new ExcelProcessor(dbManager);
+                        Console.WriteLine("✅ Aktarım işlemleri başlıyor...\n");
 
-            // İki araç da Avcılar Depo'dan (0) çıkıp, Avcılar Depo'da (0) bitsin
-            data.Starts = new int[] { 0, 0 };
-            data.Ends = new int[] { 0, 0 };
+                        // 5. Verileri Aktar
+                        excelProcessor.TransferDistanceMatrix(matrisFilePath);
+                        excelProcessor.TransferErpData(erpFilePath);
 
-            // 2. MOTORU ÇALIŞTIR
+                        Console.WriteLine("\n🎉 Tüm veritabanı/ETL aktarım işlemleri başarıyla tamamlandı!\n");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"❌ Veritabanı/ETL Hatası: {ex.Message}");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("⏩ Excel aktarımı atlandı. Mevcut veritabanı kayıtları kullanılacak.");
+                }
+            }
+
+            Console.WriteLine("===================================================");
+
+            // 6. Veritabanından Rota Optimizasyonu İçin Veri Çekiyoruz
+            Console.WriteLine("⏳ Veritabanından rotalama verileri çekiliyor...");
+            VrpDataModel data = new VrpDataModel();
+
+            try
+            {
+                DatabaseManager vrpDb = new DatabaseManager(connString ?? "");
+                data = vrpDb.GetVrpData();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Veri çekme hatası: {ex.Message}");
+                return;
+            }
+
+            if (data.VehicleNumber == 0 || data.TimeMatrix == null || data.TimeMatrix.GetLength(0) == 0)
+            {
+                Console.WriteLine("⚠️ Yeterli veri bulunamadı! (Araç veya lokasyon yok). Veritabanına aktarım yapıldığından emin olun.");
+                return;
+            }
+
+            // 7. MOTORU ÇALIŞTIR
             Console.WriteLine("Uyumsoft Rotalama Motoru Çalışıyor...\n");
+            
+            // --- DEBUG ÇIKTILARI ---
+            Console.WriteLine($"[DEBUG] Araç Sayısı: {data.VehicleNumber}");
+            Console.WriteLine($"[DEBUG] Lokasyon Sayısı (Mesafe Matrisi): {(data.TimeMatrix != null ? data.TimeMatrix.GetLength(0) : 0)}");
+            if (data.VehicleWeightCapacities != null)
+                Console.WriteLine($"[DEBUG] Araç Kapasiteleri (Ağırlık): {string.Join(", ", data.VehicleWeightCapacities)}");
+            if (data.WeightDemands != null)
+            {
+                Console.WriteLine($"[DEBUG] Sipariş Talepleri (Ağırlık): {string.Join(", ", data.WeightDemands)}");
+                long totalDemand = 0;
+                foreach(var w in data.WeightDemands) totalDemand += w;
+                Console.WriteLine($"[DEBUG] Toplam Ağırlık Talebi: {totalDemand}");
+            }
+            // -----------------------
             
             var optimizer = new VrpOptimizer();
             optimizer.Solve(data);
             
-            Console.ReadLine(); // Ekran kapanmasın diye
+            // Console.ReadLine(); // Ekran kapanmasın diye (CI/CD süreçlerinde vs engel olmasın diye yoruma alındı)
         }
     }
 }
