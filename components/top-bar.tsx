@@ -3,6 +3,8 @@
 // useState'i import listemize ekledik
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
+import { parseImportFile } from "@/lib/parse-import-file"
+import type { UnassignedTaskDto } from "@/lib/route-data"
 
 import {
   Bell,
@@ -22,6 +24,7 @@ import {
 } from 'lucide-react'
 import { erpSummary } from '@/lib/erp-data'
 import { fleetSummary, kpiSummary } from '@/lib/route-data'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 export type TabKey = 'planlama' | 'erp'
 
@@ -33,7 +36,9 @@ const navItems: { key: TabKey; label: string }[] = [
 interface TopBarProps {
   activeTab: TabKey
   onTabChange: (tab: TabKey) => void
+  onImportTasks: (tasks: UnassignedTaskDto[]) => void   // ← yeni
 }
+
 
 interface KpiItem {
   label: string
@@ -119,7 +124,7 @@ const erpKpis: KpiItem[] = [
   },
 ]
 
-export function TopBar({ activeTab, onTabChange }: TopBarProps) {
+export function TopBar({ activeTab, onTabChange, onImportTasks }: TopBarProps) {
   const isErp = activeTab === 'erp'
   const activeKpis = isErp ? erpKpis : kpis
 
@@ -261,6 +266,8 @@ export function TopBar({ activeTab, onTabChange }: TopBarProps) {
         </label>
 
         <div className="h-8 w-px bg-border" />
+
+        <ThemeToggle />
 
         <button
           type="button"
