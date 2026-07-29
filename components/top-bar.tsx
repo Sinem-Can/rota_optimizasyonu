@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { erpSummary } from '@/lib/erp-data'
 import { fleetSummary, kpiSummary } from '@/lib/route-data'
+import { ThemeToggle } from "@/components/theme-toggle"
 
 // Filo, Müşteriler ve Raporlar artık ERP Yönetimi modülleri altında yer alıyor.
 export type TabKey = 'planlama' | 'erp'
@@ -195,6 +196,10 @@ export function TopBar({ activeTab, onTabChange }: TopBarProps) {
         </button>
 
         <div className="h-8 w-px bg-border" />
+
+        <div className="flex shrink-0 items-center">
+        <ThemeToggle />
+        </div>
 
         <button
           type="button"
