@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { ThemeProvider } from '@/components/theme-provider'
 import './globals.css'
+import { Toaster } from 'sonner'
 
 const _geistSans = Geist({ subsets: ['latin'] })
 const _geistMono = Geist_Mono({ subsets: ['latin'] })
@@ -56,6 +57,9 @@ export default function RootLayout({
           {children}
         </ThemeProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
+        
+        {/* Canlı Bildirimler (Sonner) Sadece bu eklendi, fazla fonksiyonlar silindi */}
+        <Toaster richColors position="bottom-right" /> 
       </body>
     </html>
   )

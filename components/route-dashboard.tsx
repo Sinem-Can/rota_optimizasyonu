@@ -8,6 +8,7 @@ import { TaskPanel } from '@/components/task-panel'
 import { TimelinePanel } from '@/components/timeline-panel'
 import { TopBar, type TabKey } from '@/components/top-bar'
 import { drivers, type StopDto } from '@/lib/route-data'
+import { toast } from "sonner"
 
 export function RouteDashboard() {
   // Varsayılan seçim: gecikme riski taşıyan durak
@@ -25,11 +26,22 @@ export function RouteDashboard() {
   }, [])
 
   const handleOptimize = useCallback(() => {
-    // Havuz kilitliyken manuel optimizasyon tetiklenemez.
-    if (isPoolLocked) return
+    // Havuz kilitliyse hata bildirimi ver
+    if (isPoolLocked) {
+      toast.error("Havuz kilitli! Optimizasyon için önce kilidi açın.")
+      return
+    }
+    
     setIsOptimizing(true)
-    // Gerçek uygulamada: POST /api/v1/optimization/solve (C# .NET)
-    window.setTimeout(() => setIsOptimizing(false), 2200)
+    // İşlem başlarken mavi bir bilgi mesajı çıkar
+    toast.info("Yapay zeka rotaları hesaplıyor...", { duration: 2000 })
+    
+    // 2.2 saniye sonra (sanki backend'den cevap gelmiş gibi)
+    window.setTimeout(() => {
+      setIsOptimizing(false)
+      // İşlem bitince o jilet gibi yeşil başarı mesajını çıkar
+      toast.success("Rotalar başarıyla optimize edildi!")
+    }, 2200)
   }, [isPoolLocked])
 
   return (
