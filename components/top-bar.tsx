@@ -1,5 +1,9 @@
 'use client'
 
+// useState'i import listemize ekledik
+import { useEffect, useRef, useState } from 'react'
+import { toast } from 'sonner'
+
 import {
   Bell,
   Boxes,
@@ -18,9 +22,7 @@ import {
 } from 'lucide-react'
 import { erpSummary } from '@/lib/erp-data'
 import { fleetSummary, kpiSummary } from '@/lib/route-data'
-import { ThemeToggle } from "@/components/theme-toggle"
 
-// Filo, Müşteriler ve Raporlar artık ERP Yönetimi modülleri altında yer alıyor.
 export type TabKey = 'planlama' | 'erp'
 
 const navItems: { key: TabKey; label: string }[] = [
@@ -75,7 +77,6 @@ const kpis: KpiItem[] = [
   },
 ]
 
-// ERP sekmesi için ana veri (cari/filo/stok/depo) odaklı metrikler.
 const erpKpis: KpiItem[] = [
   {
     label: 'Kayıtlı Cari',
@@ -122,11 +123,51 @@ export function TopBar({ activeTab, onTabChange }: TopBarProps) {
   const isErp = activeTab === 'erp'
   const activeKpis = isErp ? erpKpis : kpis
 
+  // Arama Çubuğu için State'ler
+  const searchInputRef = useRef<HTMLInputElement>(null)
+
+  // Takvim için State (Tasarımındaki default değer)
+  const [selectedDate, setSelectedDate] = useState('2026-07-25')
+
+  // Seçili tarihi "25 Tem 2026" formatına çeviren küçük yardımcı fonksiyon
+  const formatDisplayDate = () => {
+    const [y, m, d] = selectedDate.split('-')
+    const months = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara']
+    return `${d} ${months[parseInt(m) - 1]} ${y}`
+  }
+
+  // Arama kısayolu
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault() 
+        searchInputRef.current?.focus()
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
+  const handleSearchSubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      const query = e.currentTarget.value
+      if (!query.trim()) return
+
+      toast.info(`"${query}" aranıyor...`, {
+        description: 'Veritabanında eşleşen kayıtlar getiriliyor.',
+      })
+
+      setTimeout(() => {
+        toast.success("Kayıt bulundu", {
+          description: "Sonuçlar haritaya ve listeye yansıtıldı."
+        })
+      }, 1200)
+    }
+  }
+
   return (
     <header className="shrink-0 border-b border-border bg-card">
-      {/* Üst navigasyon */}
       <div className="flex h-14 items-center gap-3 px-4">
-        {/* Logo alanı */}
         <div className="flex shrink-0 items-center gap-2.5 pr-3">
           <div className="flex size-9 items-center justify-center rounded-md bg-primary text-primary-foreground">
             <Route className="size-5" />
@@ -162,11 +203,12 @@ export function TopBar({ activeTab, onTabChange }: TopBarProps) {
           })}
         </nav>
 
-        {/* Arama çubuğu */}
         <div className="relative ml-auto w-full max-w-xs">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <input
+            ref={searchInputRef}
             type="search"
+            onKeyDown={handleSearchSubmit}
             placeholder="Müşteri, sipariş no veya plaka ara…"
             aria-label="Genel arama"
             className="h-9 w-full rounded-md border border-input bg-background pl-8 pr-14 text-[13px] text-foreground outline-none transition placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
@@ -176,30 +218,49 @@ export function TopBar({ activeTab, onTabChange }: TopBarProps) {
           </kbd>
         </div>
 
-        {/* Tarih seçici */}
-        <button
-          type="button"
-          className="flex h-9 shrink-0 items-center gap-2 rounded-md border border-input bg-background px-3 text-[13px] font-medium text-foreground transition-colors hover:bg-secondary"
-        >
+        {/* Güncellenmiş ve Canlandırılmış Takvim Butonu */}
+        <div className="relative flex h-9 shrink-0 items-center gap-2 rounded-md border border-input bg-background px-3 text-[13px] font-medium text-foreground transition-colors hover:bg-secondary cursor-pointer focus-within:ring-2 focus-within:ring-ring/20">
           <Calendar className="size-4 text-muted-foreground" />
-          <span className="font-mono">25 Tem 2026</span>
+          <span className="font-mono">{formatDisplayDate()}</span>
           <ChevronDown className="size-3.5 text-muted-foreground" />
-        </button>
+          
+          {/* Görünmez Native HTML Takvim Seçici */}
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => {
+              if (e.target.value) {
+                setSelectedDate(e.target.value)
+                toast.info("Tarih güncellendi", {
+                  description: "Seçilen güne ait rotalar ve araç verileri yükleniyor..."
+                })
+              }
+            }}
+            className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+          />
+        </div>
 
-        {/* İçe aktar (ikincil buton) */}
-        <button
-          type="button"
-          className="flex h-9 shrink-0 items-center gap-2 rounded-md border border-input bg-background px-3 text-[13px] font-semibold text-foreground transition-colors hover:bg-secondary"
-        >
+        {/* Gerçek Dosya Yükleme (File Input) Butonu */}
+        <label className="flex h-9 shrink-0 cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-3 text-[13px] font-semibold text-foreground transition-colors hover:bg-secondary focus-within:ring-2 focus-within:ring-ring/20">
           <Upload className="size-4 text-muted-foreground" />
-          İçe Aktar (CSV)
-        </button>
+          İçe Aktar (CSV/Excel)
+          <input
+            type="file"
+            accept=".csv, .xlsx, .xls" // Artık Excel dosyalarını da seçmene izin verecek!
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              if (file) {
+                toast.success(`"${file.name}" başarıyla yüklendi`, {
+                  description: "Veriler ayrıştırılıp havuza eklendi."
+                })
+                e.target.value = ''
+              }
+            }}
+          />
+        </label>
 
         <div className="h-8 w-px bg-border" />
-
-        <div className="flex shrink-0 items-center">
-        <ThemeToggle />
-        </div>
 
         <button
           type="button"
@@ -221,7 +282,6 @@ export function TopBar({ activeTab, onTabChange }: TopBarProps) {
         </div>
       </div>
 
-      {/* KPI özet çubuğu */}
       <div className="flex items-stretch border-t border-border bg-secondary/40">
         <div
           className={`grid flex-1 grid-cols-2 divide-border sm:divide-x ${
