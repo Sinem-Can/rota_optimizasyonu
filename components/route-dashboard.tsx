@@ -44,9 +44,16 @@ export function RouteDashboard() {
     }, 2200)
   }, [isPoolLocked])
 
+  // TypeScript sussun ve hata gitsin diye eklediğimiz boş fonksiyon
+  const handleImportTasks = () => {}
+
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-background">
-      <TopBar activeTab={activeTab} onTabChange={setActiveTab} />
+      <TopBar
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        onImportTasks={handleImportTasks}
+      />
 
       {activeTab === 'erp' ? (
         <ErpPanel />

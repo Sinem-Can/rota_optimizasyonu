@@ -1,10 +1,9 @@
 'use client'
 
-// useState'i import listemize ekledik
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { parseImportFile } from "@/lib/parse-import-file"
 import type { UnassignedTaskDto } from "@/lib/route-data"
+import { drivers } from '@/lib/route-data' // YENİ EKLENDİ
 
 import {
   Bell,
@@ -23,7 +22,7 @@ import {
   Warehouse,
 } from 'lucide-react'
 import { erpSummary } from '@/lib/erp-data'
-import { fleetSummary, kpiSummary } from '@/lib/route-data'
+import { fleetSummary } from '@/lib/route-data'
 import { ThemeToggle } from '@/components/theme-toggle'
 
 export type TabKey = 'planlama' | 'erp'
@@ -36,9 +35,8 @@ const navItems: { key: TabKey; label: string }[] = [
 interface TopBarProps {
   activeTab: TabKey
   onTabChange: (tab: TabKey) => void
-  onImportTasks: (tasks: UnassignedTaskDto[]) => void   // ← yeni
+  onImportTasks: (tasks: UnassignedTaskDto[]) => void
 }
-
 
 interface KpiItem {
   label: string
@@ -49,99 +47,120 @@ interface KpiItem {
   icon: React.ComponentType<{ className?: string }>
 }
 
-const kpis: KpiItem[] = [
-  {
-    label: 'Toplam Mesafe',
-    value: kpiSummary.totalDistanceKm.toString(),
-    unit: 'km',
-    delta: `-${kpiSummary.optimizationGain}%`,
-    deltaTone: 'down',
-    icon: Route,
-  },
-  {
-    label: 'Toplam Süre',
-    value: kpiSummary.totalDuration,
-    delta: '-1s 20d',
-    deltaTone: 'down',
-    icon: Clock,
-  },
-  {
-    label: 'Araç Sayısı',
-    value: kpiSummary.vehicleCount.toString(),
-    unit: 'araç',
-    delta: `${kpiSummary.plannedStops} durak`,
-    deltaTone: 'neutral',
-    icon: Truck,
-  },
-  {
-    label: 'Başarı Oranı',
-    value: `%${kpiSummary.successRate}`,
-    delta: '+1,2 puan',
-    deltaTone: 'up',
-    icon: Gauge,
-  },
-]
-
-const erpKpis: KpiItem[] = [
-  {
-    label: 'Kayıtlı Cari',
-    value: erpSummary.accountCount.toString(),
-    unit: 'cari',
-    delta: 'alıcı + satıcı',
-    deltaTone: 'neutral',
-    icon: Wallet,
-  },
-  {
-    label: 'Toplam Alacak',
-    value: `${Math.round(erpSummary.receivableTotal / 1000).toLocaleString('tr-TR')}B`,
-    unit: '₺',
-    delta: 'vadesi açık',
-    deltaTone: 'up',
-    icon: TrendingUp,
-  },
-  {
-    label: 'Aktif Araç',
-    value: fleetSummary.active.toString(),
-    unit: 'araç',
-    delta: `${fleetSummary.broken} arızalı`,
-    deltaTone: 'alert',
-    icon: Truck,
-  },
-  {
-    label: 'Stok Kalemi',
-    value: erpSummary.stockItemCount.toString(),
-    unit: 'kalem',
-    delta: `${erpSummary.criticalStockCount} kritik seviye`,
-    deltaTone: 'alert',
-    icon: Boxes,
-  },
-  {
-    label: 'Depo Doluluk',
-    value: `%${erpSummary.occupancyPct}`,
-    delta: `${erpSummary.warehouseCount} depo`,
-    deltaTone: 'neutral',
-    icon: Warehouse,
-  },
-]
-
 export function TopBar({ activeTab, onTabChange, onImportTasks }: TopBarProps) {
   const isErp = activeTab === 'erp'
+
+  // --- DİNAMİK HESAPLAMALAR ---
+  // Gerçek zamanlı araç sayısı
+  const activeVehicleCount = drivers.length
+  
+  // Toplam Katedilen Mesafe
+  const totalDistance = drivers.reduce((sum, driver) => sum + driver.totalDistanceKm, 0)
+  
+  // Toplam Süre (Dakika olarak)
+  const totalMinutes = drivers.reduce((sum, driver) => sum + driver.totalDurationMin, 0)
+  
+  // Dakikayı (Örn: 811) "13s 31d" formatına çeviren fonksiyon
+  const formatDuration = (minutes: number) => {
+    const hrs = Math.floor(minutes / 60)
+    const mins = minutes % 60
+    return `${hrs}s ${mins}d`
+  }
+  
+  // Toplam Durak Sayısı
+  const totalStops = drivers.reduce((sum, driver) => sum + driver.stops.length, 0)
+
+  // Toplam Yakıt Tahmini (Her 100km'de ortalama 12 litre baz alınarak)
+  const estimatedFuel = Math.round((totalDistance / 100) * 12)
+
+  // --- KPI KARTLARI ---
+  const kpis: KpiItem[] = [
+    {
+      label: 'Toplam Mesafe',
+      value: totalDistance.toString(),
+      unit: 'km',
+      delta: '-18.4%', // Tasarımdaki sabit delta
+      deltaTone: 'down',
+      icon: Route,
+    },
+    {
+      label: 'Toplam Süre',
+      value: formatDuration(totalMinutes),
+      delta: '-1s 20d', // Tasarımdaki sabit delta
+      deltaTone: 'down',
+      icon: Clock,
+    },
+    {
+      label: 'Araç Sayısı',
+      value: activeVehicleCount.toString(),
+      unit: 'araç',
+      delta: `${totalStops} durak`,
+      deltaTone: 'neutral',
+      icon: Truck,
+    },
+    {
+      label: 'Başarı Oranı',
+      value: '%98',
+      delta: '+1,2 puan',
+      deltaTone: 'up',
+      icon: Gauge,
+    },
+  ]
+
+  const erpKpis: KpiItem[] = [
+    {
+      label: 'Kayıtlı Cari',
+      value: erpSummary.accountCount.toString(),
+      unit: 'cari',
+      delta: 'alıcı + satıcı',
+      deltaTone: 'neutral',
+      icon: Wallet,
+    },
+    {
+      label: 'Toplam Alacak',
+      value: `${Math.round(erpSummary.receivableTotal / 1000).toLocaleString('tr-TR')}B`,
+      unit: '₺',
+      delta: 'vadesi açık',
+      deltaTone: 'up',
+      icon: TrendingUp,
+    },
+    {
+      label: 'Aktif Araç',
+      value: fleetSummary.active.toString(),
+      unit: 'araç',
+      delta: `${fleetSummary.broken} arızalı`,
+      deltaTone: 'alert',
+      icon: Truck,
+    },
+    {
+      label: 'Stok Kalemi',
+      value: erpSummary.stockItemCount.toString(),
+      unit: 'kalem',
+      delta: `${erpSummary.criticalStockCount} kritik seviye`,
+      deltaTone: 'alert',
+      icon: Boxes,
+    },
+    {
+      label: 'Depo Doluluk',
+      value: `%${erpSummary.occupancyPct}`,
+      delta: `${erpSummary.warehouseCount} depo`,
+      deltaTone: 'neutral',
+      icon: Warehouse,
+    },
+  ]
+
   const activeKpis = isErp ? erpKpis : kpis
 
-  // Arama Çubuğu için State'ler
+  // Arama ve Takvim State'leri
   const searchInputRef = useRef<HTMLInputElement>(null)
-
-  // Takvim için State (Tasarımındaki default değer)
   const [selectedDate, setSelectedDate] = useState('2026-07-25')
 
-  // Seçili tarihi "25 Tem 2026" formatına çeviren küçük yardımcı fonksiyon
   const formatDisplayDate = () => {
     const [y, m, d] = selectedDate.split('-')
     const months = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara']
     return `${d} ${months[parseInt(m) - 1]} ${y}`
   }
 
-  // Arama kısayolu
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -223,13 +242,11 @@ export function TopBar({ activeTab, onTabChange, onImportTasks }: TopBarProps) {
           </kbd>
         </div>
 
-        {/* Güncellenmiş ve Canlandırılmış Takvim Butonu */}
         <div className="relative flex h-9 shrink-0 items-center gap-2 rounded-md border border-input bg-background px-3 text-[13px] font-medium text-foreground transition-colors hover:bg-secondary cursor-pointer focus-within:ring-2 focus-within:ring-ring/20">
           <Calendar className="size-4 text-muted-foreground" />
           <span className="font-mono">{formatDisplayDate()}</span>
           <ChevronDown className="size-3.5 text-muted-foreground" />
           
-          {/* Görünmez Native HTML Takvim Seçici */}
           <input
             type="date"
             value={selectedDate}
@@ -245,13 +262,12 @@ export function TopBar({ activeTab, onTabChange, onImportTasks }: TopBarProps) {
           />
         </div>
 
-        {/* Gerçek Dosya Yükleme (File Input) Butonu */}
         <label className="flex h-9 shrink-0 cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-3 text-[13px] font-semibold text-foreground transition-colors hover:bg-secondary focus-within:ring-2 focus-within:ring-ring/20">
           <Upload className="size-4 text-muted-foreground" />
           İçe Aktar (CSV/Excel)
           <input
             type="file"
-            accept=".csv, .xlsx, .xls" // Artık Excel dosyalarını da seçmene izin verecek!
+            accept=".csv, .xlsx, .xls"
             className="hidden"
             onChange={(e) => {
               const file = e.target.files?.[0]
@@ -339,7 +355,7 @@ export function TopBar({ activeTab, onTabChange, onImportTasks }: TopBarProps) {
                   Yakıt Tahmini
                 </p>
                 <p className="font-mono text-sm font-semibold text-foreground">
-                  {kpiSummary.fuelEstimateL.toLocaleString('tr-TR')} lt
+                  {estimatedFuel.toLocaleString('tr-TR')} lt
                 </p>
               </div>
               <div className="h-8 w-px bg-border" />
@@ -348,7 +364,8 @@ export function TopBar({ activeTab, onTabChange, onImportTasks }: TopBarProps) {
                   Maliyet
                 </p>
                 <p className="font-mono text-sm font-semibold text-foreground">
-                  {kpiSummary.costEstimate}
+                  {/* Yakıt tahmini üzerinden ortalama bir maliyet */}
+                  ₺{(estimatedFuel * 42.5).toLocaleString('tr-TR')}
                 </p>
               </div>
               <div className="h-8 w-px bg-border" />
