@@ -25,7 +25,7 @@ namespace Uyumsoft.RouteOptimizer
                 return;
             }
 
-            Console.WriteLine("🚚 Transferring Distance Matrix...");
+            Console.WriteLine("🚚 Transferring Distance Matrix (KM)...");
             using (var conn = _dbManager.GetConnection())
             {
                 conn.Open();
@@ -33,7 +33,12 @@ namespace Uyumsoft.RouteOptimizer
                 using (var reader = ExcelReaderFactory.CreateReader(stream))
                 {
                     var result = reader.AsDataSet(new ExcelDataSetConfiguration() { ConfigureDataTable = (_) => new ExcelDataTableConfiguration() { UseHeaderRow = true } });
+                    
                     DataTable table = result.Tables[0];
+                    if (result.Tables.Contains("Mesafe Matrisi")) table = result.Tables["Mesafe Matrisi"];
+
+                    // Mevcut tabloyu temizle
+                    using (var delCmd = new NpgsqlCommand("TRUNCATE TABLE mesafe_matrisi", conn)) delCmd.ExecuteNonQuery();
 
                     using (var transaction = conn.BeginTransaction())
                     {
@@ -62,7 +67,88 @@ namespace Uyumsoft.RouteOptimizer
                     }
                 }
             }
-            Console.WriteLine("✅ Distance matrix completed.\n");
+            Console.WriteLine("✅ Distance matrix (KM) completed.\n");
+        }
+
+        public void TransferTrafficMatrix(string filePath)
+        {
+            if (!File.Exists(filePath))
+            {
+                Console.WriteLine($"❌ ERROR: Traffic Matrix file not found at {filePath}");
+                return;
+            }
+
+            Console.WriteLine("🚚 Transferring Traffic Matrix (15-min blocks)...");
+            using (var conn = _dbManager.GetConnection())
+            {
+                conn.Open();
+                using (var stream = File.Open(filePath, FileMode.Open, FileAccess.Read))
+                using (var reader = ExcelReaderFactory.CreateReader(stream))
+                {
+                    var result = reader.AsDataSet(new ExcelDataSetConfiguration() { ConfigureDataTable = (_) => new ExcelDataTableConfiguration() { UseHeaderRow = true } });
+                    
+                    DataTable table = result.Tables[0];
+                    if (result.Tables.Contains("Mesafe Matrisi")) table = result.Tables["Mesafe Matrisi"];
+
+                    using (var delCmd = new NpgsqlCommand("TRUNCATE TABLE trafik_matrisi", conn)) delCmd.ExecuteNonQuery();
+
+                    using (var transaction = conn.BeginTransaction())
+                    {
+                        foreach (DataRow row in table.Rows)
+                        {
+                            if (row[0] == DBNull.Value) continue;
+
+                            string kalkisKodu = row[0]?.ToString() ?? "";
+                            string kalkisAd = row.Table.Columns.Count > 1 ? row[1]?.ToString() ?? "" : "";
+                            string varisKodu = row.Table.Columns.Count > 2 ? row[2]?.ToString() ?? "" : "";
+                            string varisAd = row.Table.Columns.Count > 3 ? row[3]?.ToString() ?? "" : "";
+
+                            int kalkisYaka = kalkisAd.Contains("(Avrupa)") ? 1 : (kalkisAd.Contains("(Anadolu)") ? 2 : 0);
+                            int varisYaka = varisAd.Contains("(Avrupa)") ? 1 : (varisAd.Contains("(Anadolu)") ? 2 : 0);
+                            
+                            decimal sabahToplam = 0, ogleToplam = 0, aksamToplam = 0;
+                            int sabahSay = 0, ogleSay = 0, aksamSay = 0;
+
+                            for (int i = 5; i < table.Columns.Count; i++)
+                            {
+                                string colName = table.Columns[i].ColumnName;
+                                if (colName.StartsWith("Sure_") && row[i] != DBNull.Value)
+                                {
+                                    if (decimal.TryParse(row[i]?.ToString(), out decimal val))
+                                    {
+                                        string[] parts = colName.Split('_');
+                                        if (parts.Length > 1 && int.TryParse(parts[1], out int timeVal))
+                                        {
+                                            if (timeVal < 1000) { sabahToplam += val; sabahSay++; }
+                                            else if (timeVal < 1600) { ogleToplam += val; ogleSay++; }
+                                            else { aksamToplam += val; aksamSay++; }
+                                        }
+                                    }
+                                }
+                            }
+
+                            decimal sureSabah = sabahSay > 0 ? sabahToplam / sabahSay : 0;
+                            decimal sureOgle = ogleSay > 0 ? ogleToplam / ogleSay : sureSabah; 
+                            decimal sureAksam = aksamSay > 0 ? aksamToplam / aksamSay : sureOgle;
+
+                            string sql = "INSERT INTO trafik_matrisi (kalkis_kodu, varis_kodu, sure_sabah_dk, sure_ogle_dk, sure_aksam_dk, kalkis_yaka, varis_yaka) VALUES (@k, @v, @ss, @so, @sa, @ky, @vy)";
+                            using (var cmd = new NpgsqlCommand(sql, conn))
+                            {
+                                cmd.Parameters.AddWithValue("k", kalkisKodu);
+                                cmd.Parameters.AddWithValue("v", varisKodu);
+                                cmd.Parameters.AddWithValue("ss", sureSabah);
+                                cmd.Parameters.AddWithValue("so", sureOgle);
+                                cmd.Parameters.AddWithValue("sa", sureAksam);
+                                cmd.Parameters.AddWithValue("ky", kalkisYaka);
+                                cmd.Parameters.AddWithValue("vy", varisYaka);
+                                cmd.ExecuteNonQuery();
+                            }
+                        }
+                        transaction.Commit();
+                    }
+                }
+            }
+            Console.WriteLine("✅ Traffic matrix completed.\n");
         }
 
         public void TransferErpData(string filePath)

@@ -75,9 +75,9 @@ namespace Uyumsoft.RouteOptimizer
                 }
                 // ==========================================
 
-                // 2. Nokta (Node) sayısını belirle ve Mesafe Matrisini çek
+                // 2. Nokta (Node) sayısını belirle ve Mesafe Matrisini (KM) çek
                 int maxNode = -1;
-                var distances = new System.Collections.Generic.List<(int k, int v, long m)>();
+                var distList = new System.Collections.Generic.List<(int k, int v, long m)>();
                 using (var cmd = new NpgsqlCommand("SELECT kalkis_kodu, varis_kodu, mesafe_km FROM mesafe_matrisi", conn))
                 using (var reader = cmd.ExecuteReader())
                 {
@@ -86,7 +86,29 @@ namespace Uyumsoft.RouteOptimizer
                         if (int.TryParse(reader.GetString(0), out int k) && int.TryParse(reader.GetString(1), out int v))
                         {
                             long m = reader.IsDBNull(2) ? 0 : Convert.ToInt64(reader.GetDecimal(2));
-                            distances.Add((k, v, m));
+                            distList.Add((k, v, m));
+                            if (k > maxNode) maxNode = k;
+                            if (v > maxNode) maxNode = v;
+                        }
+                    }
+                }
+
+                // Trafik Matrisini (Süre) çek
+                var timeList = new System.Collections.Generic.List<(int k, int v, long ss, long so, long sa, int ky, int vy)>();
+                using (var cmd = new NpgsqlCommand("SELECT kalkis_kodu, varis_kodu, sure_sabah_dk, sure_ogle_dk, sure_aksam_dk, kalkis_yaka, varis_yaka FROM trafik_matrisi", conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        if (int.TryParse(reader.GetString(0), out int k) && int.TryParse(reader.GetString(1), out int v))
+                        {
+                            long ss = reader.IsDBNull(2) ? 0 : Convert.ToInt64(reader.GetDecimal(2));
+                            long so = reader.IsDBNull(3) ? 0 : Convert.ToInt64(reader.GetDecimal(3));
+                            long sa = reader.IsDBNull(4) ? 0 : Convert.ToInt64(reader.GetDecimal(4));
+                            int ky = reader.IsDBNull(5) ? 0 : reader.GetInt32(5);
+                            int vy = reader.IsDBNull(6) ? 0 : reader.GetInt32(6);
+
+                            timeList.Add((k, v, ss, so, sa, ky, vy));
                             if (k > maxNode) maxNode = k;
                             if (v > maxNode) maxNode = v;
                         }
@@ -94,10 +116,25 @@ namespace Uyumsoft.RouteOptimizer
                 }
 
                 int nodeCount = maxNode + 1;
-                data.TimeMatrix = new long[nodeCount, nodeCount];
-                foreach (var d in distances)
+                data.DistanceMatrix = new long[nodeCount, nodeCount];
+                data.TimeMatrixSabah = new long[nodeCount, nodeCount];
+                data.TimeMatrixOgle = new long[nodeCount, nodeCount];
+                data.TimeMatrixAksam = new long[nodeCount, nodeCount];
+                data.NodeRegions = new int[nodeCount];
+
+                foreach (var d in distList)
                 {
-                    data.TimeMatrix[d.k, d.v] = d.m;
+                    data.DistanceMatrix[d.k, d.v] = d.m;
+                }
+
+                foreach (var t in timeList)
+                {
+                    data.TimeMatrixSabah[t.k, t.v] = t.ss;
+                    data.TimeMatrixOgle[t.k, t.v] = t.so;
+                    data.TimeMatrixAksam[t.k, t.v] = t.sa;
+                    
+                    data.NodeRegions[t.k] = t.ky;
+                    data.NodeRegions[t.v] = t.vy;
                 }
 
                 // 3. Sipariş taleplerini çek (satis_siparisi)
@@ -117,6 +154,39 @@ namespace Uyumsoft.RouteOptimizer
                             {
                                 data.WeightDemands[nodeIndex] = reader.IsDBNull(1) ? 0 : Convert.ToInt64(reader.GetDecimal(1)); 
                                 data.VolumeDemands[nodeIndex] = reader.IsDBNull(2) ? 0 : Convert.ToInt64(reader.GetDecimal(2));
+                            }
+                        }
+                    }
+                }
+
+                // 4. Zaman Pencerelerini (VRPTW) çek (cari_kart)
+                data.TimeWindows = new long[nodeCount, 2];
+                // Varsayılan olarak tüm müşterileri 08:00 - 18:00 (480 dk - 1080 dk) yap
+                for (int i = 0; i < nodeCount; i++)
+                {
+                    data.TimeWindows[i, 0] = 480;
+                    data.TimeWindows[i, 1] = 1080;
+                }
+
+                using (var cmd = new NpgsqlCommand("SELECT cari_kodu, mal_kabul_baslangic, mal_kabul_bitis FROM cari_kart", conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        string cari = reader.IsDBNull(0) ? "" : reader.GetString(0);
+                        if (!string.IsNullOrEmpty(cari) && cari.StartsWith("CAR") && int.TryParse(cari.Substring(3), out int cariNum))
+                        {
+                            int nodeIndex = cariNum;
+                            if (nodeIndex >= 0 && nodeIndex < nodeCount)
+                            {
+                                string startStr = reader.IsDBNull(1) ? "" : reader.GetString(1);
+                                string endStr = reader.IsDBNull(2) ? "" : reader.GetString(2);
+
+                                if (TimeSpan.TryParse(startStr, out TimeSpan startTs))
+                                    data.TimeWindows[nodeIndex, 0] = (long)startTs.TotalMinutes;
+                                
+                                if (TimeSpan.TryParse(endStr, out TimeSpan endTs))
+                                    data.TimeWindows[nodeIndex, 1] = (long)endTs.TotalMinutes;
                             }
                         }
                     }

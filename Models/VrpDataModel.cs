@@ -1,7 +1,12 @@
 public class VrpDataModel
 {
-    // Noktalar arası süre veya mesafe matrisi (Dinamik olarak ERP'den gelecek)
-    public long[,]? TimeMatrix { get; set; } 
+    // Fiziksel Yol Mesafesi (KM) Matrisi
+    public long[,]? DistanceMatrix { get; set; }
+
+    // Trafik yoğunluğuna göre Noktalar arası süre matrisleri
+    public long[,]? TimeMatrixSabah { get; set; } 
+    public long[,]? TimeMatrixOgle { get; set; } 
+    public long[,]? TimeMatrixAksam { get; set; } 
 
     // Her siparişin ağırlık (Kg) talebi
     public long[]? WeightDemands { get; set; } 
@@ -23,4 +28,14 @@ public class VrpDataModel
 
     public long[]? VehicleMaxTimes { get; set; }
     public long[]? VehicleMaxStops { get; set; }
+
+    // ZAMAN PENCERELERİ (Time Windows)
+    // Her bir lokasyonun kabul saatleri: [Başlangıç(dk), Bitiş(dk)]
+    // Örn: Sabah 08:00 = 480, Akşam 18:00 = 1080
+    public long[,]? TimeWindows { get; set; }
+
+    // KÖPRÜ/YAKA GEÇİŞ KISITLARI (Bridge Restrictions)
+    // 0: Bilinmiyor/Farketmez, 1: Avrupa Yakası, 2: Anadolu Yakası
+    public int[]? NodeRegions { get; set; } 
+    public int[]? VehicleAllowedRegions { get; set; }
 } 

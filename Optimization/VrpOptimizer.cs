@@ -8,21 +8,121 @@ public class VrpOptimizer
     {
         // 1. Yöneticiyi Başlat (Node sayısı, Araç Sayısı, Başlangıç ve Bitiş Noktaları)
         RoutingIndexManager manager = new RoutingIndexManager(
-            data.TimeMatrix.GetLength(0), 
+            data.TimeMatrixOgle.GetLength(0), 
             data.VehicleNumber, 
             data.Starts, 
             data.Ends);
 
         RoutingModel routing = new RoutingModel(manager);
 
-        // 2. Mesafe/Süre Maliyetini Ekle
-        int transitCallbackIndex = routing.RegisterTransitCallback((long fromIndex, long toIndex) =>
+        // 2. Fiziksel Mesafe (KM) Callback'i
+        int distanceCallbackIndex = routing.RegisterTransitCallback((long fromIndex, long toIndex) =>
         {
             var fromNode = manager.IndexToNode(fromIndex);
             var toNode = manager.IndexToNode(toIndex);
-            return data.TimeMatrix[fromNode, toNode];
+            
+            if (data.DistanceMatrix != null)
+                return data.DistanceMatrix[fromNode, toNode];
+            return 0;
         });
-        routing.SetArcCostEvaluatorOfAllVehicles(transitCallbackIndex);
+
+        // ====================================================================
+        // YENİ: ZAMAN BOYUTU (TIME DIMENSION) - VRPTW & HİZMET SÜRESİ & TRAFİK
+        // ====================================================================
+        int timeCallbackIndex = routing.RegisterTransitCallback((long fromIndex, long toIndex) =>
+        {
+            var fromNode = manager.IndexToNode(fromIndex);
+            var toNode = manager.IndexToNode(toIndex);
+            
+            long toStartTime = 0;
+            if (data.TimeWindows != null && data.TimeWindows.GetLength(0) > toNode)
+            {
+                toStartTime = data.TimeWindows[toNode, 0];
+            }
+            
+            long travelTime = 0;
+            // Mutlak Zaman (00:00 = 0)
+            // Sabah: 08:00-10:00 (480-600) | Öğle: 10:00-16:00 (600-960) | Akşam: 16:00-19:00 (960-1140)
+            if (toStartTime < 600) // 10:00'dan önceyse sabah
+                travelTime = data.TimeMatrixSabah[fromNode, toNode];
+            else if (toStartTime >= 960) // 16:00'dan sonraysa akşam
+                travelTime = data.TimeMatrixAksam[fromNode, toNode];
+            else
+                travelTime = data.TimeMatrixOgle[fromNode, toNode];
+            
+            // Eğer 'fromNode' depo değilse, teslimat için sabit 15 dk hizmet süresi ekle
+            long serviceTime = 0;
+            if (!Array.Exists(data.Starts, s => s == fromNode) && !Array.Exists(data.Ends, e => e == fromNode))
+            {
+                serviceTime = 15; // Sabit 15 dk bekleme/indirme
+            }
+            
+            return travelTime + serviceTime;
+        });
+        
+        // ANA HEDEF (COST): Rota çizerken öncelikle Trafik Süresini minimize et!
+        routing.SetArcCostEvaluatorOfAllVehicles(timeCallbackIndex);
+
+        routing.AddDimension(
+            timeCallbackIndex,
+            120,    // Aracın erken varırsa kapıda maksimum bekleme süresi esnekliği (Örn 120 dk)
+            1440,   // Aracın maksimum toplam mesaisi (Örn 24 saat = 1440 dk)
+            false,  // Süreler kesin olarak 0'dan mı başlamalı? Hayır, esnek (false)
+            "Time");
+
+        RoutingDimension timeDimension = routing.GetMutableDimension("Time");
+
+        // Her lokasyon için Mal Kabul Saatlerini (Zaman Pencerelerini) Uygula
+        for (int i = 0; i < data.TimeMatrixSabah.GetLength(0); ++i)
+        {
+            long index = manager.NodeToIndex(i);
+            
+            // Veritabanından (mutlak dakika olarak, örn 08:00 = 480)
+            long startTime = 480;
+            long endTime = 1080; // 18:00
+
+            if (data.TimeWindows != null && data.TimeWindows.GetLength(0) > i)
+            {
+                startTime = data.TimeWindows[i, 0];
+                endTime = data.TimeWindows[i, 1];
+            }
+
+            // Düğüme kısıtı ekle
+            timeDimension.CumulVar(index).SetRange(startTime, endTime);
+        }
+        // ====================================================================
+
+        // ====================================================================
+        // YENİ: KÖPRÜ (YAKA) GEÇİŞ KISITLARI (Bridge Restrictions)
+        // ====================================================================
+        if (data.NodeRegions != null && data.VehicleAllowedRegions != null)
+        {
+            for (int v = 0; v < data.VehicleNumber; v++)
+            {
+                int allowedRegion = data.VehicleAllowedRegions[v];
+                if (allowedRegion == 0) continue; // Araç her yere gidebilir (Geçiş serbest)
+
+                // Araç sadece belirli bir yakaya kısıtlanmışsa (Örn: Sadece Avrupa = 1)
+                for (int node = 0; node < data.TimeMatrixSabah.GetLength(0); node++)
+                {
+                    // Depolara her halükarda gidebilmeli veya deponun yakası farklıysa başlamamalı,
+                    // Şimdilik sadece müşterileri (Starts/Ends harici) yasaklıyoruz:
+                    if (Array.Exists(data.Starts, s => s == node) || Array.Exists(data.Ends, e => e == node))
+                        continue;
+
+                    int nodeRegion = data.NodeRegions[node];
+                    
+                    // Eğer noktanın yakası belli (0 değilse) ve aracın izinli olduğu yaka ile uyuşmuyorsa
+                    if (nodeRegion != 0 && nodeRegion != allowedRegion)
+                    {
+                        long index = manager.NodeToIndex(node);
+                        // O araca, o müşteriyi ziyaret etmeyi YASAKLA
+                        routing.VehicleVar(index).RemoveValue(v);
+                    }
+                }
+            }
+        }
+        // ====================================================================
 
         // ====================================================================
         // ARAÇ SABİT MALİYETİ (Mümkün olan en az aracı kullanmaya zorlar)
@@ -71,11 +171,11 @@ public class VrpOptimizer
         // Süre hesaplaması için 'transitCallbackIndex'i zaten en üstte tanımlamıştık, onu kullanıyoruz.
         if (data.VehicleMaxTimes != null && data.VehicleMaxTimes.Length > 0) {
             routing.AddDimensionWithVehicleCapacity(
-            transitCallbackIndex,
-            0,  // Bekleme süresi toleransı (Şimdilik 0)
-            data.VehicleMaxTimes, // Modeldan gelen maksimum süreler
+            timeCallbackIndex, // Burada timeCallbackIndex kullanıyoruz (Artık süreleri bu tutuyor)
+            0,  // Bekleme süresi toleransı
+            data.VehicleMaxTimes, // Modelden gelen maksimum süreler
             true, 
-            "Time"); 
+            "MaxTimeDimension"); 
         }
         // ====================================================================
         // KISIT 4: MAKSİMUM DURAK (MÜŞTERİ) SAYISI
@@ -100,7 +200,7 @@ public class VrpOptimizer
         // ATANAMAYAN SİPARİŞLER (PENALTY / DISJUNCTION)
         // ====================================================================
         long penalty = 100000; 
-        for (int i = 0; i < data.TimeMatrix.GetLength(0); ++i)
+        for (int i = 0; i < data.TimeMatrixOgle.GetLength(0); ++i)
         {
             if (Array.Exists(data.Starts, start => start == i) || Array.Exists(data.Ends, end => end == i))
                 continue;
@@ -124,7 +224,7 @@ public class VrpOptimizer
             Console.WriteLine("\nOptimum Rota Başarıyla Bulundu!\n");
 
             List<int> droppedNodes = new List<int>();
-            for (int node = 0; node < data.TimeMatrix.GetLength(0); ++node)
+            for (int node = 0; node < data.TimeMatrixOgle.GetLength(0); ++node)
             {
                 if (Array.Exists(data.Starts, start => start == node) || Array.Exists(data.Ends, end => end == node))
                     continue;
@@ -150,7 +250,7 @@ public class VrpOptimizer
             for (int i = 0; i < data.VehicleNumber; ++i)
             {
                 Console.WriteLine($"--- Araç {i + 1} Rotası ---");
-                long routeTime = 0;
+                long routeDistance = 0;
                 long routeWeight = 0; 
                 long routeVolume = 0; 
                 long routeStops = 0; // YENİ: Uğranılan durak sayısını ekrana basmak için eklendi
@@ -177,14 +277,17 @@ public class VrpOptimizer
 
                     var previousNode = manager.IndexToNode(previousIndex);
                     var currentNode = manager.IndexToNode(index);
-                    routeTime += data.TimeMatrix[previousNode, currentNode];
+                    if (data.DistanceMatrix != null)
+                        routeDistance += data.DistanceMatrix[previousNode, currentNode];
                 }
                 
                 var endNode = manager.IndexToNode(index);
+                long routeTime = solution.Min(timeDimension.CumulVar(index)) - solution.Min(timeDimension.CumulVar(routing.Start(i)));
                 route += $"{endNode}\n";
                 
                 Console.WriteLine(route);
                 Console.WriteLine($"Toplam Süre: {routeTime} dakika / Maksimum Süre İzni: {data.VehicleMaxTimes[i]} dk");
+                Console.WriteLine($"Toplam Katedilen Mesafe: {routeDistance} birim");
                 Console.WriteLine($"Ziyaret Edilen Müşteri: {routeStops} / Maksimum Müşteri İzni: {data.VehicleMaxStops[i]}");
                 Console.WriteLine($"Taşınan Toplam Ağırlık: {routeWeight} Kg / Kapasite: {data.VehicleWeightCapacities[i]} Kg");
                 Console.WriteLine($"Taşınan Toplam Hacim: {routeVolume} m3 / Kapasite: {data.VehicleVolumeCapacities[i]} m3\n");
@@ -201,4 +304,4 @@ public class VrpOptimizer
             Console.WriteLine("Verilen kapasitelerle ve süre limitleriyle bu siparişler dağıtılamaz (Çözüm bulunamadı).");
         }
     }
-} 
+}
