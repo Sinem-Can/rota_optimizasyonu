@@ -38,7 +38,8 @@ namespace Uyumsoft.RouteOptimizer
                 var weightCaps = new System.Collections.Generic.List<long>();
                 var volCaps = new System.Collections.Generic.List<long>();
                 var depots = new System.Collections.Generic.List<int>();
-                using (var cmd = new NpgsqlCommand("SELECT maks_agirlik_kg, maks_hacim_m3, bagli_oldugu_depo FROM arac_kartlari", conn))
+                var kmCosts = new System.Collections.Generic.List<long>();
+                using (var cmd = new NpgsqlCommand("SELECT maks_agirlik_kg, maks_hacim_m3, bagli_oldugu_depo, km_maliyeti_tl FROM arac_kartlari", conn))
                 using (var reader = cmd.ExecuteReader())
                 {
                     while (reader.Read())
@@ -46,12 +47,14 @@ namespace Uyumsoft.RouteOptimizer
                         weightCaps.Add(reader.IsDBNull(0) ? 0 : Convert.ToInt64(reader.GetDecimal(0)));
                         volCaps.Add(reader.IsDBNull(1) ? 0 : Convert.ToInt64(reader.GetDecimal(1)));
                         depots.Add(reader.IsDBNull(2) ? 0 : reader.GetInt32(2));
+                        kmCosts.Add(reader.IsDBNull(3) ? 0 : Convert.ToInt64(reader.GetDecimal(3)));
                     }
                 }
                 
                 data.VehicleNumber = weightCaps.Count;
                 data.VehicleWeightCapacities = weightCaps.ToArray();
                 data.VehicleVolumeCapacities = volCaps.ToArray();
+                data.VehicleKmCosts = kmCosts.ToArray();
                 
                 data.Starts = depots.ToArray();
                 data.Ends = depots.ToArray();
@@ -210,6 +213,7 @@ namespace Uyumsoft.RouteOptimizer
             filteredData.VehicleNumber = data.VehicleNumber;
             filteredData.VehicleWeightCapacities = data.VehicleWeightCapacities;
             filteredData.VehicleVolumeCapacities = data.VehicleVolumeCapacities;
+            filteredData.VehicleKmCosts = data.VehicleKmCosts;
             filteredData.VehicleMaxTimes = data.VehicleMaxTimes;
             filteredData.VehicleMaxStops = data.VehicleMaxStops;
             filteredData.VehicleAllowedRegions = data.VehicleAllowedRegions;

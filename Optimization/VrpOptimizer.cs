@@ -60,9 +60,41 @@ public class VrpOptimizer
             
             return travelTime + serviceTime;
         });
-        
-        // ANA HEDEF (COST): Rota çizerken öncelikle Trafik Süresini minimize et!
-        routing.SetArcCostEvaluatorOfAllVehicles(timeCallbackIndex);
+        // ANA HEDEF (COST): Rota çizerken Parasal Hibrit Maliyeti (Yakıt + Zaman) minimize et!
+        for (int v = 0; v < data.VehicleNumber; v++)
+        {
+            int vehicleIndex = v;
+            int costCallbackIndex = routing.RegisterTransitCallback((long fromIndex, long toIndex) =>
+            {
+                var fromNode = manager.IndexToNode(fromIndex);
+                var toNode = manager.IndexToNode(toIndex);
+
+                long distance = 0;
+                if (data.DistanceMatrix != null)
+                    distance = data.DistanceMatrix[fromNode, toNode];
+
+                long time = 0;
+                if (data.TimeMatrixOgle != null)
+                    time = data.TimeMatrixOgle[fromNode, toNode]; // Varsayılan öğle trafiği
+                
+                if (!Array.Exists(data.Starts, s => s == fromNode) && !Array.Exists(data.Ends, e => e == fromNode))
+                {
+                    time += 15; // Sabit 15 dk bekleme/indirme
+                }
+
+                // Aracın veritabanından gelen KM başı yakıt maliyeti (0 ise varsayılan 5 TL)
+                long vehicleKmCost = data.VehicleKmCosts != null && vehicleIndex < data.VehicleKmCosts.Length ? data.VehicleKmCosts[vehicleIndex] : 0;
+                if (vehicleKmCost <= 0) vehicleKmCost = 5;
+                
+                // Şoför ve aracın yolda geçirdiği her dakikanın maliyeti (Örn: 2 TL)
+                long driverMinuteCost = 2; 
+
+                // Toplam parasal maliyet = (Mesafe * Yakıt) + (Zaman * Şoför)
+                return (distance * vehicleKmCost) + (time * driverMinuteCost);
+            });
+            
+            routing.SetArcCostEvaluatorOfVehicle(costCallbackIndex, vehicleIndex);
+        }
 
         routing.AddDimension(
             timeCallbackIndex,

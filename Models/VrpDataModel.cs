@@ -17,6 +17,7 @@ public class VrpDataModel
     // Araçların kapasiteleri (Örn: 8 araç varsa 8 elemanlı dizi)
     public long[]? VehicleWeightCapacities { get; set; }
     public long[]? VehicleVolumeCapacities { get; set; }
+    public long[]? VehicleKmCosts { get; set; }
     
     public int VehicleNumber { get; set; }
 
