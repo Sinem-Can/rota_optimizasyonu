@@ -71,7 +71,8 @@ CREATE TABLE public.arac_kartlari (
     km_maliyeti_tl NUMERIC,
     maks_mesai_suresi_dk INT,
     maks_durak_sayisi INT,
-    kopru_gecis_izni VARCHAR(255)
+    kopru_gecis_izni VARCHAR(50),
+    bagli_oldugu_depo INT
 );
 
 CREATE TABLE public.isyeri_stok (

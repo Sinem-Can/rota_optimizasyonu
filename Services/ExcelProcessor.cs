@@ -242,7 +242,7 @@ namespace Uyumsoft.RouteOptimizer
                                         break;
 
                                     case "Arac Kartlari":
-                                        cmd.CommandText = "INSERT INTO arac_kartlari (arac_kodu, plaka, marka_model, kasa_tipi, maks_agirlik_kg, maks_hacim_m3, km_maliyeti_tl, maks_mesai_suresi_dk, maks_durak_sayisi, kopru_gecis_izni) VALUES (@p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10) ON CONFLICT DO NOTHING";
+                                        cmd.CommandText = "INSERT INTO arac_kartlari (arac_kodu, plaka, marka_model, kasa_tipi, maks_agirlik_kg, maks_hacim_m3, km_maliyeti_tl, maks_mesai_suresi_dk, maks_durak_sayisi, kopru_gecis_izni, bagli_oldugu_depo) VALUES (@p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10, @p11) ON CONFLICT DO NOTHING";
                                         cmd.Parameters.AddWithValue("p1", val(0));
                                         cmd.Parameters.AddWithValue("p2", val(1));
                                         cmd.Parameters.AddWithValue("p3", val(2));
@@ -253,6 +253,7 @@ namespace Uyumsoft.RouteOptimizer
                                         cmd.Parameters.AddWithValue("p8", row[7] != DBNull.Value ? Convert.ToInt32(row[7]) : 0);
                                         cmd.Parameters.AddWithValue("p9", row[8] != DBNull.Value ? Convert.ToInt32(row[8]) : 0);
                                         cmd.Parameters.AddWithValue("p10", val(9));
+                                        cmd.Parameters.AddWithValue("p11", row.Table.Columns.Count > 10 && row[10] != DBNull.Value ? Convert.ToInt32(row[10]) : 0);
                                         break;
 
                                     case "İşyeri Stok":

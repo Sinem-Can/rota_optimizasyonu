@@ -38,4 +38,7 @@ public class VrpDataModel
     // 0: Bilinmiyor/Farketmez, 1: Avrupa Yakası, 2: Anadolu Yakası
     public int[]? NodeRegions { get; set; } 
     public int[]? VehicleAllowedRegions { get; set; }
+
+    // Orijinal Veritabanı ID'lerini (Müşteri Numaralarını) tutar. Matris küçültüldüğünde çıktı için gereklidir.
+    public int[]? OriginalNodeIds { get; set; }
 } 

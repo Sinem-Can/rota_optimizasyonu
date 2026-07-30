@@ -1,4 +1,5 @@
 using Google.OrTools.ConstraintSolver;
+#nullable disable
 using System;
 using System.Collections.Generic;
 
@@ -212,7 +213,7 @@ public class VrpOptimizer
 
         // 3. Arama Parametrelerini Ayarla
         RoutingSearchParameters searchParameters = operations_research_constraint_solver.DefaultRoutingSearchParameters();
-        searchParameters.FirstSolutionStrategy = FirstSolutionStrategy.Types.Value.PathCheapestArc;
+        searchParameters.FirstSolutionStrategy = FirstSolutionStrategy.Types.Value.LocalCheapestInsertion;
         searchParameters.LocalSearchMetaheuristic = LocalSearchMetaheuristic.Types.Value.GuidedLocalSearch;
         searchParameters.TimeLimit = new Google.Protobuf.WellKnownTypes.Duration { Seconds = 30 };
 
@@ -232,7 +233,8 @@ public class VrpOptimizer
                 long nodeIndex = manager.NodeToIndex(node);
                 if (solution.Value(routing.NextVar(nodeIndex)) == nodeIndex)
                 {
-                    droppedNodes.Add(node);
+                    int origNode = data.OriginalNodeIds != null ? data.OriginalNodeIds[node] : node;
+                    droppedNodes.Add(origNode);
                 }
             }
 
@@ -258,32 +260,47 @@ public class VrpOptimizer
                 var index = routing.Start(i);
                 string route = "";
 
+                var startNode = manager.IndexToNode(index);
+                int origStartNode = data.OriginalNodeIds != null ? data.OriginalNodeIds[startNode] : startNode;
+                route += $"  [Çıkış] Depo {origStartNode}\n";
+
                 while (routing.IsEnd(index) == false)
                 {
-                    var node = manager.IndexToNode(index);
-                    route += $"{node} -> ";
-                    
-                    routeWeight += data.WeightDemands[node];
-                    routeVolume += data.VolumeDemands[node];
-                    
-                    // Depo harici her durakta sayacı 1 artır
-                    if (!Array.Exists(data.Starts, start => start == node)) 
-                    {
-                        routeStops++;
-                    }
-
                     var previousIndex = index;
                     index = solution.Value(routing.NextVar(index));
 
                     var previousNode = manager.IndexToNode(previousIndex);
                     var currentNode = manager.IndexToNode(index);
+                    int origCurrentNode = data.OriginalNodeIds != null ? data.OriginalNodeIds[currentNode] : currentNode;
+                    
+                    long legDistance = 0;
                     if (data.DistanceMatrix != null)
-                        routeDistance += data.DistanceMatrix[previousNode, currentNode];
+                    {
+                        legDistance = data.DistanceMatrix[previousNode, currentNode];
+                        routeDistance += legDistance;
+                    }
+                    
+                    long legTime = solution.Min(timeDimension.CumulVar(index)) - solution.Min(timeDimension.CumulVar(previousIndex));
+
+                    if (routing.IsEnd(index))
+                    {
+                        route += $"  -> [Dönüş] Depo {origCurrentNode} (Mesafe: {legDistance} km, Süre: {legTime} dk)\n";
+                    }
+                    else
+                    {
+                        route += $"  -> Müşteri {origCurrentNode} (Mesafe: {legDistance} km, Süre: {legTime} dk)\n";
+                    }
+
+                    routeWeight += data.WeightDemands[currentNode];
+                    routeVolume += data.VolumeDemands[currentNode];
+                    
+                    if (!Array.Exists(data.Starts, start => start == currentNode)) 
+                    {
+                        routeStops++;
+                    }
                 }
                 
-                var endNode = manager.IndexToNode(index);
                 long routeTime = solution.Min(timeDimension.CumulVar(index)) - solution.Min(timeDimension.CumulVar(routing.Start(i)));
-                route += $"{endNode}\n";
                 
                 Console.WriteLine(route);
                 Console.WriteLine($"Toplam Süre: {routeTime} dakika / Maksimum Süre İzni: {data.VehicleMaxTimes[i]} dk");

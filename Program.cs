@@ -22,7 +22,7 @@ namespace Uyumsoft.RouteOptimizer
             }
             else
             {
-                Console.Write("Excel'deki yeni veriler veritabanına aktarılsın mı? (E/H): ");
+                Console.Write("Excel verileri veritabanına yeniden aktarılsın mı? (e/h): ");
                 string? cevap = Console.ReadLine();
                 if (cevap?.Trim().ToUpper() == "E")
                 {
@@ -79,20 +79,6 @@ namespace Uyumsoft.RouteOptimizer
 
             // 7. MOTORU ÇALIŞTIR
             Console.WriteLine("Uyumsoft Rotalama Motoru Çalışıyor...\n");
-            
-            // --- DEBUG ÇIKTILARI ---
-            Console.WriteLine($"[DEBUG] Araç Sayısı: {data.VehicleNumber}");
-            Console.WriteLine($"[DEBUG] Lokasyon Sayısı (Mesafe Matrisi): {(data.TimeMatrixOgle != null ? data.TimeMatrixOgle.GetLength(0) : 0)}");
-            if (data.VehicleWeightCapacities != null)
-                Console.WriteLine($"[DEBUG] Araç Kapasiteleri (Ağırlık): {string.Join(", ", data.VehicleWeightCapacities)}");
-            if (data.WeightDemands != null)
-            {
-                Console.WriteLine($"[DEBUG] Sipariş Talepleri (Ağırlık): {string.Join(", ", data.WeightDemands)}");
-                long totalDemand = 0;
-                foreach(var w in data.WeightDemands) totalDemand += w;
-                Console.WriteLine($"[DEBUG] Toplam Ağırlık Talebi: {totalDemand}");
-            }
-            // -----------------------
             
             var optimizer = new VrpOptimizer();
             optimizer.Solve(data);
