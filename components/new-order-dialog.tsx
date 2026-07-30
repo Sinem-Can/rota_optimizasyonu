@@ -17,6 +17,7 @@ export function NewOrderDialog() {
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      {/* DÜZELTME: asChild ve içteki button kaldırıldı, sınıflar direkt DialogTrigger'a eklendi */}
       <DialogTrigger className="flex w-full items-center justify-center gap-1.5 rounded-md border border-success/40 bg-transparent py-2 text-[12px] font-semibold text-success transition-colors hover:bg-success/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-success/40">
         <Plus className="size-3.5 shrink-0" />
         Acil Sipariş Ekle
@@ -26,7 +27,7 @@ export function NewOrderDialog() {
         <DialogHeader>
           <DialogTitle>Yeni Sipariş Ekle</DialogTitle>
           <DialogDescription>
-            Sisteme manuel olarak eklenecek teslimatın detaylarını girin.
+            Sisteme manuel olarak eklenecek teslimatın detaylarını ve algoritma kısıtlarını girin.
           </DialogDescription>
         </DialogHeader>
         
@@ -44,19 +45,25 @@ export function NewOrderDialog() {
             </label>
             <input id="weight" type="number" min="1" placeholder="Örn: 250" className="col-span-3 flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
           </div>
+
+          <div className="grid grid-cols-4 items-center gap-4">
+            <label htmlFor="volume" className="text-right text-sm font-medium">
+              Hacim (m³)
+            </label>
+            <input id="volume" type="number" step="0.1" min="0.1" placeholder="Örn: 2.5" className="col-span-3 flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring font-mono" />
+          </div>
           
           <div className="grid grid-cols-4 items-center gap-4">
             <label className="text-right text-sm font-medium">
               Zaman
             </label>
             <div className="col-span-3 flex items-center gap-2">
-              <input type="time" defaultValue="14:00" className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+              <input type="time" defaultValue="14:00" className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring font-mono" />
               <span className="text-muted-foreground">-</span>
-              <input type="time" defaultValue="16:00" className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
+              <input type="time" defaultValue="16:00" className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring font-mono" />
             </div>
           </div>
 
-          {/* Yeni Eklenen Öncelik Alanı */}
           <div className="grid grid-cols-4 items-center gap-4">
             <label htmlFor="priority" className="text-right text-sm font-medium">
               Öncelik
