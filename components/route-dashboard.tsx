@@ -13,8 +13,27 @@ import { toast } from "sonner"
 export function RouteDashboard() {
   // Varsayılan seçim: gecikme riski taşıyan durak
   const [selection, setSelection] = useState<{ stop: StopDto; driverId: string }>(() => {
-    const driver = drivers[1]
-    return { stop: driver.stops[2], driverId: driver.id }
+    const driver = drivers[0] || drivers[1]
+    const stop = driver?.stops?.[0] || {
+      id: 'default',
+      sequence: 1,
+      customerName: 'Varsayılan Müşteri',
+      address: 'Merkez',
+      district: 'Merkez',
+      eta: '09:00',
+      windowStart: '08:00',
+      windowEnd: '12:00',
+      serviceMinutes: 15,
+      weightKg: 100,
+      volumeM3: 1,
+      status: 'pending',
+      priority: 'Normal',
+      phone: '0555 000 0000',
+      orderNo: 'SP-0000',
+      x: 50,
+      y: 50,
+    }
+    return { stop, driverId: driver?.id || 'VHC-001' }
   })
   const [isOptimizing, setIsOptimizing] = useState(false)
   const [activeTab, setActiveTab] = useState<TabKey>('planlama')
