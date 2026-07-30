@@ -20,4 +20,7 @@ public class VrpDataModel
     // Örn: İlk 4 araç Avcılar'dan (Node 0), son 4 araç Üsküdar'dan (Node 1) başlasın.
     public int[]? Starts { get; set; }
     public int[]? Ends { get; set; }
+
+    public long[]? VehicleMaxTimes { get; set; }
+    public long[]? VehicleMaxStops { get; set; }
 } 

@@ -54,6 +54,27 @@ namespace Uyumsoft.RouteOptimizer
                 data.Starts = new int[data.VehicleNumber];
                 data.Ends = new int[data.VehicleNumber];
 
+                data.VehicleNumber = weightCaps.Count;
+                data.VehicleWeightCapacities = weightCaps.ToArray();
+                data.VehicleVolumeCapacities = volCaps.ToArray();
+                
+                data.Starts = new int[data.VehicleNumber];
+                data.Ends = new int[data.VehicleNumber];
+
+                // ==========================================
+                // YENİ EKLENEN KISIM: SÜRE VE DURAK KISITLARI
+                // ==========================================
+                data.VehicleMaxTimes = new long[data.VehicleNumber];
+                data.VehicleMaxStops = new long[data.VehicleNumber];
+
+                for (int i = 0; i < data.VehicleNumber; i++)
+                {
+                    // Şimdilik veritabanında olmadığı için manuel varsayılan değerler veriyoruz:
+                    data.VehicleMaxTimes[i] = 480; // Örnek: Her araç için maks 480 dakika (8 saat)
+                    data.VehicleMaxStops[i] = 50;  // Örnek: Her araç için maks 50 durak
+                }
+                // ==========================================
+
                 // 2. Nokta (Node) sayısını belirle ve Mesafe Matrisini çek
                 int maxNode = -1;
                 var distances = new System.Collections.Generic.List<(int k, int v, long m)>();

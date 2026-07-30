@@ -1,6 +1,6 @@
 using Google.OrTools.ConstraintSolver;
 using System;
-using System.Collections.Generic; // Listeler için eklendi
+using System.Collections.Generic;
 
 public class VrpOptimizer
 {
@@ -25,14 +25,15 @@ public class VrpOptimizer
         routing.SetArcCostEvaluatorOfAllVehicles(transitCallbackIndex);
 
         // ====================================================================
-        // YENİ: ARAÇ SABİT MALİYETİ (Mümkün olan en az aracı kullanmaya zorlar)
+        // ARAÇ SABİT MALİYETİ (Mümkün olan en az aracı kullanmaya zorlar)
         // ====================================================================
-        long vehicleFixedCost = 5000; // Depodan çıkmanın maliyeti (Süre maliyetinden yüksek olmalı ki mecbur kalmadıkça çıkmasın)
+        long vehicleFixedCost = 5000; 
         routing.SetFixedCostOfAllVehicles(vehicleFixedCost);
         // ====================================================================
 
         // ====================================================================
         // KISIT 1: AĞIRLIK (Kg)
+        // ====================================================================
         int weightCallbackIndex = routing.RegisterUnaryTransitCallback((long fromIndex) =>
         {
             var fromNode = manager.IndexToNode(fromIndex);
@@ -41,13 +42,16 @@ public class VrpOptimizer
         
         routing.AddDimensionWithVehicleCapacity(
             weightCallbackIndex,
-            0,  // Boşluk (slack)
+            0,  
             data.VehicleWeightCapacities, 
             true, 
             "Weight");
 
+        // ====================================================================
         // KISIT 2: HACİM (m3)
-        int volumeCallbackIndex = routing.RegisterUnaryTransitCallback((long fromIndex) =>
+        // ====================================================================
+        if (data.VehicleVolumeCapacities != null && data.VehicleVolumeCapacities.Length > 0) {
+            int volumeCallbackIndex = routing.RegisterUnaryTransitCallback((long fromIndex) =>
         {
             var fromNode = manager.IndexToNode(fromIndex);
             return data.VolumeDemands[fromNode];
@@ -58,16 +62,46 @@ public class VrpOptimizer
             0,
             data.VehicleVolumeCapacities, 
             true,
-            "Volume");
+            "Volume"); 
+        }
+
+        // ====================================================================
+        // KISIT 3: MAKSİMUM MESAİ/SÜRÜŞ SÜRESİ
+        // ====================================================================
+        // Süre hesaplaması için 'transitCallbackIndex'i zaten en üstte tanımlamıştık, onu kullanıyoruz.
+        if (data.VehicleMaxTimes != null && data.VehicleMaxTimes.Length > 0) {
+            routing.AddDimensionWithVehicleCapacity(
+            transitCallbackIndex,
+            0,  // Bekleme süresi toleransı (Şimdilik 0)
+            data.VehicleMaxTimes, // Modeldan gelen maksimum süreler
+            true, 
+            "Time"); 
+        }
+        // ====================================================================
+        // KISIT 4: MAKSİMUM DURAK (MÜŞTERİ) SAYISI
+        // ====================================================================
+        // Her gidilen noktayı "1" birim olarak sayan bir sayaç oluşturuyoruz
+        if (data.VehicleMaxStops != null && data.VehicleMaxStops.Length > 0) {
+            int stopsCallbackIndex = routing.RegisterUnaryTransitCallback((long fromIndex) =>
+        {
+            return 1; // Gidilen her durak maliyeti 1 artırır
+        });
+        
+        routing.AddDimensionWithVehicleCapacity(
+            stopsCallbackIndex,
+            0,
+            data.VehicleMaxStops, // Modelden gelen maksimum durak sayıları
+            true,
+            "Stops");
+        }
         // ====================================================================
 
         // ====================================================================
-        // YENİ EKLENEN KISIM: ATANAMAYAN SİPARİŞLER (PENALTY / DISJUNCTION)
+        // ATANAMAYAN SİPARİŞLER (PENALTY / DISJUNCTION)
         // ====================================================================
-        long penalty = 100000; // Siparişi atlamanın cezası (Mecbur kalmadıkça atlamaz)
+        long penalty = 100000; 
         for (int i = 0; i < data.TimeMatrix.GetLength(0); ++i)
         {
-            // Sadece müşterilere (depo harici noktalara) bu cezayı tanımlıyoruz
             if (Array.Exists(data.Starts, start => start == i) || Array.Exists(data.Ends, end => end == i))
                 continue;
 
@@ -78,14 +112,8 @@ public class VrpOptimizer
 
         // 3. Arama Parametrelerini Ayarla
         RoutingSearchParameters searchParameters = operations_research_constraint_solver.DefaultRoutingSearchParameters();
-        
-        // 1. Adım: İlk mantıklı rotayı bul
         searchParameters.FirstSolutionStrategy = FirstSolutionStrategy.Types.Value.PathCheapestArc;
-        
-        // 2. Adım (YENİ EKLENEN): İlk çözümü bulduktan sonra, süre bitene kadar rotayı sürekli daha iyiye optimize et
         searchParameters.LocalSearchMetaheuristic = LocalSearchMetaheuristic.Types.Value.GuidedLocalSearch;
-        
-        // 3. Adım: Bu arama ve iyileştirme işlemi için maksimum süreyi belirle (30 saniye)
         searchParameters.TimeLimit = new Google.Protobuf.WellKnownTypes.Duration { Seconds = 30 };
 
         // 4. Çöz ve Yazdır
@@ -93,7 +121,6 @@ public class VrpOptimizer
         
         if (solution != null)
         {
-            // YENİ: ObjectiveValue'yu süre değil, "Algoritma Maliyeti" olarak yazdırıyoruz
             Console.WriteLine("\nOptimum Rota Başarıyla Bulundu!\n");
 
             List<int> droppedNodes = new List<int>();
@@ -111,22 +138,22 @@ public class VrpOptimizer
 
             if (droppedNodes.Count > 0)
             {
-                Console.WriteLine($"[DİKKAT] ATANAMAYAN SİPARİŞLER (Kapasite yetmedi): Müşteri No {string.Join(", ", droppedNodes)}\n");
+                Console.WriteLine($"[DİKKAT] ATANAMAYAN SİPARİŞLER (Kapasite/Süre yetmedi): Müşteri No {string.Join(", ", droppedNodes)}\n");
             }
             else
             {
                 Console.WriteLine("Tüm siparişler başarıyla araçlara atandı!\n");
             }
 
-            long gercekToplamSure = 0; // YENİ: Araçların gerçekte yolda geçirdiği toplam süreyi tutacak
+            long gercekToplamSure = 0; 
 
-            // Her bir araç için rotayı hesapla ve ekrana yazdır
             for (int i = 0; i < data.VehicleNumber; ++i)
             {
                 Console.WriteLine($"--- Araç {i + 1} Rotası ---");
                 long routeTime = 0;
                 long routeWeight = 0; 
                 long routeVolume = 0; 
+                long routeStops = 0; // YENİ: Uğranılan durak sayısını ekrana basmak için eklendi
                 
                 var index = routing.Start(i);
                 string route = "";
@@ -138,35 +165,40 @@ public class VrpOptimizer
                     
                     routeWeight += data.WeightDemands[node];
                     routeVolume += data.VolumeDemands[node];
+                    
+                    // Depo harici her durakta sayacı 1 artır
+                    if (!Array.Exists(data.Starts, start => start == node)) 
+                    {
+                        routeStops++;
+                    }
+
                     var previousIndex = index;
                     index = solution.Value(routing.NextVar(index));
 
-                    // YENİ: Süreyi OR-Tools'un cezalı maliyetinden değil, doğrudan kendi matrisimizden okuyoruz!
                     var previousNode = manager.IndexToNode(previousIndex);
                     var currentNode = manager.IndexToNode(index);
                     routeTime += data.TimeMatrix[previousNode, currentNode];
-
                 }
                 
                 var endNode = manager.IndexToNode(index);
                 route += $"{endNode}\n";
                 
                 Console.WriteLine(route);
-                Console.WriteLine($"Toplam Süre: {routeTime} dakika");
+                Console.WriteLine($"Toplam Süre: {routeTime} dakika / Maksimum Süre İzni: {data.VehicleMaxTimes[i]} dk");
+                Console.WriteLine($"Ziyaret Edilen Müşteri: {routeStops} / Maksimum Müşteri İzni: {data.VehicleMaxStops[i]}");
                 Console.WriteLine($"Taşınan Toplam Ağırlık: {routeWeight} Kg / Kapasite: {data.VehicleWeightCapacities[i]} Kg");
                 Console.WriteLine($"Taşınan Toplam Hacim: {routeVolume} m3 / Kapasite: {data.VehicleVolumeCapacities[i]} m3\n");
                 
-                gercekToplamSure += routeTime; // YENİ: Aracın süresini genel toplama ekle
+                gercekToplamSure += routeTime; 
             }
 
-            // YENİ: Gerçek süreyi en sonda göster
             Console.WriteLine($"===================================================");
             Console.WriteLine($"SAHADAKİ GERÇEK TOPLAM SÜRÜŞ SÜRESİ: {gercekToplamSure} dakika");
             Console.WriteLine($"===================================================\n");
         }
         else
         {
-            Console.WriteLine("Verilen kapasitelerle bu siparişler dağıtılamaz (Çözüm bulunamadı).");
+            Console.WriteLine("Verilen kapasitelerle ve süre limitleriyle bu siparişler dağıtılamaz (Çözüm bulunamadı).");
         }
     }
-}
+} 
