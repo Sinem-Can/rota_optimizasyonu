@@ -59,7 +59,6 @@ export function TaskPanel({
 }: TaskPanelProps) {
   const [tab, setTab] = useState<'unassigned' | 'assigned'>('assigned')
   
-  // Drag & Drop için Yerel State'ler
   const [localUnassigned, setLocalUnassigned] = useState(unassignedTasks)
   const [localDrivers, setLocalDrivers] = useState(drivers)
 
@@ -67,8 +66,9 @@ export function TaskPanel({
   const [lockPopoverOpen, setLockPopoverOpen] = useState(false)
   const [confirmedStops, setConfirmedStops] = useState<string[]>([])
   const [brokenDrivers, setBrokenDrivers] = useState<string[]>([])
+  
+  const [waybills, setWaybills] = useState<Record<string, string>>({})
 
-  // Sürükle Bırak Fonksiyonu (Eksik tipler tamamlandı)
   const handleDropTask = (taskId: string, driverId: string) => {
     const taskToMove = localUnassigned.find((t) => t.id === taskId)
     if (!taskToMove) return
@@ -76,7 +76,6 @@ export function TaskPanel({
     const targetDriver = localDrivers.find((d) => d.id === driverId)
     if (!targetDriver) return
 
-    // TypeScript'in eksik veri (lat, lng vb.) uyarısını "as StopDto" ile aşıyoruz
     const newStop = {
       ...taskToMove,
       sequence: targetDriver.stops.length + 1,
@@ -98,23 +97,44 @@ export function TaskPanel({
     })
   }
 
-  const confirmDelivery = (stopId: string) =>
+  const generateWaybill = (driverId: string, driverLabel: string) => {
+    const waybillNo = `UYM-2026-${Math.floor(1000 + Math.random() * 9000)}`
+    setWaybills(prev => ({ ...prev, [driverId]: waybillNo }))
+    
+    toast.success(`${driverLabel} İçin İrsaliye Kesildi`, {
+      description: `${waybillNo} numaralı e-İrsaliye oluşturuldu. Araç yola çıkmaya hazır.`,
+    })
+  }
+
+  const confirmDeliveryWithInvoice = (stopId: string, customerName: string) => {
     setConfirmedStops((prev) => (prev.includes(stopId) ? prev : [...prev, stopId]))
+    
+    toast.success(`${customerName} teslimatı onaylandı!`, {
+      description: "e-Fatura oluşturuldu ve tutar cari bakiyeye borç olarak işlendi.",
+    })
+  }
 
   const toggleBreakdown = (driverId: string) =>
     setBrokenDrivers((prev) =>
       prev.includes(driverId) ? prev.filter((d) => d !== driverId) : [...prev, driverId],
     )
 
+  const handleBreakdown = (driverId: string, driverLabel: string) => {
+    toggleBreakdown(driverId)
+    if (!brokenDrivers.includes(driverId)) {
+      toast.error(`${driverLabel} Arızalandı!`, {
+        description: "Kalan teslimatlar 'Açık Sipariş' (Teslim Edilemedi) statüsüne çekildi.",
+      })
+    }
+  }
+
   const toggleDriver = (id: string) =>
     setExpanded((prev) => (prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]))
 
-  // Hata veren ikinci assignedCount silindi, sadece yerel state'i baz alan kaldı.
   const assignedCount = localDrivers.reduce((sum, d) => sum + d.stops.length, 0)
 
   return (
     <aside className="flex h-full min-h-0 w-full flex-col border-r border-border bg-card">
-      {/* Optimize et — birincil eylem */}
       <div className="shrink-0 border-b border-border p-3">
         <button
           type="button"
@@ -164,8 +184,6 @@ export function TaskPanel({
         </div>
       </div>
 
-      {/* Sekmeler */}
-      {/* Sekmeler */}
       <div className="flex shrink-0 items-center gap-1 border-b border-border px-3 pt-2">
         <button
           type="button"
@@ -183,22 +201,18 @@ export function TaskPanel({
           </span>
         </button>
 
-        {/* AKILLI DROP ZONE OLAN "ATANANLAR" BUTONU */}
         <button
           type="button"
           onClick={() => setTab('assigned')}
           onDragOver={(e) => {
             e.preventDefault()
-            // Üzerine gelindiğinde farenin imlecini "Bırakılabilir" stiline çevirir
             e.dataTransfer.dropEffect = "move"
           }}
           onDrop={(e) => {
             e.preventDefault()
             const taskId = e.dataTransfer.getData('taskId')
             if (taskId && localDrivers.length > 0) {
-              // 1. Siparişi otomatik olarak en uygun araca (İlk araç olan Sürücü A'ya) ata
               handleDropTask(taskId, localDrivers[0].id)
-              // 2. ŞOV KISMI: İşlem biter bitmez sekmeyi kendiliğinden Atananlar'a kaydır!
               setTab('assigned')
             }
           }}
@@ -288,7 +302,6 @@ export function TaskPanel({
         </div>
       ) : null}
 
-      {/* İçerik */}
       <div className="min-h-0 flex-1 overflow-y-auto">
         {tab === 'assigned' ? (
           <ul className="divide-y divide-border">
@@ -310,11 +323,10 @@ export function TaskPanel({
                   }}
                   className="transition-colors hover:bg-secondary/20"
                 >
-                  <button
-                    type="button"
+                  {/* DÜZELTME: <button> yerine <div> ve cursor-pointer ekledik */}
+                  <div
                     onClick={() => toggleDriver(driver.id)}
-                    aria-expanded={isOpen}
-                    className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-secondary/50"
+                    className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-secondary/50"
                   >
                     <span className={cn('h-9 w-1 shrink-0 rounded-full', theme.solid)} />
                     <span
@@ -343,6 +355,26 @@ export function TaskPanel({
                             Arızalı
                           </span>
                         ) : null}
+                        
+                        {!isBroken && waybills[driver.id] ? (
+                          <span className="shrink-0 rounded border border-blue-400 bg-blue-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-blue-700">
+                            📄 {waybills[driver.id]} ile Yolda
+                          </span>
+                        ) : (
+                          !isBroken && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation(); 
+                                generateWaybill(driver.id, driver.label);
+                              }}
+                              className="shrink-0 rounded border border-ring/50 bg-card px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
+                            >
+                              İrsaliye Kes
+                            </button>
+                          )
+                        )}
+
                       </span>
                       <span className="mt-0.5 flex items-center gap-2 font-mono text-[11px] text-muted-foreground">
                         <span>{driver.plate}</span>
@@ -369,7 +401,7 @@ export function TaskPanel({
                         isOpen && 'rotate-180',
                       )}
                     />
-                  </button>
+                  </div>
 
                   <p className="flex items-center gap-1.5 px-3 pb-2 font-mono text-[10px] font-medium text-muted-foreground">
                     <PackageOpen className="size-3 shrink-0" />
@@ -465,7 +497,7 @@ export function TaskPanel({
                             <div className="flex shrink-0 items-center border-l border-border px-1.5">
                               <button
                                 type="button"
-                                onClick={() => confirmDelivery(stop.id)}
+                                onClick={() => confirmDeliveryWithInvoice(stop.id, stop.customerName)}
                                 disabled={isDelivered}
                                 aria-label={`${stop.customerName} teslimini onayla`}
                                 title={
@@ -515,7 +547,7 @@ export function TaskPanel({
                         ) : (
                           <button
                             type="button"
-                            onClick={() => toggleBreakdown(driver.id)}
+                            onClick={() => handleBreakdown(driver.id, driver.label)}
                             className="flex w-full items-center justify-center gap-1.5 rounded-md border border-destructive/50 bg-transparent py-2 text-[12px] font-bold text-destructive transition-colors hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/40"
                           >
                             <TriangleAlert className="size-3.5 shrink-0" />
@@ -595,7 +627,6 @@ export function TaskPanel({
         )}
       </div>
 
-      {/* Panel alt bilgi */}
       <div className="flex shrink-0 items-center justify-between border-t border-border bg-secondary/40 px-3 py-2">
         <span className="font-mono text-[11px] text-muted-foreground">
           Plan #PLN-2026-0725-01
