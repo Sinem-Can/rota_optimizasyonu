@@ -45,6 +45,24 @@ function buildRoutePath(points: { x: number; y: number }[]) {
 }
 
 export function MapPanel({ selectedStopId, onSelectStop, isOptimizing }: MapPanelProps) {
+  
+  // --- DİNAMİK VERİ HESAPLAMALARI ---
+  const activeRouteCount = drivers.length
+  const activeStopCount = drivers.reduce((sum, driver) => sum + driver.stops.length, 0)
+
+  // Sistemdeki tüm durakları tarayıp 'risk' statüsünde olan İLK durağı (ve sürücüsünü) bul
+  let riskStop: StopDto | null = null
+  let riskDriverLabel = ''
+  
+  for (const driver of drivers) {
+    const foundRisk = driver.stops.find((s) => s.status === 'risk')
+    if (foundRisk) {
+      riskStop = foundRisk
+      riskDriverLabel = driver.label
+      break
+    }
+  }
+
   return (
     <section
       aria-label="Rota haritası"
@@ -84,7 +102,7 @@ export function MapPanel({ selectedStopId, onSelectStop, isOptimizing }: MapPane
           <div className="flex items-center gap-2 rounded-md border border-border bg-card/95 px-2.5 py-1.5 shadow-sm backdrop-blur">
             <Navigation className="size-3.5 text-primary" />
             <span className="font-mono text-[11px] font-semibold text-foreground">
-              5 rota · 14 aktif durak
+              {activeRouteCount} rota · {activeStopCount} aktif durak
             </span>
           </div>
           <button
@@ -226,36 +244,26 @@ export function MapPanel({ selectedStopId, onSelectStop, isOptimizing }: MapPane
           })
         })}
 
-        {/* Kümelenmiş durak pini */}
-        <div className="absolute left-[13%] top-[43%] z-20 -translate-x-1/2 -translate-y-1/2">
-          <button
-            type="button"
-            title="14 durak kümelenmiş — yakınlaştırarak ayırın"
-            className="relative grid size-11 place-items-center rounded-full border-2 border-background bg-primary/85 font-mono text-[13px] font-bold text-primary-foreground shadow-lg ring-4 ring-primary/25 transition-transform hover:scale-105"
-          >
-            14
-          </button>
-        </div>
-
-        {/* Gecikme uyarı balonu */}
-        <div className="absolute bottom-24 left-3 z-30 flex max-w-[19rem] items-start gap-2.5 rounded-md border border-destructive/30 bg-card/95 p-2.5 shadow-md backdrop-blur">
-          <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded bg-destructive/10">
-            <TriangleAlert className="size-3.5 text-destructive" />
-          </span>
-          <div className="min-w-0">
-            <p className="text-[12px] font-bold text-foreground">Zaman penceresi ihlali</p>
-            <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
-              Sürücü B · Ataköy Yapı Market durağı 20 dk gecikmeli. Trafik yoğunluğu nedeniyle rota
-              yeniden hesaplanmalı.
-            </p>
-            <button
-              type="button"
-              className="mt-1.5 text-[11px] font-bold text-primary underline-offset-2 hover:underline"
-            >
-              Yeniden hesapla →
-            </button>
+        {/* DİNAMİK: Gecikme uyarı balonu sadece sistemde riskli bir durak varsa çıkar */}
+        {riskStop ? (
+          <div className="absolute bottom-24 left-3 z-30 flex max-w-[19rem] items-start gap-2.5 rounded-md border border-destructive/30 bg-card/95 p-2.5 shadow-md backdrop-blur">
+            <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded bg-destructive/10">
+              <TriangleAlert className="size-3.5 text-destructive" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[12px] font-bold text-foreground">Zaman penceresi ihlali</p>
+              <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
+                {riskDriverLabel} · {riskStop.customerName.substring(0, 20)}... durağı gecikme riski taşıyor. Trafik yoğunluğu nedeniyle rota yeniden hesaplanmalı.
+              </p>
+              <button
+                type="button"
+                className="mt-1.5 text-[11px] font-bold text-primary underline-offset-2 hover:underline"
+              >
+                Yeniden hesapla →
+              </button>
+            </div>
           </div>
-        </div>
+        ) : null}
 
         {/* Lejant */}
         <div className="absolute bottom-3 left-3 z-30 rounded-md border border-border bg-card/95 px-2.5 py-2 shadow-sm backdrop-blur">
@@ -290,7 +298,7 @@ export function MapPanel({ selectedStopId, onSelectStop, isOptimizing }: MapPane
                   Rotalar yeniden hesaplanıyor
                 </p>
                 <p className="font-mono text-[11px] text-muted-foreground">
-                  VRP çözücü çalışıyor · 42 durak / 5 araç
+                  VRP çözücü çalışıyor · {activeStopCount} durak / {activeRouteCount} araç
                 </p>
               </div>
             </div>
