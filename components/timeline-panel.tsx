@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { ChevronsUpDown, Clock, TriangleAlert, ZoomIn } from 'lucide-react'
 import { driverTheme, drivers, toMinutes, type StopDto } from '@/lib/route-data'
 import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
 
 interface TimelinePanelProps {
   selectedStopId: string | null
@@ -153,7 +154,12 @@ export function TimelinePanel({ selectedStopId, onSelectStop }: TimelinePanelPro
                       <button
                         key={stop.id}
                         type="button"
-                        onClick={() => onSelectStop(stop, driver.id)}
+                        onClick={() => {
+                        onSelectStop(stop, driver.id)
+                        toast.info(`Odaklanıldı: ${stop.customerName}`, {
+                        description: `Harita pini ve detaylar güncellendi.`,
+                        })
+                        }}
                         title={`${stop.customerName} · ETA ${stop.eta} · ${stop.serviceMinutes} dk servis`}
                         className={cn(
                           'group absolute inset-y-2 z-20 flex items-center gap-1 rounded px-1.5 text-left transition-all',

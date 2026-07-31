@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import {
   BellRing,
   Boxes,
@@ -7,6 +8,7 @@ import {
   Clock,
   FileCheck2,
   History,
+  Loader2,
   MapPin,
   Package,
   Phone,
@@ -35,7 +37,6 @@ const paymentTypes = [
   { label: 'Cari Hesap', collect: false },
 ] as const
 
-/** ERP alanları demo verisinde bulunmadığı için durak kimliğinden türetilir. */
 function erpInfo(stopId: string) {
   const seed = Number(stopId.replace(/\D/g, '')) || 1
   return {
@@ -46,6 +47,10 @@ function erpInfo(stopId: string) {
 }
 
 export function DetailPanel({ stop, driverId }: DetailPanelProps) {
+  // Yükleme animasyonları için state'ler
+  const [isSendingDriver, setIsSendingDriver] = useState(false)
+  const [isSendingNotification, setIsSendingNotification] = useState(false)
+
   const driver = drivers.find((d) => d.id === driverId) ?? null
 
   if (!stop || !driver) {
@@ -69,9 +74,29 @@ export function DetailPanel({ stop, driverId }: DetailPanelProps) {
   const capacityPct = Math.round((stop.weightKg / driver.capacityMaxKg) * 100)
   const erp = erpInfo(stop.id)
 
+  // Gerçekçi API gecikmesi simülasyonları
+  const handleSendToDriver = () => {
+    setIsSendingDriver(true)
+    setTimeout(() => {
+      setIsSendingDriver(false)
+      toast.success("Görev sürücüye başarıyla iletildi!", {
+        description: `${driver.fullName} (${driver.plate}) - Cihazına gönderildi.`,
+      })
+    }, 1500)
+  }
+
+  const handleSendNotification = () => {
+    setIsSendingNotification(true)
+    setTimeout(() => {
+      setIsSendingNotification(false)
+      toast.info("Müşteriye yola çıktı bildirimi gönderildi.", {
+        description: `SMS & Mail: ${stop.customerName} (${stop.phone})`,
+      })
+    }, 1200)
+  }
+
   return (
     <aside className="flex h-full min-h-0 flex-col border-l border-border bg-card">
-      {/* Başlık */}
       <div className="shrink-0 border-b border-border px-3.5 py-3">
         <div className="flex items-center justify-between gap-2">
           <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
@@ -131,7 +156,6 @@ export function DetailPanel({ stop, driverId }: DetailPanelProps) {
         </div>
       </div>
 
-      {/* Düzenlenebilir alanlar */}
       <div className="min-h-0 flex-1 space-y-3.5 overflow-y-auto px-3.5 py-3">
         {/* Zaman Penceresi */}
         <fieldset>
@@ -358,38 +382,42 @@ export function DetailPanel({ stop, driverId }: DetailPanelProps) {
 
       {/* Eylemler */}
       <div className="shrink-0 space-y-2 border-t border-border p-3">
-        {/* Sürücüye Gönder Butonu */}
         <button
           type="button"
-          onClick={() => {
-            toast.success("Görev sürücüye başarıyla iletildi!", {
-              description: `${driver.fullName} (${driver.plate}) - Cihazına gönderildi.`,
-            })
-          }}
-          className="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-3 py-2.5 text-[13px] font-bold text-primary-foreground transition-all hover:brightness-110 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          disabled={isSendingDriver}
+          onClick={handleSendToDriver}
+          className="flex w-full items-center justify-center gap-2 rounded-md bg-primary px-3 py-2.5 text-[13px] font-bold text-primary-foreground transition-all hover:brightness-110 active:scale-[0.99] disabled:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
-          <Send className="size-4" />
-          Sürücüye Gönder
+          {isSendingDriver ? (
+            <>
+              <Loader2 className="size-4 animate-spin" />
+              Cihaza İletiliyor...
+            </>
+          ) : (
+            <>
+              <Send className="size-4" />
+              Sürücüye Gönder
+            </>
+          )}
         </button>
         
-        {/* SMS/Mail Butonu */}
         <button
           type="button"
-          onClick={() => {
-            toast.info("Müşteriye yola çıktı bildirimi gönderildi.", {
-              description: `SMS & Mail: ${stop.customerName} (${stop.phone})`,
-            })
-          }}
-          className="flex w-full items-center justify-center gap-2 rounded-md border border-input bg-secondary/50 px-3 py-2 text-[12px] font-semibold text-foreground transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          disabled={isSendingNotification}
+          onClick={handleSendNotification}
+          className="flex w-full items-center justify-center gap-2 rounded-md border border-input bg-secondary/50 px-3 py-2 text-[12px] font-semibold text-foreground transition-colors hover:bg-secondary disabled:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
-          <BellRing className="size-3.5 shrink-0" />
+          {isSendingNotification ? (
+            <Loader2 className="size-3.5 shrink-0 animate-spin" />
+          ) : (
+            <BellRing className="size-3.5 shrink-0" />
+          )}
           <span className="text-balance text-center leading-tight">
-            Sipariş Yola Çıktı (SMS/Mail) Bildirimi Gönder
+            {isSendingNotification ? 'İletiliyor...' : 'Sipariş Yola Çıktı (SMS/Mail) Bildirimi Gönder'}
           </span>
         </button>
 
         <div className="flex gap-2">
-          {/* Kaydet Butonu */}
           <button
             type="button"
             onClick={() => {
@@ -402,7 +430,6 @@ export function DetailPanel({ stop, driverId }: DetailPanelProps) {
             Değişiklikleri Kaydet
           </button>
           
-          {/* Durağı Kaldır Butonu */}
           <button
             type="button"
             onClick={() => {
