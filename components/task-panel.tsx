@@ -62,12 +62,58 @@ export function TaskPanel({
   const [localUnassigned, setLocalUnassigned] = useState(unassignedTasks)
   const [localDrivers, setLocalDrivers] = useState(drivers)
 
-  const [expanded, setExpanded] = useState<string[]>(['SRC-001', 'SRC-002'])
+  const [expanded, setExpanded] = useState<string[]>(['VHC-001', 'VHC-002'])
   const [lockPopoverOpen, setLockPopoverOpen] = useState(false)
   const [confirmedStops, setConfirmedStops] = useState<string[]>([])
   const [brokenDrivers, setBrokenDrivers] = useState<string[]>([])
   
   const [waybills, setWaybills] = useState<Record<string, string>>({})
+
+  // OPTİMİZASYON SİMÜLASYONU SİHRİ
+  const handleOptimizeClick = () => {
+    onOptimize()
+
+    setTimeout(() => {
+      setLocalUnassigned((prevUnassigned) => {
+        if (prevUnassigned.length === 0) return prevUnassigned
+
+        setLocalDrivers((prevDrivers) => {
+          const updatedDrivers = [...prevDrivers]
+          
+          prevUnassigned.forEach((task, index) => {
+            const driverIndex = index % updatedDrivers.length
+            const targetDriver = updatedDrivers[driverIndex]
+            
+            // HATA ÇÖZÜMÜ: ID çakışmasını engellemek için benzersiz bir ID üretiyoruz
+            const newStop = {
+              ...task,
+              id: `ST-OPT-${task.id}-${index}-${Date.now()}`,
+              sequence: targetDriver.stops.length + 1,
+              volumeM3: 1.5,
+              status: 'pending', 
+              eta: task.windowStart,
+              serviceMinutes: 15,
+              phone: '0555 000 0000',
+              x: 50 + (index * 2),
+              y: 50 + (index * 2),
+            } as StopDto
+            
+            updatedDrivers[driverIndex] = {
+              ...targetDriver,
+              stops: [...targetDriver.stops, newStop],
+              capacityUsedKg: targetDriver.capacityUsedKg + task.weightKg
+            }
+          })
+          
+          return updatedDrivers
+        })
+
+        return []
+      })
+      
+      setTab('assigned')
+    }, 2200)
+  }
 
   const handleDropTask = (taskId: string, driverId: string) => {
     const taskToMove = localUnassigned.find((t) => t.id === taskId)
@@ -76,14 +122,18 @@ export function TaskPanel({
     const targetDriver = localDrivers.find((d) => d.id === driverId)
     if (!targetDriver) return
 
+    // HATA ÇÖZÜMÜ: Sürükle bırakta da ID çakışmasını engellemek için benzersiz ID
     const newStop = {
       ...taskToMove,
+      id: `ST-DRP-${taskToMove.id}-${Date.now()}`,
       sequence: targetDriver.stops.length + 1,
       volumeM3: 1.5,
       status: 'pending',
       eta: taskToMove.windowStart,
       serviceMinutes: 15,
       phone: '0555 000 0000',
+      x: 55,
+      y: 55,
     } as StopDto
 
     setLocalUnassigned((prev) => prev.filter((t) => t.id !== taskId))
@@ -93,7 +143,7 @@ export function TaskPanel({
     )
 
     toast.success("Sipariş araca atandı!", {
-      description: `${taskToMove.customerName}, ${targetDriver.label} havuzuna eklendi.`,
+      description: `${taskToMove.customerName}, ${targetDriver.label} rotasına eklendi.`,
     })
   }
 
@@ -138,18 +188,20 @@ export function TaskPanel({
       <div className="shrink-0 border-b border-border p-3">
         <button
           type="button"
-          onClick={onOptimize}
-          disabled={isOptimizing || isPoolLocked}
+          onClick={handleOptimizeClick}
+          disabled={isOptimizing || isPoolLocked || localUnassigned.length === 0}
           aria-describedby={isPoolLocked ? 'optimize-lock-hint' : undefined}
           title={
             isPoolLocked
               ? 'Havuz kilitli olduğu için optimizasyon başlatılamaz'
-              : 'Rotaları yeniden optimize et'
+              : localUnassigned.length === 0 
+                ? 'Havuzda optimize edilecek sipariş yok' 
+                : 'Rotaları yeniden optimize et'
           }
           className={cn(
             'group flex w-full items-center justify-center gap-2.5 rounded-lg bg-primary px-4 py-3.5 text-[15px] font-bold tracking-tight text-primary-foreground shadow-sm transition-all',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-            isPoolLocked
+            (isPoolLocked || localUnassigned.length === 0)
               ? 'cursor-not-allowed opacity-40 saturate-50'
               : 'hover:brightness-110 active:scale-[0.99]',
             isOptimizing && 'cursor-wait opacity-80',
@@ -323,7 +375,6 @@ export function TaskPanel({
                   }}
                   className="transition-colors hover:bg-secondary/20"
                 >
-                  {/* DÜZELTME: <button> yerine <div> ve cursor-pointer ekledik */}
                   <div
                     onClick={() => toggleDriver(driver.id)}
                     className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-secondary/50"
