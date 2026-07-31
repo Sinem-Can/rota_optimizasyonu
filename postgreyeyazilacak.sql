@@ -1,5 +1,6 @@
 -- MEVCUT TABLOLARI TEMİZLE
 DROP TABLE IF EXISTS public.finans_fisi CASCADE;
+DROP TABLE IF EXISTS public.trafik_matrisi CASCADE;
 DROP TABLE IF EXISTS public.mesafe_matrisi CASCADE;
 DROP TABLE IF EXISTS public.sevkiyat_plani CASCADE;
 DROP TABLE IF EXISTS public.fatura CASCADE;
@@ -70,7 +71,8 @@ CREATE TABLE public.arac_kartlari (
     km_maliyeti_tl NUMERIC,
     maks_mesai_suresi_dk INT,
     maks_durak_sayisi INT,
-    kopru_gecis_izni VARCHAR(255)
+    kopru_gecis_izni VARCHAR(50),
+    bagli_oldugu_depo INT
 );
 
 CREATE TABLE public.isyeri_stok (
@@ -149,6 +151,16 @@ CREATE TABLE public.mesafe_matrisi (
     kalkis_kodu VARCHAR(255),
     varis_kodu VARCHAR(255),
     mesafe_km NUMERIC
+);
+
+CREATE TABLE public.trafik_matrisi (
+    kalkis_kodu VARCHAR(255),
+    varis_kodu VARCHAR(255),
+    sure_sabah_dk NUMERIC,
+    sure_ogle_dk NUMERIC,
+    sure_aksam_dk NUMERIC,
+    kalkis_yaka INT,
+    varis_yaka INT
 );
 
 CREATE TABLE public.finans_fisi (
