@@ -51,11 +51,12 @@ public class VrpOptimizer
             else
                 travelTime = data.TimeMatrixOgle[fromNode, toNode];
             
-            // Eğer 'fromNode' depo değilse, teslimat için sabit 15 dk hizmet süresi ekle
             long serviceTime = 0;
             if (!Array.Exists(data.Starts, s => s == fromNode) && !Array.Exists(data.Ends, e => e == fromNode))
             {
-                serviceTime = 15; // Sabit 15 dk bekleme/indirme
+            // Dinamik Hizmet Süresi: 5 dk sabit yanaşma/evrak + her 100 kg için 2 dk indirme süresi
+            long demandKg = data.WeightDemands[fromNode];
+            serviceTime = 5 + (demandKg / 100) * 2; 
             }
             
             return travelTime + serviceTime;
@@ -79,7 +80,9 @@ public class VrpOptimizer
                 
                 if (!Array.Exists(data.Starts, s => s == fromNode) && !Array.Exists(data.Ends, e => e == fromNode))
                 {
-                    time += 15; // Sabit 15 dk bekleme/indirme
+                // Maliyete yansıyacak dinamik indirme süresi
+                long demandKg = data.WeightDemands[fromNode];
+                time += 5 + (demandKg / 100) * 2; 
                 }
 
                 // Aracın veritabanından gelen KM başı yakıt maliyeti (0 ise varsayılan 5 TL)
@@ -104,6 +107,9 @@ public class VrpOptimizer
             "Time");
 
         RoutingDimension timeDimension = routing.GetMutableDimension("Time");
+        // YENİ EKLENEN KOD: Bekleme sürelerini (atıl zamanı) yok etmek için 
+        // Aracın depodan çıkışı ile dönüşü arasındaki toplam süreye şiddetli bir maliyet cezası uyguluyoruz.
+        timeDimension.SetSpanCostCoefficientForAllVehicles(100);
 
         // Her lokasyon için Mal Kabul Saatlerini (Zaman Pencerelerini) Uygula
         for (int i = 0; i < data.TimeMatrixSabah.GetLength(0); ++i)
@@ -288,6 +294,9 @@ public class VrpOptimizer
                 long routeWeight = 0; 
                 long routeVolume = 0; 
                 long routeStops = 0; // YENİ: Uğranılan durak sayısını ekrana basmak için eklendi
+                long routeTravelTime = 0;
+                long routeServiceTime = 0;
+                long routeWaitTime = 0;
                 
                 var index = routing.Start(i);
                 string route = "";
@@ -304,7 +313,39 @@ public class VrpOptimizer
                     var previousNode = manager.IndexToNode(previousIndex);
                     var currentNode = manager.IndexToNode(index);
                     int origCurrentNode = data.OriginalNodeIds != null ? data.OriginalNodeIds[currentNode] : currentNode;
+    
+                    // 1. Önceki Noktadaki İndirme Süresi
+                    long serviceTime = 0;
+                    if (!Array.Exists(data.Starts, s => s == previousNode) && !Array.Exists(data.Ends, e => e == previousNode))
+                    {
+                    long demandKg = data.WeightDemands[previousNode];
+                        serviceTime = 5 + (demandKg / 100) * 2; // Dinamik indirme süremiz
+                    }
+                    routeServiceTime += serviceTime;
+
+                    // 2. Net Sürüş Süresi (Önceki noktadan çıkış saatine göre matristen çekilir)
+                    long prevCumul = solution.Min(timeDimension.CumulVar(previousIndex));
+                    long departureTime = prevCumul + serviceTime;
                     
+                    long travelTime = 0;
+                    if (departureTime < 600) 
+                        travelTime = data.TimeMatrixSabah[previousNode, currentNode];
+                    else if (departureTime >= 960) 
+                        travelTime = data.TimeMatrixAksam[previousNode, currentNode];
+                    else 
+                        travelTime = data.TimeMatrixOgle[previousNode, currentNode];
+                        
+                    routeTravelTime += travelTime;
+
+                    // 3. Kapıda Bekleme (Mola) Süresi (Gidilen yerin mal kabul saati henüz gelmediyse kapıda beklenen süre)
+                    long arrivalTime = departureTime + travelTime;
+                    long currentStartTime = solution.Min(timeDimension.CumulVar(index));
+                    long waitTime = currentStartTime - arrivalTime;
+                    if (waitTime < 0) waitTime = 0; 
+                    
+                    routeWaitTime += waitTime;
+
+                    // 4. Mesafe Hesaplama
                     long legDistance = 0;
                     if (data.DistanceMatrix != null)
                     {
@@ -312,15 +353,24 @@ public class VrpOptimizer
                         routeDistance += legDistance;
                     }
                     
-                    long legTime = solution.Min(timeDimension.CumulVar(index)) - solution.Min(timeDimension.CumulVar(previousIndex));
+                    // YENİ: Ekrana doğru satırda basmak için ŞU ANKİ (currentNode) düğümün indirme süresini hesaplayalım
+                    long printServiceTime = 0;
+                    if (!Array.Exists(data.Starts, s => s == currentNode) && !Array.Exists(data.Ends, e => e == currentNode))
+                    {
+                        long demandKg = data.WeightDemands[currentNode];
+                        printServiceTime = 5 + (demandKg / 100) * 2;
+                    }
 
+                    // 5. Çıktıyı Detaylı Yazdırma (Kayma düzeltildi!)
                     if (routing.IsEnd(index))
                     {
-                        route += $"  -> [Dönüş] Depo {origCurrentNode} (Mesafe: {legDistance} km, Süre: {legTime} dk)\n";
+                        // Dönüş deposunda indirme olmaz, o yüzden indirme kısmını yazmıyoruz
+                        route += $"  -> [Dönüş] Depo {origCurrentNode} (Mesafe: {legDistance} km | Sürüş: {travelTime} dk, Bekleme: {waitTime} dk)\n";
                     }
                     else
                     {
-                        route += $"  -> Müşteri {origCurrentNode} (Mesafe: {legDistance} km, Süre: {legTime} dk)\n";
+                        // Müşteride kendi indirme süresini basıyoruz (printServiceTime)
+                        route += $"  -> Müşteri {origCurrentNode} (Mesafe: {legDistance} km | Sürüş: {travelTime} dk, İndirme: {printServiceTime} dk, Bekleme: {waitTime} dk)\n";
                     }
 
                     routeWeight += data.WeightDemands[currentNode];
@@ -335,7 +385,8 @@ public class VrpOptimizer
                 long routeTime = solution.Min(timeDimension.CumulVar(index)) - solution.Min(timeDimension.CumulVar(routing.Start(i)));
                 
                 Console.WriteLine(route);
-                Console.WriteLine($"Toplam Süre: {routeTime} dakika / Maksimum Süre İzni: {data.VehicleMaxTimes[i]} dk");
+                Console.WriteLine($"Toplam Geçen Süre: {routeTime} dakika (Sürüş: {routeTravelTime} dk + İndirme: {routeServiceTime} dk + Bekleme: {routeWaitTime} dk)");
+                Console.WriteLine($"Maksimum Çalışma (Sürüş+İndirme) İzni: {data.VehicleMaxTimes[i]} dk");
                 Console.WriteLine($"Toplam Katedilen Mesafe: {routeDistance} birim");
                 Console.WriteLine($"Ziyaret Edilen Müşteri: {routeStops} / Maksimum Müşteri İzni: {data.VehicleMaxStops[i]}");
                 Console.WriteLine($"Taşınan Toplam Ağırlık: {routeWeight} Kg / Kapasite: {data.VehicleWeightCapacities[i]} Kg");
@@ -345,7 +396,7 @@ public class VrpOptimizer
             }
 
             Console.WriteLine($"===================================================");
-            Console.WriteLine($"SAHADAKİ GERÇEK TOPLAM SÜRÜŞ SÜRESİ: {gercekToplamSure} dakika");
+            Console.WriteLine($"SAHADAKİ GERÇEK TOPLAM MESAİ (Geçen Süre): {gercekToplamSure} dakika");
             Console.WriteLine($"===================================================\n");
         }
         else
