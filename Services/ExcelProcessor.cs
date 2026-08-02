@@ -5,7 +5,7 @@ using System.IO;
 using Npgsql;
 using ExcelDataReader;
 
-namespace UyumsoftETL
+namespace Uyumsoft.RouteOptimizer
 {
     public class ExcelProcessor
     {
@@ -48,9 +48,9 @@ namespace UyumsoftETL
                             for (int i = 2; i < table.Columns.Count; i++)
                             {
                                 string varisKodu = (i - 2).ToString();
-                                string mesafeStr = row[i]?.ToString();
+                                string mesafeStr = row[i]?.ToString().Replace(',', '.');
 
-                                if (!string.IsNullOrEmpty(mesafeStr) && decimal.TryParse(mesafeStr, out decimal mesafe))
+                                if (!string.IsNullOrEmpty(mesafeStr) && decimal.TryParse(mesafeStr, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out decimal mesafe))
                                 {
                                     string sql = "INSERT INTO mesafe_matrisi (kalkis_kodu, varis_kodu, mesafe_km) VALUES (@k, @v, @m) ON CONFLICT DO NOTHING";
                                     using (var cmd = new NpgsqlCommand(sql, conn))
@@ -114,7 +114,9 @@ namespace UyumsoftETL
                                 string colName = table.Columns[i].ColumnName;
                                 if (colName.StartsWith("Sure_") && row[i] != DBNull.Value)
                                 {
-                                    if (decimal.TryParse(row[i]?.ToString(), out decimal val))
+                                    // GÜVENLİ PARSE YÖNTEMİ
+                                    string valStr = row[i]?.ToString()?.Replace(',', '.');
+                                    if (decimal.TryParse(valStr, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out decimal val))
                                     {
                                         string[] parts = colName.Split('_');
                                         if (parts.Length > 1 && int.TryParse(parts[1], out int timeVal))
