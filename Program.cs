@@ -8,7 +8,7 @@ namespace Uyumsoft.RouteOptimizer
         static void Main(string[] args)
         {
             // 1. .env dosyasını yükle
-            Env.Load();
+            Env.TraversePath().Load();
             
             // 2. Değişkenleri çek
             string? connString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");

@@ -48,9 +48,9 @@ namespace Uyumsoft.RouteOptimizer
                             for (int i = 2; i < table.Columns.Count; i++)
                             {
                                 string varisKodu = (i - 2).ToString();
-                                string mesafeStr = row[i]?.ToString();
+                                string mesafeStr = row[i]?.ToString().Replace(',', '.');
 
-                                if (!string.IsNullOrEmpty(mesafeStr) && decimal.TryParse(mesafeStr, out decimal mesafe))
+                                if (!string.IsNullOrEmpty(mesafeStr) && decimal.TryParse(mesafeStr, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out decimal mesafe))
                                 {
                                     string sql = "INSERT INTO mesafe_matrisi (kalkis_kodu, varis_kodu, mesafe_km) VALUES (@k, @v, @m) ON CONFLICT DO NOTHING";
                                     using (var cmd = new NpgsqlCommand(sql, conn))
@@ -114,7 +114,9 @@ namespace Uyumsoft.RouteOptimizer
                                 string colName = table.Columns[i].ColumnName;
                                 if (colName.StartsWith("Sure_") && row[i] != DBNull.Value)
                                 {
-                                    if (decimal.TryParse(row[i]?.ToString(), out decimal val))
+                                    // GÜVENLİ PARSE YÖNTEMİ
+                                    string valStr = row[i]?.ToString()?.Replace(',', '.');
+                                    if (decimal.TryParse(valStr, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out decimal val))
                                     {
                                         string[] parts = colName.Split('_');
                                         if (parts.Length > 1 && int.TryParse(parts[1], out int timeVal))
@@ -188,6 +190,8 @@ namespace Uyumsoft.RouteOptimizer
                             {
                                 NpgsqlCommand cmd = new NpgsqlCommand("", conn);
                                 string val(int index) => (row.Table.Columns.Count > index && row[index] != DBNull.Value && row[index] != null) ? row[index].ToString().Trim() : "";
+                                int toInt(int index) => (row.Table.Columns.Count > index && row[index] != DBNull.Value && int.TryParse(row[index].ToString(), out int v)) ? v : 0;
+                                decimal toDec(int index) => (row.Table.Columns.Count > index && row[index] != DBNull.Value && decimal.TryParse(row[index].ToString(), out decimal v)) ? v : 0m;
 
                                 switch (sheet)
                                 {
@@ -202,15 +206,13 @@ namespace Uyumsoft.RouteOptimizer
                                         cmd.Parameters.AddWithValue("p1", val(0));
                                         cmd.Parameters.AddWithValue("p2", val(1));
                                         cmd.Parameters.AddWithValue("p3", val(2));
-                                        cmd.Parameters.AddWithValue("p4", row[3] != DBNull.Value ? Convert.ToDecimal(row[3]) : 0m);
-                                        cmd.Parameters.AddWithValue("p5", row[4] != DBNull.Value ? Convert.ToDecimal(row[4]) : 0m);
+                                        cmd.Parameters.AddWithValue("p4", toDec(3));
+                                        cmd.Parameters.AddWithValue("p5", toDec(4));
                                         break;
 
                                     case "Cari Kart":
                                         cmd.CommandText = "INSERT INTO cari_kart (cari_kodu, cari_adi, tip, mal_kabul_baslangic, mal_kabul_bitis) VALUES (@p1, @p2, @p3, @p4, @p5) ON CONFLICT DO NOTHING";
-                                        string cariKod = row[0] != DBNull.Value ? val(0) : val(1);
-                                        if (string.IsNullOrEmpty(cariKod)) break;
-                                        cmd.Parameters.AddWithValue("p1", cariKod);
+                                        cmd.Parameters.AddWithValue("p1", val(0));
                                         cmd.Parameters.AddWithValue("p2", val(1));
                                         cmd.Parameters.AddWithValue("p3", val(2));
                                         cmd.Parameters.AddWithValue("p4", val(3));
@@ -247,11 +249,11 @@ namespace Uyumsoft.RouteOptimizer
                                         cmd.Parameters.AddWithValue("p2", val(1));
                                         cmd.Parameters.AddWithValue("p3", val(2));
                                         cmd.Parameters.AddWithValue("p4", val(3));
-                                        cmd.Parameters.AddWithValue("p5", row[4] != DBNull.Value ? Convert.ToDecimal(row[4]) : 0m);
-                                        cmd.Parameters.AddWithValue("p6", row[5] != DBNull.Value ? Convert.ToDecimal(row[5]) : 0m);
-                                        cmd.Parameters.AddWithValue("p7", row[6] != DBNull.Value ? Convert.ToDecimal(row[6]) : 0m);
-                                        cmd.Parameters.AddWithValue("p8", row[7] != DBNull.Value ? Convert.ToInt32(row[7]) : 0);
-                                        cmd.Parameters.AddWithValue("p9", row[8] != DBNull.Value ? Convert.ToInt32(row[8]) : 0);
+                                        cmd.Parameters.AddWithValue("p5", toDec(4));
+                                        cmd.Parameters.AddWithValue("p6", toDec(5));
+                                        cmd.Parameters.AddWithValue("p7", toDec(6));
+                                        cmd.Parameters.AddWithValue("p8", toInt(7));
+                                        cmd.Parameters.AddWithValue("p9", toInt(8));
                                         cmd.Parameters.AddWithValue("p10", val(9));
                                         cmd.Parameters.AddWithValue("p11", row.Table.Columns.Count > 10 && row[10] != DBNull.Value ? Convert.ToInt32(row[10]) : 0);
                                         break;
@@ -261,14 +263,14 @@ namespace Uyumsoft.RouteOptimizer
                                         cmd.Parameters.AddWithValue("p1", val(0));
                                         cmd.Parameters.AddWithValue("p2", val(1));
                                         cmd.Parameters.AddWithValue("p3", val(2));
-                                        cmd.Parameters.AddWithValue("p4", row[3] != DBNull.Value ? Convert.ToInt32(row[3]) : 0);
+                                        cmd.Parameters.AddWithValue("p4", toInt(3));
                                         break;
 
                                     case "Fiyat Listesi":
                                         cmd.CommandText = "INSERT INTO fiyat_listesi (stok, liste, fiyat) VALUES (@p1, @p2, @p3) ON CONFLICT DO NOTHING";
                                         cmd.Parameters.AddWithValue("p1", val(0));
                                         cmd.Parameters.AddWithValue("p2", val(1));
-                                        cmd.Parameters.AddWithValue("p3", row[2] != DBNull.Value ? Convert.ToDecimal(row[2]) : 0m);
+                                        cmd.Parameters.AddWithValue("p3", toDec(2));
                                         break;
 
                                     case "Satış Teklifi":
@@ -286,8 +288,8 @@ namespace Uyumsoft.RouteOptimizer
                                         cmd.Parameters.AddWithValue("p4", val(3));
                                         cmd.Parameters.AddWithValue("p5", val(4));
                                         cmd.Parameters.AddWithValue("p6", val(5));
-                                        cmd.Parameters.AddWithValue("p7", row[6] != DBNull.Value ? Convert.ToDecimal(row[6]) : 0m);
-                                        cmd.Parameters.AddWithValue("p8", row[7] != DBNull.Value ? Convert.ToDecimal(row[7]) : 0m);
+                                        cmd.Parameters.AddWithValue("p7", toDec(6));
+                                        cmd.Parameters.AddWithValue("p8", toDec(7));
                                         cmd.Parameters.AddWithValue("p9", val(8));
                                         cmd.Parameters.AddWithValue("p10", val(9));
                                         cmd.Parameters.AddWithValue("p11", val(10));
@@ -298,7 +300,7 @@ namespace Uyumsoft.RouteOptimizer
                                         cmd.CommandText = "INSERT INTO stok_hareketleri (siparis, stok, miktar) VALUES (@p1, @p2, @p3) ON CONFLICT DO NOTHING";
                                         cmd.Parameters.AddWithValue("p1", val(0));
                                         cmd.Parameters.AddWithValue("p2", val(1));
-                                        cmd.Parameters.AddWithValue("p3", row[2] != DBNull.Value ? Convert.ToInt32(row[2]) : 0);
+                                        cmd.Parameters.AddWithValue("p3", toInt(2));
                                         break;
 
                                     case "İrsaliye":
@@ -309,8 +311,8 @@ namespace Uyumsoft.RouteOptimizer
                                         cmd.Parameters.AddWithValue("p4", val(3));
                                         cmd.Parameters.AddWithValue("p5", val(4));
                                         cmd.Parameters.AddWithValue("p6", val(5));
-                                        cmd.Parameters.AddWithValue("p7", row[6] != DBNull.Value ? Convert.ToDecimal(row[6]) : 0m);
-                                        cmd.Parameters.AddWithValue("p8", row[7] != DBNull.Value ? Convert.ToDecimal(row[7]) : 0m);
+                                        cmd.Parameters.AddWithValue("p7", toDec(6));
+                                        cmd.Parameters.AddWithValue("p8", toDec(7));
                                         cmd.Parameters.AddWithValue("p9", val(8));
                                         cmd.Parameters.AddWithValue("p10", val(9));
                                         cmd.Parameters.AddWithValue("p11", val(10));
@@ -322,7 +324,7 @@ namespace Uyumsoft.RouteOptimizer
                                         cmd.Parameters.AddWithValue("p2", val(1));
                                         cmd.Parameters.AddWithValue("p3", val(2));
                                         cmd.Parameters.AddWithValue("p4", val(3));
-                                        cmd.Parameters.AddWithValue("p5", row[4] != DBNull.Value ? Convert.ToDecimal(row[4]) : 0m);
+                                        cmd.Parameters.AddWithValue("p5", toDec(4));
                                         cmd.Parameters.AddWithValue("p6", val(5));
                                         break;
 
@@ -331,8 +333,8 @@ namespace Uyumsoft.RouteOptimizer
                                         cmd.Parameters.AddWithValue("p1", val(0));
                                         cmd.Parameters.AddWithValue("p2", val(1));
                                         cmd.Parameters.AddWithValue("p3", val(2));
-                                        cmd.Parameters.AddWithValue("p4", row[3] != DBNull.Value ? Convert.ToDecimal(row[3]) : 0m);
-                                        cmd.Parameters.AddWithValue("p5", row[4] != DBNull.Value ? Convert.ToDecimal(row[4]) : 0m);
+                                        cmd.Parameters.AddWithValue("p4", toDec(3));
+                                        cmd.Parameters.AddWithValue("p5", toDec(4));
                                         cmd.Parameters.AddWithValue("p6", val(5));
                                         break;
                                 }
@@ -343,9 +345,9 @@ namespace Uyumsoft.RouteOptimizer
                                 }
                                 cmd.Dispose();
                             }
-                            catch (Exception)
+                            catch (Exception ex)
                             {
-                                Console.WriteLine($"⚠️ [Row Skipped - {sheet}]: Missing Data Reference (e.g., Foreign Key not found in DB)");
+                                Console.WriteLine($"⚠️ [Row Skipped - {sheet}]: {ex.Message}");
                             }
                         }
                         Console.WriteLine($"✅ '{sheet}' transferred.");
