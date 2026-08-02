@@ -148,7 +148,7 @@ namespace Uyumsoft.RouteOptimizer
                         if (!string.IsNullOrEmpty(cari) && cari.StartsWith("CAR") && int.TryParse(cari.Substring(3), out int cariNum))
                         {
                             // DÜZELTME: Matriste 0 ve 1. düğümler depo olduğu için CAR001 -> Düğüm 2 olmalıdır.
-                            int nodeIndex = cariNum + 1; 
+                            int nodeIndex = cariNum; 
                             if (nodeIndex >= 0 && nodeIndex < nodeCount)
                             {
                                 data.WeightDemands[nodeIndex] = reader.IsDBNull(1) ? 0 : Convert.ToInt64(reader.GetDecimal(1)); 
@@ -271,7 +271,7 @@ namespace Uyumsoft.RouteOptimizer
                 }
             }
 
-            return filteredData;
+            return filteredData; 
         }
     }
 }

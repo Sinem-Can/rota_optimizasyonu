@@ -14,6 +14,7 @@ public class VrpOptimizer
             data.Starts, 
             data.Ends);
 
+
         RoutingModel routing = new RoutingModel(manager);
 
         // 2. Fiziksel Mesafe (KM) Callback'i
@@ -337,12 +338,18 @@ public class VrpOptimizer
                         
                     routeTravelTime += travelTime;
 
-                    // 3. Kapıda Bekleme (Mola) Süresi (Gidilen yerin mal kabul saati henüz gelmediyse kapıda beklenen süre)
+                    // 3. Bekleme Süresi Hesaplama
                     long arrivalTime = departureTime + travelTime;
                     long currentStartTime = solution.Min(timeDimension.CumulVar(index));
                     long waitTime = currentStartTime - arrivalTime;
                     if (waitTime < 0) waitTime = 0; 
                     
+                    // EĞER SON DURAKSA (DEPOYA DÖNÜŞ), BEKLEMEYİ MATEMATİKSEL OLARAK SIFIRLA
+                    if (routing.IsEnd(index))
+                    {
+                        waitTime = 0;
+                    }
+
                     routeWaitTime += waitTime;
 
                     // 4. Mesafe Hesaplama
@@ -361,24 +368,16 @@ public class VrpOptimizer
                         printServiceTime = 5 + (demandKg / 100) * 2;
                     }
 
-                    // 5. Çıktıyı Detaylı Yazdırma (Kayma düzeltildi!)
+                    // 5. Çıktıyı Detaylı Yazdırma
                     if (routing.IsEnd(index))
                     {
-                        // Dönüş deposunda indirme olmaz, o yüzden indirme kısmını yazmıyoruz
-                        route += $"  -> [Dönüş] Depo {origCurrentNode} (Mesafe: {legDistance} km | Sürüş: {travelTime} dk, Bekleme: {waitTime} dk)\n";
+                        // DİKKAT: Buradaki metinden ", Bekleme: {waitTime} dk" KISMINI TAMAMEN SİLİYORUZ
+                        route += $"  -> [Dönüş] Depo {origCurrentNode} (Mesafe: {legDistance} km | Sürüş: {travelTime} dk)\n";
                     }
                     else
                     {
-                        // Müşteride kendi indirme süresini basıyoruz (printServiceTime)
+                        // Müşteride kendi indirme süresini basıyoruz (Müşteri No artık doğrudan origCurrentNode'dur!)
                         route += $"  -> Müşteri {origCurrentNode} (Mesafe: {legDistance} km | Sürüş: {travelTime} dk, İndirme: {printServiceTime} dk, Bekleme: {waitTime} dk)\n";
-                    }
-
-                    routeWeight += data.WeightDemands[currentNode];
-                    routeVolume += data.VolumeDemands[currentNode];
-                    
-                    if (!Array.Exists(data.Starts, start => start == currentNode)) 
-                    {
-                        routeStops++;
                     }
                 }
                 
