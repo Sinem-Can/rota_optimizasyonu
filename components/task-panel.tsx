@@ -62,7 +62,7 @@ export function TaskPanel({
   const [localUnassigned, setLocalUnassigned] = useState(unassignedTasks)
   const [localDrivers, setLocalDrivers] = useState(drivers)
 
-  const [expanded, setExpanded] = useState<string[]>(['VHC-001', 'VHC-002'])
+  const [expanded, setExpanded] = useState<string[]>(['ARC-001', 'ARC-002'])
   const [lockPopoverOpen, setLockPopoverOpen] = useState(false)
   const [confirmedStops, setConfirmedStops] = useState<string[]>([])
   const [brokenDrivers, setBrokenDrivers] = useState<string[]>([])
@@ -616,7 +616,11 @@ export function TaskPanel({
           <ul className="divide-y divide-border">
             {!isPoolLocked ? (
               <li className="px-3 py-2">
-                <NewOrderDialog />
+                <NewOrderDialog 
+                  onAddOrder={(newOrder) => {
+                    setLocalUnassigned((prev) => [newOrder, ...prev])
+                  }} 
+                />
               </li>
             ) : null}
             {localUnassigned.map((task) => (

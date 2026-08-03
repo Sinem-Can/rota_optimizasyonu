@@ -319,6 +319,113 @@ export const erpWarehouses: ErpWarehouseDto[] = [
   },
 ]
 
+/* ------------------------------- Araç Kartları ------------------------------ */
+// (Hata çıkmaması için araçları özetlerin üstüne taşıdık!)
+
+export interface ErpVehicleDto {
+  id: string
+  plate: string
+  driver: string
+  type: string
+  depot: string
+  capacityKg: number
+  volumeM3: number
+  status: 'Aktif' | 'İzinde' | 'Arızalı'
+  features: string
+}
+
+export const erpVehicles: ErpVehicleDto[] = [
+  {
+    id: 'VHC-001',
+    plate: '54 LIX 01',
+    driver: 'Ahmet Yılmaz',
+    type: 'Panelvan',
+    depot: 'Avcılar',
+    capacityKg: 750,
+    volumeM3: 3.2,
+    status: 'Aktif',
+    features: 'Palet Taşıma',
+  },
+  {
+    id: 'VHC-002',
+    plate: '54 LIX 02',
+    driver: 'Mehmet Demir',
+    type: 'Panelvan',
+    depot: 'Üsküdar',
+    capacityKg: 1000,
+    volumeM3: 6.0,
+    status: 'Aktif',
+    features: 'Palet Taşıma',
+  },
+  {
+    id: 'VHC-003',
+    plate: '54 LIX 03',
+    driver: 'Zeynep Kaya',
+    type: 'Panelvan',
+    depot: 'Avcılar',
+    capacityKg: 1300,
+    volumeM3: 10.8,
+    status: 'İzinde',
+    features: 'Palet Taşıma',
+  },
+  {
+    id: 'VHC-004',
+    plate: '54 LIX 04',
+    driver: 'Emre Şahin',
+    type: 'Panelvan',
+    depot: 'Üsküdar',
+    capacityKg: 1600,
+    volumeM3: 15.5,
+    status: 'Arızalı',
+    features: 'Palet Taşıma',
+  },
+  {
+    id: 'VHC-005',
+    plate: '54 LIX 05',
+    driver: 'Fatma Aydın',
+    type: 'Kamyonet',
+    depot: 'Avcılar',
+    capacityKg: 3200,
+    volumeM3: 18.0,
+    status: 'Aktif',
+    features: 'Palet Taşıma',
+  },
+  {
+    id: 'VHC-006',
+    plate: '54 LIX 06',
+    driver: 'Burak Doğan',
+    type: 'Kamyonet',
+    depot: 'Üsküdar',
+    capacityKg: 3500,
+    volumeM3: 22.0,
+    status: 'Aktif',
+    features: 'Palet Taşıma',
+  },
+  {
+    id: 'VHC-007',
+    plate: '54 LIX 07',
+    driver: 'Selin Arslan',
+    type: 'Kamyon',
+    depot: 'Avcılar',
+    capacityKg: 6500,
+    volumeM3: 35.0,
+    status: 'İzinde',
+    features: 'Palet Taşıma',
+  },
+  {
+    id: 'VHC-008',
+    plate: '54 LIX 08',
+    driver: 'Hasan Yılmaz',
+    type: 'Kamyon',
+    depot: 'Üsküdar',
+    capacityKg: 12000,
+    volumeM3: 45.0,
+    status: 'Aktif',
+    features: 'Palet Taşıma',
+  },
+]
+
+
 /* --------------------------------- Özetler -------------------------------- */
 
 export const erpWarehouseNames = erpWarehouses.map((w) => w.name)
@@ -332,6 +439,8 @@ export const erpSummary = {
   stockItemCount: erpStockItems.length,
   criticalStockCount: erpStockItems.filter((s) => s.quantity < s.criticalLevel).length,
   warehouseCount: erpWarehouses.length,
+  vehicleCount: erpVehicles.length, 
+  activeVehicleCount: erpVehicles.filter((v) => v.status === 'Aktif').length, 
   occupancyPct: Math.round(
     (erpWarehouses.reduce((sum, w) => sum + w.usedM3, 0) /
       erpWarehouses.reduce((sum, w) => sum + w.capacityM3, 0)) *
