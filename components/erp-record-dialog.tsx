@@ -19,6 +19,7 @@ import {
   erpStockCategories,
   erpUnits,
   erpWarehouseNames,
+  erpAccounts, // YENİ EKLENDİ: Bölgeleri dinamik çekmek için listeyi import ediyoruz
   type ErpRecordStatus,
 } from '@/lib/erp-data'
 
@@ -33,6 +34,9 @@ const selectClass =
 const labelClass = 'text-[11px] font-semibold uppercase tracking-wide text-muted-foreground'
 
 const statuses: ErpRecordStatus[] = ['Aktif', 'Pasif', 'Bakımda']
+
+// YENİ: erpAccounts listemizdeki benzersiz ilçeleri alfabetik sıralı olarak çıkartıyoruz
+const uniqueDistricts = Array.from(new Set(erpAccounts.map(a => a.district))).sort()
 
 const dialogMeta: Record<
   ErpTabKey,
@@ -215,11 +219,12 @@ export function ErpRecordDialog({
                   required
                 />
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <TextField
+                  {/* YENİ: Serbest metin yerine dropdown liste koyduk */}
+                  <SelectField
                     id="erp-cari-district"
                     name="district"
                     label="Bölge"
-                    placeholder="Örn. Kadıköy"
+                    options={uniqueDistricts}
                   />
                   <SelectField
                     id="erp-cari-status"
