@@ -11,6 +11,8 @@ namespace Uyumsoft.RouteOptimizer
     {
         private readonly DatabaseManager _dbManager;
 
+        private Dictionary<string, int> _nameToIdMapping = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
         public ExcelProcessor(DatabaseManager dbManager)
         {
             _dbManager = dbManager;
@@ -45,8 +47,17 @@ namespace Uyumsoft.RouteOptimizer
                         foreach (DataRow row in table.Rows)
                         {
                             string kalkisKodu = row["FirmID"]?.ToString() ?? "";
+                            string kalkisAdi = row["FirmName"]?.ToString().Trim() ?? ""; // İsim burada!
+
+                            // Sözlüğe ekle: İsim -> ID
+                            if (int.TryParse(kalkisKodu, out int id))
+                            {
+                                _nameToIdMapping[kalkisAdi] = id;
+                            }
+
                             for (int i = 2; i < table.Columns.Count; i++)
                             {
+                                string colName = table.Columns[i].ColumnName;
                                 string varisKodu = (i - 2).ToString();
                                 string mesafeStr = row[i]?.ToString().Replace(',', '.');
 
@@ -211,12 +222,22 @@ namespace Uyumsoft.RouteOptimizer
                                         break;
 
                                     case "Cari Kart":
-                                        cmd.CommandText = "INSERT INTO cari_kart (cari_kodu, cari_adi, tip, mal_kabul_baslangic, mal_kabul_bitis) VALUES (@p1, @p2, @p3, @p4, @p5) ON CONFLICT DO NOTHING";
+                                        string cariAdi = val(1); // Excel'deki Cari Adi (Bakırköy Migros vb.)
+
+                                        // SÖZLÜĞE SOR: "Bakırköy Migros" kaç numaralı ID?
+                                        int matrisId = _nameToIdMapping.ContainsKey(cariAdi) ? _nameToIdMapping[cariAdi] : -1;
+
+                                        if (matrisId == -1)
+                                        {
+                                            Console.WriteLine($"⚠️ UYARI: '{cariAdi}' matriste bulunamadı!");
+                                        }
+                                        cmd.CommandText = "INSERT INTO cari_kart (cari_kodu, cari_adi, tip, mal_kabul_baslangic, mal_kabul_bitis, matris_id) VALUES (@p1, @p2, @p3, @p4, @p5, @p6) ON CONFLICT (cari_kodu) DO UPDATE SET cari_adi = EXCLUDED.cari_adi, tip = EXCLUDED.tip, mal_kabul_baslangic = EXCLUDED.mal_kabul_baslangic, mal_kabul_bitis = EXCLUDED.mal_kabul_bitis, matris_id = EXCLUDED.matris_id;";
                                         cmd.Parameters.AddWithValue("p1", val(0));
                                         cmd.Parameters.AddWithValue("p2", val(1));
                                         cmd.Parameters.AddWithValue("p3", val(2));
                                         cmd.Parameters.AddWithValue("p4", val(3));
                                         cmd.Parameters.AddWithValue("p5", val(4));
+                                        cmd.Parameters.AddWithValue("p6", matrisId);
                                         break;
 
                                     case "Banka":
@@ -281,7 +302,17 @@ namespace Uyumsoft.RouteOptimizer
                                         break;
 
                                     case "Satış Siparişi":
-                                        cmd.CommandText = "INSERT INTO satis_siparisi (siparis_no, teklif, cari_kodu, cari_adi, arac_kodu, plaka, toplam_kg, toplam_hacim_m3, kapasite_durumu, siparis_durumu, teslimat_pencere_baslangic, teslimat_penceresi_bitis) VALUES (@p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10, @p11, @p12) ON CONFLICT DO NOTHING";
+                                        cmd.CommandText = "INSERT INTO satis_siparisi (siparis_no, teklif, cari_kodu, cari_adi, arac_kodu, plaka, toplam_kg, toplam_hacim_m3, kapasite_durumu, siparis_durumu, teslimat_pencere_baslangic, teslimat_penceresi_bitis, matris_id) VALUES (@p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10, @p11, @p12, @p13) ON CONFLICT (siparis_no) DO UPDATE SET matris_id = EXCLUDED.matris_id";
+                                        cariAdi = val(3);
+
+                                        // 2. İsim üzerinden matris_id'yi sözlükten bul
+                                        // Eğer isim eşleşmezse -1 döner, böylece veritabanında hatayı kolay fark edersin
+                                        int siparisMatrisId = _nameToIdMapping.ContainsKey(cariAdi) ? _nameToIdMapping[cariAdi] : -1;
+
+                                        if (siparisMatrisId == -1)
+                                        {
+                                            Console.WriteLine($"⚠️ UYARI: Sipariş aktarılırken '{cariAdi}' matriste bulunamadı! Lütfen Excel isimlerini kontrol et.");
+                                        }
                                         cmd.Parameters.AddWithValue("p1", val(0));
                                         cmd.Parameters.AddWithValue("p2", val(1));
                                         cmd.Parameters.AddWithValue("p3", val(2));
@@ -294,6 +325,7 @@ namespace Uyumsoft.RouteOptimizer
                                         cmd.Parameters.AddWithValue("p10", val(9));
                                         cmd.Parameters.AddWithValue("p11", val(10));
                                         cmd.Parameters.AddWithValue("p12", val(11));
+                                        cmd.Parameters.AddWithValue("p13", siparisMatrisId);
                                         break;
 
                                     case "Stok Hareketleri":
