@@ -1,6 +1,7 @@
 'use client'
 
-import { Eye, Pencil, Plus, TriangleAlert } from 'lucide-react'
+import { Eye, Pencil, Plus, TriangleAlert, ChevronDown } from 'lucide-react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -12,6 +13,7 @@ import {
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { cellText, type ErpRow } from '@/lib/erp-modules'
+import { erpAccounts } from '@/lib/erp-data'
 
 export type ErpRowMode = 'inspect' | 'edit' | 'delete' | 'new'
 
@@ -28,10 +30,63 @@ interface ErpRowDialogProps {
 const fieldClass =
   'h-9 w-full rounded-md border border-input bg-background px-3 text-[13px] text-foreground outline-none transition placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20'
 
+const selectClass =
+  'h-9 w-full appearance-none rounded-md border border-input bg-background pl-3 pr-8 text-[13px] font-medium text-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20'
+
 const labelClass = 'text-[11px] font-semibold uppercase tracking-wide text-muted-foreground'
 
 /** Alan adından güvenli bir input id'si üretir. */
 const slug = (v: string, i: number) => `erp-field-${i}-${v.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()}`
+
+// --- JENERİK FORM İÇİN SABİT VE DİNAMİK SEÇENEK LİSTELERİ ---
+const uniqueDistricts = Array.from(new Set(erpAccounts.map((a) => a.district))).sort()
+const priorityOptions = ['Normal', 'Yüksek', 'Düşük']
+const statusOptions = ['Aktif', 'Pasif', 'İzinde', 'Arızalı', 'Bakımda', 'Beklemede', 'Onaylandı', 'Hazırlanıyor', 'Sevk Edildi', 'Teslim Edildi', 'İptal']
+const cariKodlari = erpAccounts.map((a) => a.id)
+
+/** Tekrar kullanılabilir, onChange destekli Select bileşeni */
+function SelectField({
+  id,
+  name,
+  label,
+  options,
+  defaultValue,
+  value,
+  onChange,
+}: {
+  id: string
+  name: string
+  label: string
+  options: readonly string[]
+  defaultValue?: string
+  value?: string
+  onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void
+}) {
+  return (
+    <div className="flex min-w-0 flex-col gap-1.5">
+      <Label htmlFor={id} className={labelClass}>
+        {label}
+      </Label>
+      <div className="relative">
+        <select
+          id={id}
+          name={name}
+          defaultValue={defaultValue && options.includes(defaultValue) ? defaultValue : undefined}
+          value={value}
+          onChange={onChange}
+          className={selectClass}
+        >
+          {options.map((o) => (
+            <option key={o} value={o}>
+              {o}
+            </option>
+          ))}
+        </select>
+        <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+      </div>
+    </div>
+  )
+}
 
 export function ErpRowDialog({
   mode,
@@ -43,6 +98,17 @@ export function ErpRowDialog({
 }: ErpRowDialogProps) {
   const open = mode !== null
   const values = row ? row.cells.map(cellText) : columns.map(() => '')
+
+  // YENİ: Cari kodunu form içinde takip etmek için state ekliyoruz
+  const cariCodeIndex = columns.findIndex((c) => c.toLowerCase() === 'cari kodu' || c.toLowerCase() === 'müşteri kodu')
+  const defaultCariCode = cariCodeIndex !== -1 && mode === 'edit' ? values[cariCodeIndex] : cariKodlari[0]
+  
+  const [selectedCariId, setSelectedCariId] = useState(defaultCariCode)
+
+  // Dialog her açıldığında varsayılan (veya editlenmiş) cari koduna sıfırla
+  useEffect(() => {
+    if (open) setSelectedCariId(defaultCariCode)
+  }, [open, defaultCariCode])
 
   const meta =
     mode === 'inspect'
@@ -119,20 +185,94 @@ export function ErpRowDialog({
             }}
             className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2"
           >
-            {columns.map((col, i) => (
-              <div key={col} className="flex min-w-0 flex-col gap-1.5">
-                <Label htmlFor={slug(col, i)} className={labelClass}>
-                  {col}
-                </Label>
-                <input
-                  id={slug(col, i)}
-                  name={slug(col, i)}
-                  defaultValue={mode === 'edit' ? values[i] : ''}
-                  placeholder={col}
-                  className={fieldClass}
-                />
-              </div>
-            ))}
+            {columns.map((col, i) => {
+              const lowerCol = col.toLocaleLowerCase('tr-TR')
+              
+              const isDistrict = lowerCol.includes('ilçe') || lowerCol.includes('bölge')
+              const isPriority = lowerCol.includes('öncelik')
+              const isStatus = lowerCol.includes('durum')
+              const isCariKodu = lowerCol === 'cari kodu' || lowerCol === 'müşteri kodu'
+              const isMusteriAdi = lowerCol === 'müşteri adı' || lowerCol === 'cari adı'
+
+              const isHacim = lowerCol.includes('hacim') || lowerCol.includes('ağırlık') || lowerCol.includes('kapasite')
+              const isPencere = lowerCol.includes('pencere') || lowerCol.includes('saat')
+
+              // 1. CARİ KODU SEÇİMİ
+              if (isCariKodu) {
+                return (
+                  <SelectField
+                    key={col}
+                    id={slug(col, i)}
+                    name={slug(col, i)}
+                    label={col}
+                    options={cariKodlari}
+                    value={selectedCariId}
+                    onChange={(e) => setSelectedCariId(e.target.value)}
+                  />
+                )
+              }
+
+              // 2. OTOMATİK DOLDURULAN MÜŞTERİ ADI
+              if (isMusteriAdi) {
+                const matchedAccount = erpAccounts.find((a) => a.id === selectedCariId)
+                const displayName = matchedAccount ? matchedAccount.name : ''
+                
+                return (
+                  <div key={col} className="flex min-w-0 flex-col gap-1.5">
+                    <Label htmlFor={slug(col, i)} className={labelClass}>
+                      {col}
+                    </Label>
+                    <input
+                      id={slug(col, i)}
+                      name={slug(col, i)}
+                      value={displayName}
+                      readOnly
+                      tabIndex={-1}
+                      className={`${fieldClass} cursor-not-allowed bg-secondary/40 text-muted-foreground`}
+                    />
+                  </div>
+                )
+              }
+
+              // 3. DİĞER AÇILIR LİSTELER
+              if (isDistrict || isPriority || isStatus) {
+                let options: string[] = []
+                if (isDistrict) options = uniqueDistricts
+                else if (isPriority) options = priorityOptions
+                else if (isStatus) options = statusOptions
+
+                return (
+                  <SelectField
+                    key={col}
+                    id={slug(col, i)}
+                    name={slug(col, i)}
+                    label={col}
+                    options={options}
+                    defaultValue={mode === 'edit' ? values[i] : undefined}
+                  />
+                )
+              }
+
+              // 4. NORMAL / KISITLI İNPUTLAR
+              return (
+                <div key={col} className="flex min-w-0 flex-col gap-1.5">
+                  <Label htmlFor={slug(col, i)} className={labelClass}>
+                    {col}
+                  </Label>
+                  <input
+                    id={slug(col, i)}
+                    name={slug(col, i)}
+                    defaultValue={mode === 'edit' ? values[i] : ''}
+                    placeholder={isPencere ? "09:00 - 17:00" : col}
+                    type={isHacim ? 'number' : 'text'}
+                    step={isHacim ? 'any' : undefined}
+                    pattern={isPencere ? "^[0-9]{2}:[0-9]{2}\\s*-\\s*[0-9]{2}:[0-9]{2}$" : undefined}
+                    title={isPencere ? "Lütfen 09:00 - 17:00 formatında saat aralığı giriniz." : undefined}
+                    className={fieldClass}
+                  />
+                </div>
+              )
+            })}
           </form>
         )}
 
