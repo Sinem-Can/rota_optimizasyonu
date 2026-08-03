@@ -147,8 +147,8 @@ namespace Uyumsoft.RouteOptimizer
                         string cari = reader.IsDBNull(0) ? "" : reader.GetString(0);
                         if (!string.IsNullOrEmpty(cari) && cari.StartsWith("CAR") && int.TryParse(cari.Substring(3), out int cariNum))
                         {
-                            // DÜZELTME: Matriste 0 ve 1. düğümler depo olduğu için CAR001 -> Düğüm 2 olmalıdır.
-                            int nodeIndex = cariNum; 
+                            // DÜZELTME 1: Matriste 0 ve 1. düğümler depo olduğu için CAR001 -> Düğüm 2 olmalıdır.
+                            int nodeIndex = cariNum + 1; 
                             if (nodeIndex >= 0 && nodeIndex < nodeCount)
                             {
                                 data.WeightDemands[nodeIndex] = reader.IsDBNull(1) ? 0 : Convert.ToInt64(reader.GetDecimal(1)); 
@@ -175,7 +175,8 @@ namespace Uyumsoft.RouteOptimizer
                         string cari = reader.IsDBNull(0) ? "" : reader.GetString(0);
                         if (!string.IsNullOrEmpty(cari) && cari.StartsWith("CAR") && int.TryParse(cari.Substring(3), out int cariNum))
                         {
-                            int nodeIndex = cariNum;
+                            // DÜZELTME 2: Zaman pencereleri de aynı şekilde matris kaymasına uymalıdır.
+                            int nodeIndex = cariNum + 1;
                             if (nodeIndex >= 0 && nodeIndex < nodeCount)
                             {
                                 string startStr = reader.IsDBNull(1) ? "" : reader.GetString(1);
@@ -192,7 +193,7 @@ namespace Uyumsoft.RouteOptimizer
                 }
             }
 
-            // 5. YENİ: MATRİSLERİ FİLTRELEME VE KÜÇÜLTME AŞAMASI
+            // 5. MATRİSLERİ FİLTRELEME VE KÜÇÜLTME AŞAMASI
             var activeNodes = new System.Collections.Generic.List<int>();
             
             // Aktif Düğümleri Bul (Depolar veya Siparişi Olanlar)
@@ -225,8 +226,8 @@ namespace Uyumsoft.RouteOptimizer
             {
                 int oldStartNode = data.Starts[v];
                 
-                // GÜVENLİK ÖNLEMİ: Eğer atanan depo aslında bir müşteriyse (talebi varsa), 0. depoya (ana depoya) geri döndür!
-                if (oldStartNode >= data.WeightDemands.Length || data.WeightDemands[oldStartNode] > 0 || data.VolumeDemands[oldStartNode] > 0)
+                // DÜZELTME 3: GÜVENLİK ÖNLEMİ - Sadece dizi boyutu dışına çıkmayı engelle
+                if (oldStartNode >= data.WeightDemands.Length)
                 {
                     oldStartNode = 0;
                 }

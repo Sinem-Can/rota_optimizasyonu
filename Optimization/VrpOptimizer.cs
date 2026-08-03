@@ -302,8 +302,8 @@ public class VrpOptimizer
                 string route = "";
 
                 var startNode = manager.IndexToNode(index);
-                int origStartNode = data.OriginalNodeIds != null ? data.OriginalNodeIds[startNode] : startNode;
-                route += $"  [Çıkış] Depo {origStartNode}\n";
+                int origStartNode = data.OriginalNodeIds != null ? data.OriginalNodeIds[startNode] : startNode;
+                route += $"  [Çıkış] Depo {origStartNode}\n";
 
                 while (routing.IsEnd(index) == false)
                 {
@@ -383,10 +383,11 @@ public class VrpOptimizer
 
                 // 5. Çıktıyı Detaylı Yazdırma
                 if (routing.IsEnd(index))
-                {
-                    // DİKKAT: Buradaki metinden ", Bekleme: {waitTime} dk" KISMINI TAMAMEN SİLİYORUZ
-                    route += $"  -> [Dönüş] Depo {origCurrentNode} (Mesafe: {legDistance} km | Sürüş: {travelTime} dk)\n";
-                }
+                if (routing.IsEnd(index))
+                {
+                    // origCurrentNode değişkeni zaten döngünün başında senin tarafından başarıyla tanımlanıyor
+                    route += $"  -> [Dönüş] Depo {origCurrentNode} (Mesafe: {legDistance} km | Sürüş: {travelTime} dk)\n";
+                }
                 else
                 {
                     // Müşteride kendi indirme süresini basıyoruz (Müşteri No artık doğrudan origCurrentNode'dur!)
