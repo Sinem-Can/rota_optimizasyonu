@@ -21,7 +21,9 @@ import {
   erpAccounts,
   erpStockItems,
   erpWarehouses,
-  erpVehicles, // YENİ: Excel'e göre güncellenmiş araç listemiz
+  erpVehicles,
+  erpOffers, // <--- YENİ EKLENDİ
+  erpOrders, // <--- YENİ EKLENDİ
   type ErpRecordStatus,
 } from '@/lib/erp-data'
 import { faturaSeeds, irsaliyeSeeds } from '@/lib/erp-document'
@@ -249,46 +251,64 @@ const siparisler: ErpView = {
   key: 'siparisler',
   label: 'Siparişler',
   recordName: 'Sipariş',
-  searchPlaceholder: 'Sipariş no, cari veya durum ara…',
-  columns: ['Sipariş No', 'Cari', 'Tarih', 'Kalem', 'Tutar', 'Sevk Durumu'],
-  rows: orderSeeds.map((o) => ({
-    id: o.no,
-    search: s(o.no, o.cari, o.date, o.state),
+  searchPlaceholder: 'Sipariş no, müşteri veya ürün ara…',
+  columns: [
+    'Sipariş No', 'Müşteri', 'Sipariş İçeriği', 'Araç / Plaka', 
+    'Toplam Kg / Hacim', 'Sipariş Durumu', 'Pencere'
+  ],
+  rows: erpOrders.map((o) => ({
+    id: o.id,
+    // YENİ: Arama motoruna ürün isimlerini de ekledik, aratınca çıkar!
+    search: s(o.id, o.offerId, o.cariName, o.vehiclePlate, o.status, ...o.lines.map(l => l.stockName)),
     cells: [
-      { t: 'code', v: o.no },
-      { t: 'text', v: o.cari, strong: true },
-      { t: 'code', v: o.date },
-      { t: 'num', v: o.lines, unit: 'kalem' },
-      { t: 'money', v: o.total },
-      { t: 'tone', v: o.state, tone: o.tone },
+      { t: 'code', v: o.id, sub: `Teklif: ${o.offerId}` },
+      { t: 'text', v: o.cariName, sub: o.cariCode, strong: true },
+      { 
+        t: 'text', 
+        // Üst metin: "50x Coca-Cola 1 L, 120x Fanta 1 L" şeklinde yazar
+        v: o.lines.map(l => `${l.quantity}x ${l.stockName}`).join(', '), 
+        // Alt metin: Stok kodlarını "CC-1001, FNT-1001" şeklinde yazar
+        sub: o.lines.map(l => l.stockCode).join(', ') 
+      },
+      { t: 'text', v: o.vehicleCode, sub: o.vehiclePlate },
+      { t: 'num', v: o.totalKg, unit: 'kg', sub: `${o.totalM3} m³` },
+      {
+        t: 'tone',
+        v: o.status,
+        tone: o.status === 'Teslim Edildi' ? 'success' : o.status === 'Yolda' ? 'primary' : 'warning',
+      },
+      { t: 'code', v: `${o.windowStart} - ${o.windowEnd}` },
     ],
   })),
 }
 
-const teklifSeeds = [
+/*const teklifSeeds = [
   { no: 'TKF-2026-0071', cari: 'Marmara Ambalaj San. Tic.', valid: '31.07.2026', total: 54800, state: 'Onaylandı', tone: 'success' as ErpTone },
   { no: 'TKF-2026-0072', cari: 'Beşiktaş Zincir Market', valid: '02.08.2026', total: 176300, state: 'Beklemede', tone: 'warning' as ErpTone },
   { no: 'TKF-2026-0073', cari: 'İstanbul Palet Lojistik', valid: '05.08.2026', total: 38900, state: 'Beklemede', tone: 'warning' as ErpTone },
   { no: 'TKF-2026-0074', cari: 'Şişli Restoran Grubu', valid: '28.07.2026', total: 22450, state: 'Reddedildi', tone: 'destructive' as ErpTone },
   { no: 'TKF-2026-0075', cari: 'Sarıyer Otel Zinciri', valid: '09.08.2026', total: 241000, state: 'Onaylandı', tone: 'success' as ErpTone },
   { no: 'TKF-2026-0076', cari: 'Kadıköy Gıda Toptan', valid: '11.08.2026', total: 67200, state: 'Beklemede', tone: 'warning' as ErpTone },
-]
+]*/
 
 const teklifler: ErpView = {
   key: 'teklifler',
   label: 'Teklifler',
   recordName: 'Teklif',
-  searchPlaceholder: 'Teklif no, cari veya durum ara…',
-  columns: ['Teklif No', 'Cari', 'Geçerlilik', 'Tutar', 'Onay Durumu'],
-  rows: teklifSeeds.map((t) => ({
-    id: t.no,
-    search: s(t.no, t.cari, t.valid, t.state),
+  searchPlaceholder: 'Teklif no veya cari ara…',
+  columns: ['Teklif No', 'Cari Kodu', 'Müşteri Adı', 'Durum'],
+  rows: erpOffers.map((o) => ({
+    id: o.id,
+    search: s(o.id, o.cariCode, o.cariName, o.status),
     cells: [
-      { t: 'code', v: t.no },
-      { t: 'text', v: t.cari, strong: true },
-      { t: 'code', v: t.valid },
-      { t: 'money', v: t.total },
-      { t: 'tone', v: t.state, tone: t.tone },
+      { t: 'code', v: o.id },
+      { t: 'code', v: o.cariCode },
+      { t: 'text', v: o.cariName, strong: true },
+      {
+        t: 'tone',
+        v: o.status,
+        tone: o.status === 'Onaylandı' ? 'success' : o.status === 'Reddedildi' ? 'destructive' : 'warning',
+      },
     ],
   })),
 }
@@ -539,7 +559,7 @@ export const erpModules: ErpModule[] = [
   },
   { key: 'filo', label: 'Filo & Araçlar', icon: Truck, views: [aracKartlari] },
   { key: 'depo', label: 'Depo & Stok', icon: Boxes, views: [stokKartlari, depolar] },
-  { key: 'satis', label: 'Satış & Sipariş', icon: ShoppingCart, views: [siparisler, teklifler] },
+  { key: 'satis', label: 'Satış & Sipariş', icon: ShoppingCart, views: [teklifler, siparisler] },
   { key: 'fatura', label: 'Fatura & İrsaliye', icon: FileText, views: [faturalar, irsaliyeler] },
   { key: 'banka', label: 'Banka & Kasa', icon: Landmark, views: [bankaHesaplari, kasaHareketleri] },
   { key: 'cek', label: 'Çek Defteri', icon: ReceiptText, views: [alinanCekler, verilenCekler] },
