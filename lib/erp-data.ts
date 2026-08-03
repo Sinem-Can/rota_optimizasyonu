@@ -483,6 +483,101 @@ export const erpVehicles: ErpVehicleDto[] = [
   },
 ]
 
+/* ------------------------------- Satış & Sipariş ------------------------------ */
+
+export interface ErpOfferDto {
+  id: string
+  cariCode: string
+  cariName: string
+  status: 'Onaylandı' | 'Beklemede' | 'Reddedildi'
+}
+
+// 27 Müşteriye ait karışık durumlu Teklif Listesi
+export const erpOffers: ErpOfferDto[] = [
+  { id: 'TKL0001', cariCode: 'CAR001', cariName: 'Şirinevler Şok Market', status: 'Onaylandı' },
+  { id: 'TKL0002', cariCode: 'CAR002', cariName: 'Bakırköy Migros', status: 'Beklemede' },
+  { id: 'TKL0003', cariCode: 'CAR003', cariName: 'Beşiktaş Macrocenter', status: 'Onaylandı' },
+  { id: 'TKL0004', cariCode: 'CAR004', cariName: 'Şişli CarrefourSA', status: 'Beklemede' },
+  { id: 'TKL0005', cariCode: 'CAR005', cariName: 'Mecidiyeköy Çağrı Market', status: 'Onaylandı' },
+  { id: 'TKL0006', cariCode: 'CAR006', cariName: 'Levent File Market', status: 'Onaylandı' },
+  { id: 'TKL0007', cariCode: 'CAR007', cariName: 'Fatih BİM', status: 'Reddedildi' },
+  { id: 'TKL0008', cariCode: 'CAR008', cariName: 'Eyüp Şok Market', status: 'Onaylandı' },
+  { id: 'TKL0009', cariCode: 'CAR009', cariName: 'Bayrampaşa Hal İçi Market', status: 'Onaylandı' },
+  { id: 'TKL0010', cariCode: 'CAR010', cariName: 'Bağcılar Migros', status: 'Beklemede' },
+  { id: 'TKL0011', cariCode: 'CAR011', cariName: 'Sefaköy CarrefourSA', status: 'Onaylandı' },
+  { id: 'TKL0012', cariCode: 'CAR012', cariName: 'Küçükçekmece Çağrı Market', status: 'Beklemede' },
+  { id: 'TKL0013', cariCode: 'CAR013', cariName: 'Beylikdüzü Migros 5M', status: 'Onaylandı' },
+  { id: 'TKL0014', cariCode: 'CAR014', cariName: 'Fenerbahçe Şok', status: 'Onaylandı' },
+  { id: 'TKL0015', cariCode: 'CAR015', cariName: 'Bostancı Migros', status: 'Reddedildi' },
+  { id: 'TKL0016', cariCode: 'CAR016', cariName: 'Maltepe CarrefourSA', status: 'Beklemede' },
+  { id: 'TKL0017', cariCode: 'CAR017', cariName: 'Pendik File Market', status: 'Onaylandı' },
+  { id: 'TKL0018', cariCode: 'CAR018', cariName: 'Tuzla Çağrı Market', status: 'Onaylandı' },
+  { id: 'TKL0019', cariCode: 'CAR019', cariName: 'Ümraniye Çarşı Migros', status: 'Beklemede' },
+  { id: 'TKL0020', cariCode: 'CAR020', cariName: 'Çakmak Şok Market', status: 'Onaylandı' },
+  { id: 'TKL0021', cariCode: 'CAR021', cariName: 'Ataşehir Migros', status: 'Beklemede' },
+  { id: 'TKL0022', cariCode: 'CAR022', cariName: 'Kayışdağı BİM', status: 'Onaylandı' },
+  { id: 'TKL0023', cariCode: 'CAR023', cariName: 'İçerenköy CarrefourSA', status: 'Onaylandı' },
+  { id: 'TKL0024', cariCode: 'CAR024', cariName: 'Çekmeköy File Market', status: 'Reddedildi' },
+  { id: 'TKL0025', cariCode: 'CAR025', cariName: 'Kavacık Migros', status: 'Onaylandı' },
+  { id: 'TKL0026', cariCode: 'CAR026', cariName: 'Çengelköy Şok', status: 'Onaylandı' },
+  { id: 'TKL0027', cariCode: 'CAR027', cariName: 'Altunizade Çağrı Market', status: 'Onaylandı' },
+]
+
+export interface ErpOrderLine {
+  stockCode: string
+  stockName: string
+  quantity: number
+}
+
+export interface ErpOrderDto {
+  id: string
+  offerId: string
+  cariCode: string
+  cariName: string
+  vehicleCode: string
+  vehiclePlate: string
+  totalKg: number
+  totalM3: number
+  capacityStatus: 'Uygun' | 'Kapasite Kritik'
+  status: 'Teslim Edildi' | 'Yolda' | 'Hazırlanıyor' | 'Onay Bekliyor'
+  windowStart: string
+  windowEnd: string
+  // YENİ: Siparişin içindeki ürünleri tutan liste
+  lines: ErpOrderLine[] 
+}
+
+// Sadece "Onaylandı" durumundaki teklifleri siparişe dönüştürüyoruz
+export const erpOrders: ErpOrderDto[] = erpOffers
+  .filter((offer) => offer.status === 'Onaylandı')
+  .map((offer, index) => {
+    const vehicleNumber = (index % 8) + 1;
+    const totalKg = 320 + (index * 65);
+    const totalM3 = Number((totalKg * 0.007).toFixed(1));
+    
+    // YENİ: Birden fazla ürün ekleme simülasyonu (Her siparişe Stoklardan rastgele 2 ürün ekliyoruz)
+    const item1 = erpStockItems[(index * 2) % erpStockItems.length];
+    const item2 = erpStockItems[(index * 2 + 1) % erpStockItems.length];
+
+    return {
+      id: `KLO${String(index + 1).padStart(4, '0')}`,
+      offerId: offer.id,
+      cariCode: offer.cariCode,
+      cariName: offer.cariName,
+      vehicleCode: `VHC-00${vehicleNumber}`,
+      vehiclePlate: `54 LIX 0${vehicleNumber}`,
+      totalKg: totalKg,
+      totalM3: totalM3,
+      capacityStatus: totalKg > 1000 ? 'Kapasite Kritik' : 'Uygun',
+      status: index < 5 ? 'Teslim Edildi' : 'Yolda',
+      windowStart: '09:00',
+      windowEnd: '17:00',
+      // YENİ: Siparişin içine tam notlardaki gibi Adet, Stok Kodu ve Stok Adı ekleniyor
+      lines: [
+        { stockCode: item1.code, stockName: item1.name, quantity: 50 + index * 10 },
+        { stockCode: item2.code, stockName: item2.name, quantity: 120 + index * 5 }
+      ]
+    }
+  })
 
 /* --------------------------------- Özetler -------------------------------- */
 
