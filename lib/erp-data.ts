@@ -274,7 +274,7 @@ export const erpAccounts: ErpAccountDto[] = [
 
 /* ---------------------------------- Stok ---------------------------------- */
 
-export type ErpUnit = 'Adet' | 'Koli' | 'Palet' | 'Kg' | 'Litre' | 'Çuval'
+export type ErpUnit = 'Adet' | 'Koli' | 'Çuval' | 'Litre' | 'Palet' | 'Kg'
 
 export interface ErpStockItemDto {
   id: string
@@ -282,125 +282,60 @@ export interface ErpStockItemDto {
   name: string
   category: string
   unit: ErpUnit
-  /** Eldeki miktar */
   quantity: number
-  /** Kritik eşik; altına düşünce uyarı verilir. */
   criticalLevel: number
   warehouse: string
+  // Excel'den gelen ekstra veri alanlarımız
+  weightKg?: number
+  volumeM3?: number
 }
 
-export const erpUnits: ErpUnit[] = ['Adet', 'Koli', 'Palet', 'Kg', 'Litre', 'Çuval']
+// YENİ: Excel'e uygun Kategori, Birim ve Depo seçenekleri
+export const erpUnits: ErpUnit[] = ['Adet']
+export const erpStockCategories = ['İçecek']
 
-export const erpStockCategories = [
-  'Gıda',
-  'İçecek',
-  'Ambalaj',
-  'Temizlik',
-  'Yapı Malzemesi',
-  'Sarf Malzeme',
-]
-
+// YENİ: Excel tablosundan birebir alınmış 40 kalemlik (20 Avcılar + 20 Üsküdar) stok listesi!
 export const erpStockItems: ErpStockItemDto[] = [
-  {
-    id: 'STK-001',
-    code: 'GDA-1045',
-    name: 'Ayçiçek Yağı 5 lt',
-    category: 'Gıda',
-    unit: 'Koli',
-    quantity: 1240,
-    criticalLevel: 300,
-    warehouse: 'Avcılar Ana Depo',
-  },
-  {
-    id: 'STK-002',
-    code: 'GDA-2210',
-    name: 'Buğday Unu 25 kg',
-    category: 'Gıda',
-    unit: 'Çuval',
-    quantity: 180,
-    criticalLevel: 250,
-    warehouse: 'Avcılar Ana Depo',
-  },
-  {
-    id: 'STK-003',
-    code: 'ICE-3308',
-    name: 'Maden Suyu 6x1,5 lt',
-    category: 'İçecek',
-    unit: 'Koli',
-    quantity: 2860,
-    criticalLevel: 500,
-    warehouse: 'Üsküdar Bölge Depo',
-  },
-  {
-    id: 'STK-004',
-    code: 'AMB-4102',
-    name: 'Oluklu Mukavva Kutu 40x30',
-    category: 'Ambalaj',
-    unit: 'Adet',
-    quantity: 9450,
-    criticalLevel: 2000,
-    warehouse: 'Beylikdüzü Transfer Merkezi',
-  },
-  {
-    id: 'STK-005',
-    code: 'TEM-5017',
-    name: 'Endüstriyel Yüzey Temizleyici 20 lt',
-    category: 'Temizlik',
-    unit: 'Litre',
-    quantity: 640,
-    criticalLevel: 200,
-    warehouse: 'Avcılar Ana Depo',
-  },
-  {
-    id: 'STK-006',
-    code: 'YAP-6023',
-    name: 'Seramik Yapıştırıcı 25 kg',
-    category: 'Yapı Malzemesi',
-    unit: 'Palet',
-    quantity: 42,
-    criticalLevel: 60,
-    warehouse: 'Pendik Soğuk Hava Deposu',
-  },
-  {
-    id: 'STK-007',
-    code: 'GDA-1188',
-    name: 'Dondurulmuş Sebze Karışımı 10 kg',
-    category: 'Gıda',
-    unit: 'Kg',
-    quantity: 3120,
-    criticalLevel: 800,
-    warehouse: 'Pendik Soğuk Hava Deposu',
-  },
-  {
-    id: 'STK-008',
-    code: 'SRF-7745',
-    name: 'Streç Film 500 mm',
-    category: 'Sarf Malzeme',
-    unit: 'Adet',
-    quantity: 96,
-    criticalLevel: 150,
-    warehouse: 'Beylikdüzü Transfer Merkezi',
-  },
-  {
-    id: 'STK-009',
-    code: 'ICE-3390',
-    name: 'Meyve Suyu 12x200 ml',
-    category: 'İçecek',
-    unit: 'Koli',
-    quantity: 1730,
-    criticalLevel: 400,
-    warehouse: 'Üsküdar Bölge Depo',
-  },
-  {
-    id: 'STK-010',
-    code: 'AMB-4260',
-    name: 'Ahşap Euro Palet 120x80',
-    category: 'Ambalaj',
-    unit: 'Adet',
-    quantity: 510,
-    criticalLevel: 120,
-    warehouse: 'Avcılar Ana Depo',
-  },
+  { id: 'STK-001', code: 'CC-1001', name: 'Coca-Cola 1 L', category: 'İçecek', unit: 'Adet', quantity: 637, criticalLevel: 181, warehouse: 'Avcılar Merkez Depo', weightKg: 5, volumeM3: 0.01 },
+  { id: 'STK-002', code: 'CC-1002', name: 'Coca-Cola Zero 1 L', category: 'İçecek', unit: 'Adet', quantity: 2208, criticalLevel: 231, warehouse: 'Avcılar Merkez Depo', weightKg: 8, volumeM3: 0.015 },
+  { id: 'STK-003', code: 'FNT-1001', name: 'Fanta 1 L', category: 'İçecek', unit: 'Adet', quantity: 2800, criticalLevel: 126, warehouse: 'Avcılar Merkez Depo', weightKg: 12, volumeM3: 0.02 },
+  { id: 'STK-004', code: 'SPR-1001', name: 'Sprite 1 L', category: 'İçecek', unit: 'Adet', quantity: 3771, criticalLevel: 157, warehouse: 'Avcılar Merkez Depo', weightKg: 15, volumeM3: 0.025 },
+  { id: 'STK-005', code: 'FT-1001', name: 'Fuse Tea Şeftali', category: 'İçecek', unit: 'Adet', quantity: 3815, criticalLevel: 253, warehouse: 'Avcılar Merkez Depo', weightKg: 20, volumeM3: 0.03 },
+  { id: 'STK-006', code: 'FT-1002', name: 'Fuse Tea Limon', category: 'İçecek', unit: 'Adet', quantity: 2695, criticalLevel: 242, warehouse: 'Avcılar Merkez Depo', weightKg: 25, volumeM3: 0.04 },
+  { id: 'STK-007', code: 'CPY-1001', name: 'Cappy Karışık', category: 'İçecek', unit: 'Adet', quantity: 1872, criticalLevel: 300, warehouse: 'Avcılar Merkez Depo', weightKg: 30, volumeM3: 0.05 },
+  { id: 'STK-008', code: 'DML-1001', name: 'Damla 1.5 L', category: 'İçecek', unit: 'Adet', quantity: 2495, criticalLevel: 240, warehouse: 'Avcılar Merkez Depo', weightKg: 18, volumeM3: 0.018 },
+  { id: 'STK-009', code: 'PWR-1001', name: 'Powerade', category: 'İçecek', unit: 'Adet', quantity: 3600, criticalLevel: 287, warehouse: 'Avcılar Merkez Depo', weightKg: 10, volumeM3: 0.012 },
+  { id: 'STK-010', code: 'MNS-1001', name: 'Monster', category: 'İçecek', unit: 'Adet', quantity: 3330, criticalLevel: 296, warehouse: 'Avcılar Merkez Depo', weightKg: 40, volumeM3: 0.06 },
+  { id: 'STK-011', code: 'CC-1003', name: 'Coca-Cola 330 ml', category: 'İçecek', unit: 'Adet', quantity: 2160, criticalLevel: 292, warehouse: 'Avcılar Merkez Depo', weightKg: 5, volumeM3: 0.01 },
+  { id: 'STK-012', code: 'FNT-1002', name: 'Fanta 330 ml', category: 'İçecek', unit: 'Adet', quantity: 3316, criticalLevel: 250, warehouse: 'Avcılar Merkez Depo', weightKg: 8, volumeM3: 0.015 },
+  { id: 'STK-013', code: 'SPR-1002', name: 'Sprite 330 ml', category: 'İçecek', unit: 'Adet', quantity: 1956, criticalLevel: 161, warehouse: 'Avcılar Merkez Depo', weightKg: 12, volumeM3: 0.02 },
+  { id: 'STK-014', code: 'SCH-1001', name: 'Schweppes', category: 'İçecek', unit: 'Adet', quantity: 160, criticalLevel: 257, warehouse: 'Avcılar Merkez Depo', weightKg: 15, volumeM3: 0.025 },
+  { id: 'STK-015', code: 'CPY-1002', name: 'Cappy Portakal', category: 'İçecek', unit: 'Adet', quantity: 480, criticalLevel: 128, warehouse: 'Avcılar Merkez Depo', weightKg: 20, volumeM3: 0.03 },
+  { id: 'STK-016', code: 'CC-1004', name: 'Coca-Cola 2.5 L', category: 'İçecek', unit: 'Adet', quantity: 1326, criticalLevel: 125, warehouse: 'Avcılar Merkez Depo', weightKg: 25, volumeM3: 0.04 },
+  { id: 'STK-017', code: 'FNT-1003', name: 'Fanta 2.5 L', category: 'İçecek', unit: 'Adet', quantity: 1991, criticalLevel: 102, warehouse: 'Avcılar Merkez Depo', weightKg: 30, volumeM3: 0.05 },
+  { id: 'STK-018', code: 'SPR-1003', name: 'Sprite 2.5 L', category: 'İçecek', unit: 'Adet', quantity: 3487, criticalLevel: 275, warehouse: 'Avcılar Merkez Depo', weightKg: 18, volumeM3: 0.018 },
+  { id: 'STK-019', code: 'BRN-1001', name: 'Burn', category: 'İçecek', unit: 'Adet', quantity: 2158, criticalLevel: 273, warehouse: 'Avcılar Merkez Depo', weightKg: 10, volumeM3: 0.012 },
+  { id: 'STK-020', code: 'DML-1002', name: 'Damla 0.5 L', category: 'İçecek', unit: 'Adet', quantity: 1437, criticalLevel: 153, warehouse: 'Avcılar Merkez Depo', weightKg: 40, volumeM3: 0.06 },
+  { id: 'STK-021', code: 'CC-1001', name: 'Coca-Cola 1 L', category: 'İçecek', unit: 'Adet', quantity: 1777, criticalLevel: 164, warehouse: 'Üsküdar Merkez Depo', weightKg: 5, volumeM3: 0.01 },
+  { id: 'STK-022', code: 'CC-1002', name: 'Coca-Cola Zero 1 L', category: 'İçecek', unit: 'Adet', quantity: 1574, criticalLevel: 191, warehouse: 'Üsküdar Merkez Depo', weightKg: 8, volumeM3: 0.015 },
+  { id: 'STK-023', code: 'FNT-1001', name: 'Fanta 1 L', category: 'İçecek', unit: 'Adet', quantity: 3447, criticalLevel: 196, warehouse: 'Üsküdar Merkez Depo', weightKg: 12, volumeM3: 0.02 },
+  { id: 'STK-024', code: 'SPR-1001', name: 'Sprite 1 L', category: 'İçecek', unit: 'Adet', quantity: 3205, criticalLevel: 231, warehouse: 'Üsküdar Merkez Depo', weightKg: 15, volumeM3: 0.025 },
+  { id: 'STK-025', code: 'FT-1001', name: 'Fuse Tea Şeftali', category: 'İçecek', unit: 'Adet', quantity: 2762, criticalLevel: 119, warehouse: 'Üsküdar Merkez Depo', weightKg: 20, volumeM3: 0.03 },
+  { id: 'STK-026', code: 'FT-1002', name: 'Fuse Tea Limon', category: 'İçecek', unit: 'Adet', quantity: 3111, criticalLevel: 187, warehouse: 'Üsküdar Merkez Depo', weightKg: 25, volumeM3: 0.04 },
+  { id: 'STK-027', code: 'CPY-1001', name: 'Cappy Karışık', category: 'İçecek', unit: 'Adet', quantity: 517, criticalLevel: 242, warehouse: 'Üsküdar Merkez Depo', weightKg: 30, volumeM3: 0.05 },
+  { id: 'STK-028', code: 'DML-1001', name: 'Damla 1.5 L', category: 'İçecek', unit: 'Adet', quantity: 2353, criticalLevel: 174, warehouse: 'Üsküdar Merkez Depo', weightKg: 18, volumeM3: 0.018 },
+  { id: 'STK-029', code: 'PWR-1001', name: 'Powerade', category: 'İçecek', unit: 'Adet', quantity: 1328, criticalLevel: 217, warehouse: 'Üsküdar Merkez Depo', weightKg: 10, volumeM3: 0.012 },
+  { id: 'STK-030', code: 'MNS-1001', name: 'Monster', category: 'İçecek', unit: 'Adet', quantity: 727, criticalLevel: 265, warehouse: 'Üsküdar Merkez Depo', weightKg: 40, volumeM3: 0.06 },
+  { id: 'STK-031', code: 'CC-1003', name: 'Coca-Cola 330 ml', category: 'İçecek', unit: 'Adet', quantity: 3033, criticalLevel: 283, warehouse: 'Üsküdar Merkez Depo', weightKg: 5, volumeM3: 0.01 },
+  { id: 'STK-032', code: 'FNT-1002', name: 'Fanta 330 ml', category: 'İçecek', unit: 'Adet', quantity: 2515, criticalLevel: 179, warehouse: 'Üsküdar Merkez Depo', weightKg: 8, volumeM3: 0.015 },
+  { id: 'STK-033', code: 'SPR-1002', name: 'Sprite 330 ml', category: 'İçecek', unit: 'Adet', quantity: 251, criticalLevel: 281, warehouse: 'Üsküdar Merkez Depo', weightKg: 12, volumeM3: 0.02 },
+  { id: 'STK-034', code: 'SCH-1001', name: 'Schweppes', category: 'İçecek', unit: 'Adet', quantity: 1660, criticalLevel: 193, warehouse: 'Üsküdar Merkez Depo', weightKg: 15, volumeM3: 0.025 },
+  { id: 'STK-035', code: 'CPY-1002', name: 'Cappy Portakal', category: 'İçecek', unit: 'Adet', quantity: 2038, criticalLevel: 208, warehouse: 'Üsküdar Merkez Depo', weightKg: 20, volumeM3: 0.03 },
+  { id: 'STK-036', code: 'CC-1004', name: 'Coca-Cola 2.5 L', category: 'İçecek', unit: 'Adet', quantity: 521, criticalLevel: 202, warehouse: 'Üsküdar Merkez Depo', weightKg: 25, volumeM3: 0.04 },
+  { id: 'STK-037', code: 'FNT-1003', name: 'Fanta 2.5 L', category: 'İçecek', unit: 'Adet', quantity: 3799, criticalLevel: 249, warehouse: 'Üsküdar Merkez Depo', weightKg: 30, volumeM3: 0.05 },
+  { id: 'STK-038', code: 'SPR-1003', name: 'Sprite 2.5 L', category: 'İçecek', unit: 'Adet', quantity: 2421, criticalLevel: 227, warehouse: 'Üsküdar Merkez Depo', weightKg: 18, volumeM3: 0.018 },
+  { id: 'STK-039', code: 'BRN-1001', name: 'Burn', category: 'İçecek', unit: 'Adet', quantity: 3702, criticalLevel: 129, warehouse: 'Üsküdar Merkez Depo', weightKg: 10, volumeM3: 0.012 },
+  { id: 'STK-040', code: 'DML-1002', name: 'Damla 0.5 L', category: 'İçecek', unit: 'Adet', quantity: 1892, criticalLevel: 229, warehouse: 'Üsküdar Merkez Depo', weightKg: 40, volumeM3: 0.06 },
 ]
 
 /* ---------------------------------- Depo ---------------------------------- */
@@ -420,8 +355,8 @@ export interface ErpWarehouseDto {
 export const erpWarehouses: ErpWarehouseDto[] = [
   {
     id: 'DPO-001',
-    code: 'AVC-01',
-    name: 'Avcılar Ana Depo',
+    code: 'DP001', // Excel'deki koda güncellendi
+    name: 'Avcılar Merkez Depo', // Excel'deki isme güncellendi
     district: 'Avcılar',
     address: 'Ambarlı Mah. Liman Cad. No:14, Avcılar',
     manager: 'Kemal Aydın',
@@ -431,48 +366,15 @@ export const erpWarehouses: ErpWarehouseDto[] = [
   },
   {
     id: 'DPO-002',
-    code: 'USK-01',
-    name: 'Üsküdar Bölge Depo',
+    code: 'DP002', // Excel'deki koda güncellendi
+    name: 'Üsküdar Merkez Depo', // Excel'deki isme güncellendi
     district: 'Üsküdar',
     address: 'Kısıklı Mah. Alemdağ Cad. No:220, Üsküdar',
     manager: 'Serpil Yıldız',
     capacityM3: 2600,
     usedM3: 1820,
     status: 'Aktif',
-  },
-  {
-    id: 'DPO-003',
-    code: 'PND-01',
-    name: 'Pendik Soğuk Hava Deposu',
-    district: 'Pendik',
-    address: 'Dumlupınar Mah. Sanayi Cad. No:88, Pendik',
-    manager: 'Hakan Demirci',
-    capacityM3: 1500,
-    usedM3: 1395,
-    status: 'Aktif',
-  },
-  {
-    id: 'DPO-004',
-    code: 'BYL-01',
-    name: 'Beylikdüzü Transfer Merkezi',
-    district: 'Beylikdüzü',
-    address: 'Barış Mah. Hürriyet Bulvarı No:340, Beylikdüzü',
-    manager: 'Nurcan Şahin',
-    capacityM3: 1900,
-    usedM3: 610,
-    status: 'Aktif',
-  },
-  {
-    id: 'DPO-005',
-    code: 'SRY-01',
-    name: 'Sarıyer Ara Depo',
-    district: 'Sarıyer',
-    address: 'Tarabya Mah. Haydar Aliyev Cad. No:12, Sarıyer',
-    manager: 'Emre Kılıç',
-    capacityM3: 800,
-    usedM3: 250,
-    status: 'Bakımda',
-  },
+  }
 ]
 
 /* ------------------------------- Araç Kartları ------------------------------ */
@@ -584,6 +486,7 @@ export const erpVehicles: ErpVehicleDto[] = [
 
 /* --------------------------------- Özetler -------------------------------- */
 
+// (Buradaki export const erpWarehouseNames... satırını sildik!)
 export const erpWarehouseNames = erpWarehouses.map((w) => w.name)
 
 /** ERP sekmesi KPI özetleri. */
