@@ -169,8 +169,9 @@ const stokKartlari: ErpView = {
   label: 'Stok Kartları',
   recordName: 'Stok',
   dialog: 'stok',
-  searchPlaceholder: 'Stok kodu, ürün adı veya kategori ara…',
-  columns: ['Stok Kodu', 'Ürün Adı', 'Kategori', 'Birim', 'Miktar', 'Bağlı Depo'],
+  searchPlaceholder: 'Stok kodu, ürün adı veya depo ara…',
+  // Sütunlara Ağırlık ve Hacim eklendi!
+  columns: ['Stok Kodu', 'Ürün Adı', 'Kategori', 'Birim', 'Ağırlık (kg)', 'Hacim (m³)', 'Miktar', 'Bağlı Depo'],
   rows: erpStockItems.map((i) => ({
     id: i.id,
     search: s(i.code, i.name, i.category, i.warehouse, i.unit, i.id),
@@ -179,6 +180,8 @@ const stokKartlari: ErpView = {
       { t: 'text', v: i.name, strong: true },
       { t: 'badge', v: i.category, variant: 'secondary' },
       { t: 'text', v: i.unit },
+      { t: 'num', v: i.weightKg ?? 0, unit: 'kg' }, // Yeni
+      { t: 'num', v: i.volumeM3 ?? 0, unit: 'm³' }, // Yeni
       {
         t: 'num',
         v: i.quantity,

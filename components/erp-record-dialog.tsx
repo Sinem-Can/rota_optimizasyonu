@@ -19,7 +19,7 @@ import {
   erpStockCategories,
   erpUnits,
   erpWarehouseNames,
-  erpAccounts, // YENİ EKLENDİ: Bölgeleri dinamik çekmek için listeyi import ediyoruz
+  erpAccounts,
   type ErpRecordStatus,
 } from '@/lib/erp-data'
 
@@ -35,7 +35,6 @@ const labelClass = 'text-[11px] font-semibold uppercase tracking-wide text-muted
 
 const statuses: ErpRecordStatus[] = ['Aktif', 'Pasif', 'Bakımda']
 
-// YENİ: erpAccounts listemizdeki benzersiz ilçeleri alfabetik sıralı olarak çıkartıyoruz
 const uniqueDistricts = Array.from(new Set(erpAccounts.map(a => a.district))).sort()
 
 const dialogMeta: Record<
@@ -67,7 +66,6 @@ const dialogMeta: Record<
   },
 }
 
-/** Görsel tutarlılık için tekrar eden select sarmalayıcısı. */
 function SelectField({
   id,
   name,
@@ -147,7 +145,6 @@ export function ErpRecordDialog({
   triggerClassName,
 }: {
   kind: ErpTabKey
-  /** Aksiyon çubuğunda kısa etiket ("Yeni") kullanmak için. */
   triggerLabel?: string
   triggerClassName?: string
 }) {
@@ -156,7 +153,6 @@ export function ErpRecordDialog({
   const Icon = meta.icon
   const formId = `erp-${kind}-form`
 
-  // Demo formu: ERP servisine bağlanana kadar yalnızca modalı kapatır.
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setOpen(false)
@@ -219,7 +215,6 @@ export function ErpRecordDialog({
                   required
                 />
                 <div className="grid gap-3 sm:grid-cols-2">
-                  {/* YENİ: Serbest metin yerine dropdown liste koyduk */}
                   <SelectField
                     id="erp-cari-district"
                     name="district"
@@ -339,11 +334,12 @@ export function ErpRecordDialog({
                   required
                 />
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <TextField
+                  {/* YENİ: İlçe alanı da artık dropdown oldu! */}
+                  <SelectField
                     id="erp-depo-district"
                     name="district"
                     label="İlçe"
-                    placeholder="Örn. Kadıköy"
+                    options={uniqueDistricts}
                   />
                   <TextField
                     id="erp-depo-capacity"
