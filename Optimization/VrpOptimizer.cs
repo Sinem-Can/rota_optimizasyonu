@@ -382,17 +382,15 @@ public class VrpOptimizer
                 }
 
                 // 5. Çıktıyı Detaylı Yazdırma
-                if (routing.IsEnd(index))
                 if (routing.IsEnd(index))
                 {
-                    // origCurrentNode değişkeni zaten döngünün başında senin tarafından başarıyla tanımlanıyor
                     route += $"  -> [Dönüş] Depo {origCurrentNode} (Mesafe: {legDistance} km | Sürüş: {travelTime} dk)\n";
                 }
-                else
-                {
-                    // Müşteride kendi indirme süresini basıyoruz (Müşteri No artık doğrudan origCurrentNode'dur!)
-                    route += $"  -> Müşteri {origCurrentNode} (Mesafe: {legDistance} km | Sürüş: {travelTime} dk, İndirme: {printServiceTime} dk, Bekleme: {waitTime} dk)\n";
-                }
+                else
+                {
+                    // Müşteride kendi indirme süresini basıyoruz
+                    route += $"  -> Müşteri {origCurrentNode} (Mesafe: {legDistance} km | Sürüş: {travelTime} dk, İndirme: {printServiceTime} dk, Bekleme: {waitTime} dk)\n";
+                }
             }
                 
                 long routeTime = solution.Min(timeDimension.CumulVar(index)) - solution.Min(timeDimension.CumulVar(routing.Start(i)));
