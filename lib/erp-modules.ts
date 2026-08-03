@@ -109,8 +109,8 @@ const musteriAdresleri: ErpView = {
   key: 'musteri-adresleri',
   label: 'Teslimat Adresleri',
   recordName: 'Adres',
-  searchPlaceholder: 'Müşteri adı, ilçe veya adres ara…',
-  columns: ['Müşteri Kodu', 'Müşteri Adı', 'İlçe', 'Teslim Penceresi', 'Ort. Hacim', 'Öncelik'],
+  searchPlaceholder: 'Cari kodu, ilçe veya adres ara…',
+  columns: ['Cari Kodu', 'Müşteri Adı', 'İlçe', 'Teslim Penceresi', 'Ort. Hacim', 'Öncelik'], // Müşteri Kodu -> Cari Kodu oldu
   rows: customers.map((c) => ({
     id: c.id,
     search: s(c.id, c.name, c.district, c.address, c.priority),
@@ -118,7 +118,7 @@ const musteriAdresleri: ErpView = {
       { t: 'code', v: c.id },
       { t: 'text', v: c.name, sub: c.address, strong: true },
       { t: 'badge', v: c.district, variant: 'secondary' },
-      { t: 'code', v: `${c.windowStart} – ${c.windowEnd}`, sub: `${c.orderCount} sipariş` },
+      { t: 'code', v: `${c.windowStart} – ${c.windowEnd}` }, // Sipariş sayısı alt metni (sub) buradan silindi!
       { t: 'num', v: c.avgVolumeM3, unit: 'm³' },
       {
         t: 'tone',
