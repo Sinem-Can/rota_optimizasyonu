@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import type { UnassignedTaskDto } from "@/lib/route-data"
-import { drivers } from '@/lib/route-data' // YENİ EKLENDİ
+import { drivers } from '@/lib/route-data'
 
 import {
   Bell,
@@ -21,8 +21,8 @@ import {
   Wallet,
   Warehouse,
 } from 'lucide-react'
+// YENİ: Bütün özet bilgilerimizi artık erp-data.ts içindeki erpSummary'den alıyoruz!
 import { erpSummary } from '@/lib/erp-data'
-import { fleetSummary } from '@/lib/route-data'
 import { ThemeToggle } from '@/components/theme-toggle'
 
 export type TabKey = 'planlama' | 'erp'
@@ -50,27 +50,21 @@ interface KpiItem {
 export function TopBar({ activeTab, onTabChange, onImportTasks }: TopBarProps) {
   const isErp = activeTab === 'erp'
 
-  // --- DİNAMİK HESAPLAMALAR ---
-  // Gerçek zamanlı araç sayısı
+  // --- DİNAMİK HESAPLAMALAR (PLANLAMA EKRANI İÇİN) ---
   const activeVehicleCount = drivers.length
   
-  // Toplam Katedilen Mesafe
   const totalDistance = drivers.reduce((sum, driver) => sum + driver.totalDistanceKm, 0)
   
-  // Toplam Süre (Dakika olarak)
   const totalMinutes = drivers.reduce((sum, driver) => sum + driver.totalDurationMin, 0)
   
-  // Dakikayı (Örn: 811) "13s 31d" formatına çeviren fonksiyon
   const formatDuration = (minutes: number) => {
     const hrs = Math.floor(minutes / 60)
     const mins = minutes % 60
     return `${hrs}s ${mins}d`
   }
   
-  // Toplam Durak Sayısı
   const totalStops = drivers.reduce((sum, driver) => sum + driver.stops.length, 0)
 
-  // Toplam Yakıt Tahmini (Her 100km'de ortalama 12 litre baz alınarak)
   const estimatedFuel = Math.round((totalDistance / 100) * 12)
 
   // --- KPI KARTLARI ---
@@ -79,14 +73,14 @@ export function TopBar({ activeTab, onTabChange, onImportTasks }: TopBarProps) {
       label: 'Toplam Mesafe',
       value: totalDistance.toString(),
       unit: 'km',
-      delta: '-18.4%', // Tasarımdaki sabit delta
+      delta: '-18.4%',
       deltaTone: 'down',
       icon: Route,
     },
     {
       label: 'Toplam Süre',
       value: formatDuration(totalMinutes),
-      delta: '-1s 20d', // Tasarımdaki sabit delta
+      delta: '-1s 20d', 
       deltaTone: 'down',
       icon: Clock,
     },
@@ -126,9 +120,10 @@ export function TopBar({ activeTab, onTabChange, onImportTasks }: TopBarProps) {
     },
     {
       label: 'Aktif Araç',
-      value: fleetSummary.active.toString(),
+      // YENİ: Excel tablomuzla eşitlediğimiz erpSummary verilerini kullanıyoruz
+      value: erpSummary.activeVehicleCount.toString(),
       unit: 'araç',
-      delta: `${fleetSummary.broken} arızalı`,
+      delta: `${erpSummary.vehicleCount - erpSummary.activeVehicleCount} arızalı/izinli`,
       deltaTone: 'alert',
       icon: Truck,
     },
@@ -364,7 +359,6 @@ export function TopBar({ activeTab, onTabChange, onImportTasks }: TopBarProps) {
                   Maliyet
                 </p>
                 <p className="font-mono text-sm font-semibold text-foreground">
-                  {/* Yakıt tahmini üzerinden ortalama bir maliyet */}
                   ₺{(estimatedFuel * 42.5).toLocaleString('tr-TR')}
                 </p>
               </div>

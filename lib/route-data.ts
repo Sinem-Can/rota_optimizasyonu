@@ -126,14 +126,14 @@ export const drivers: DriverDto[] = [
     label: 'Sürücü A',
     fullName: 'Ahmet Yılmaz',
     plate: '54 LIX 01',
-    vehicleType: 'Panelvan (Mini) · 750 kg',
-    colorKey: 'a',
-    totalDistanceKm: 31,
-    totalDurationMin: 98,
-    capacityUsedKg: 440,
-    capacityMaxKg: 750,
+    vehicleType: 'Panelvan (Mini)',
     shiftStart: '08:00',
     shiftEnd: '17:30',
+    capacityMaxKg: 750,
+    capacityUsedKg: 440,
+    totalDistanceKm: 31,
+    totalDurationMin: 98,
+    colorKey: 'a', // DÜZELTİLDİ
     stops: [
       {
         id: 'C-11',
@@ -161,14 +161,14 @@ export const drivers: DriverDto[] = [
     label: 'Sürücü B',
     fullName: 'Mehmet Demir',
     plate: '54 LIX 02',
-    vehicleType: 'Panelvan (Orta) · 1.000 kg',
-    colorKey: 'b',
-    totalDistanceKm: 36,
-    totalDurationMin: 328,
-    capacityUsedKg: 880,
-    capacityMaxKg: 1000,
+    vehicleType: 'Panelvan (Orta)',
     shiftStart: '08:30',
     shiftEnd: '18:00',
+    capacityMaxKg: 1000,
+    capacityUsedKg: 880,
+    totalDistanceKm: 36,
+    totalDurationMin: 328,
+    colorKey: 'b', // DÜZELTİLDİ
     stops: [
       {
         id: 'C-19',
@@ -215,14 +215,14 @@ export const drivers: DriverDto[] = [
     label: 'Sürücü C',
     fullName: 'Hasan Yılmaz',
     plate: '54 LIX 08',
-    vehicleType: 'Kamyon (Ağır) · 12.000 kg',
-    colorKey: 'c',
-    totalDistanceKm: 103,
-    totalDurationMin: 385,
-    capacityUsedKg: 6520,
-    capacityMaxKg: 12000,
+    vehicleType: 'Kamyon (Ağır)',
     shiftStart: '09:00',
     shiftEnd: '17:00',
+    capacityMaxKg: 12000,
+    capacityUsedKg: 3720,
+    totalDistanceKm: 103,
+    totalDurationMin: 385,
+    colorKey: 'c', // DÜZELTİLDİ
     stops: [
       {
         id: 'C-20',

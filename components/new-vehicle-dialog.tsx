@@ -24,7 +24,17 @@ const selectClass =
 
 const labelClass = 'text-[11px] font-semibold uppercase tracking-wide text-muted-foreground'
 
-const vehicleTypes = ['Panelvan', 'Kamyonet', 'Kamyon', 'Tır', 'Motokurye'] as const
+// YENİ: Excel'deki detaylı kasa tiplerine göre güncellendi
+const vehicleTypes = [
+  'Panelvan (Mini)',
+  'Panelvan (Orta)',
+  'Panelvan (Büyük)',
+  'Panelvan (Maxi)',
+  'Kamyonet (Tenteli)',
+  'Kamyonet (Kapalı)',
+  'Kamyon (10 Teker)',
+  'Kamyon (Ağır)'
+] as const
 
 /** Depo listesi mevcut filo verisinden türetilir, böylece tek kaynak korunur. */
 const depots = Array.from(new Set(fleetVehicles.map((v) => v.depot)))
@@ -154,24 +164,35 @@ export function NewVehicleDialog({
           </DialogHeader>
 
           <form id={formId} onSubmit={handleSubmit} className="flex flex-col gap-3">
+            
+            {/* 1. Satır: Araç Kodu ve Plaka */}
             <div className="grid gap-3 sm:grid-cols-2">
+              <TextField
+                id="vehicle-code"
+                name="code"
+                label="Araç Kodu"
+                placeholder="VHC-009"
+                required
+                mono
+              />
               <TextField
                 id="vehicle-plate"
                 name="plate"
                 label="Araç Plakası"
-                placeholder="34 ABC 123"
+                placeholder="54 LIX 09"
                 required
                 mono
               />
+            </div>
+
+            {/* 2. Satır: Araç Tipi ve Sürücü Adı */}
+            <div className="grid gap-3 sm:grid-cols-2">
               <SelectField
                 id="vehicle-type"
                 name="vehicleType"
-                label="Araç Tipi"
+                label="Araç Tipi (Kasa)"
                 options={vehicleTypes}
               />
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
               <TextField
                 id="vehicle-driver"
                 name="driverName"
@@ -179,11 +200,21 @@ export function NewVehicleDialog({
                 placeholder="Örn. Mehmet Yılmaz"
                 required
               />
+            </div>
+
+            {/* 3. Satır: Depo ve Durum */}
+            <div className="grid gap-3 sm:grid-cols-2">
               <SelectField
                 id="vehicle-depot"
                 name="depot"
                 label="Bağlı Olduğu Depo"
                 options={depots}
+              />
+              <SelectField 
+                id="vehicle-status" 
+                name="status" 
+                label="Durum" 
+                options={statuses} 
               />
             </div>
 
@@ -228,7 +259,6 @@ export function NewVehicleDialog({
               </div>
             </div>
 
-            <SelectField id="vehicle-status" name="status" label="Durum" options={statuses} />
           </form>
 
           <DialogFooter>

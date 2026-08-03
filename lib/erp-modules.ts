@@ -21,10 +21,11 @@ import {
   erpAccounts,
   erpStockItems,
   erpWarehouses,
+  erpVehicles, // YENİ: Excel'e göre güncellenmiş araç listemiz
   type ErpRecordStatus,
 } from '@/lib/erp-data'
 import { faturaSeeds, irsaliyeSeeds } from '@/lib/erp-document'
-import { customers, fleetVehicles } from '@/lib/route-data'
+import { customers } from '@/lib/route-data'
 
 /* ------------------------------- Hücre modeli ------------------------------ */
 
@@ -137,19 +138,20 @@ const aracKartlari: ErpView = {
   dialog: 'arac',
   searchPlaceholder: 'Plaka, sürücü veya araç tipi ara…',
   columns: ['Araç Kodu', 'Plaka / Sürücü', 'Araç Tipi', 'Bağlı Depo', 'Kapasite', 'Durum'],
-  rows: fleetVehicles.map((v) => ({
+  // YENİ: Excel ile uyumlu listemizden çekiyoruz (8 Araç)
+  rows: erpVehicles.map((v) => ({
     id: v.id,
-    search: s(v.id, v.plate, v.driverName, v.vehicleType, v.depot, v.status, v.features.join(' ')),
+    search: s(v.id, v.plate, v.driver, v.type, v.depot, v.status, v.features),
     cells: [
       { t: 'code', v: v.id },
-      { t: 'text', v: v.plate, sub: v.driverName, strong: true },
-      { t: 'badge', v: v.vehicleType, variant: 'outline' },
+      { t: 'text', v: v.plate, sub: v.driver, strong: true },
+      { t: 'badge', v: v.type, variant: 'outline' },
       { t: 'badge', v: v.depot, variant: 'secondary' },
       {
         t: 'num',
-        v: v.capacityMaxKg,
+        v: v.capacityKg,
         unit: 'kg',
-        sub: `${v.capacityMaxM3} m³ · ${v.features.length ? v.features.join(', ') : 'donanım yok'}`,
+        sub: `${v.volumeM3} m³ · ${v.features || 'donanım yok'}`,
       },
       {
         t: 'tone',
