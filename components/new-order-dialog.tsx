@@ -1,174 +1,225 @@
-"use client"
+'use client'
 
-import { useState } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog"
-import { Plus } from "lucide-react"
-import { toast } from "sonner"
-import type { StopDto } from "@/lib/route-data"
+import { useState, useMemo } from 'react'
+import { Plus, X, Box, Scale } from 'lucide-react'
+import { erpStockItems } from '@/lib/erp-data'
+import { erpModules } from '@/lib/erp-modules'
+import { cn } from '@/lib/utils'
+import { toast } from 'sonner' 
 
 interface NewOrderDialogProps {
-  onAddOrder?: (order: StopDto) => void
+  triggerLabel: string
+  triggerClassName?: string
 }
 
-export function NewOrderDialog({ onAddOrder }: NewOrderDialogProps) {
-  const [isOpen, setIsOpen] = useState(false)
+// Güvenli tip tanımı
+interface CariItem {
+  id: string
+  name: string
+  code: string
+}
 
-  // Form verilerini tutacağımız state'ler
-  const [customerName, setCustomerName] = useState("")
-  const [weight, setWeight] = useState("250")
-  const [volume, setVolume] = useState("2.5")
-  const [windowStart, setWindowStart] = useState("14:00")
-  const [windowEnd, setWindowEnd] = useState("16:00")
-  const [priority, setPriority] = useState("Yüksek")
+export function NewOrderDialog({ triggerLabel, triggerClassName }: NewOrderDialogProps) {
+  const [open, setOpen] = useState(false)
+  const [selectedStocks, setSelectedStocks] = useState<string[]>([])
+  const [selectedCariId, setSelectedCariId] = useState('')
+
+  // Projedeki cari modülünden verileri güvenle çekiyoruz
+  // erpModules üzerinden cariler view'ına ulaşıyoruz.
+ // Projedeki cari modülünden verileri çekiyoruz
+ // Projedeki cari modülünden verileri güvenle çekiyoruz
+  // YENİ: Bütün modülleri ve sayfaları tarayıp "Cari" sayfasını otomatik buluyoruz
+  const allViews = erpModules.flatMap(m => m.views)
+  const carisView = allViews.find(v => v.label.includes('Cari') || v.key.includes('cari'))
+  
+  const carisList: CariItem[] = carisView?.rows?.map((r: any) => {
+    const codeCell = r.cells[0]
+    const nameCell = r.cells[1]
+    
+    return {
+      id: r.id,
+      name: nameCell?.v || r.id,
+      code: codeCell?.sub || codeCell?.v || r.id
+    }
+  }) || []
+
+  const { totalKg, totalM3 } = useMemo(() => {
+    const adet = selectedStocks.length
+    const kg = adet * 12.5
+    const m3 = adet * 0.05
+    
+    return { 
+      totalKg: kg, 
+      totalM3: m3.toFixed(2) 
+    }
+  }, [selectedStocks])
+
+  const handleClose = () => {
+    setOpen(false)
+    setSelectedStocks([])
+    setSelectedCariId('') 
+  }
 
   const handleSave = () => {
-    if (!customerName.trim()) {
-      toast.error("Lütfen müşteri adını giriniz.")
+    if (!selectedCariId) {
+      toast.error('Lütfen bir müşteri (Cari) seçin!')
       return
     }
 
-    // Yeni sipariş objesini oluşturuyoruz
-    const orderNo = `SP-${Math.floor(10000 + Math.random() * 90000)}`
-    const newOrder: StopDto = {
-      id: `UA-MANUAL-${Date.now()}`,
-      sequence: 0, // Havuzda sıra numarası önemsiz
-      customerName: customerName,
-      address: "Manuel Giriş",
-      district: "Merkez",
-      eta: windowStart,
-      windowStart: windowStart,
-      windowEnd: windowEnd,
-      serviceMinutes: 15,
-      weightKg: parseInt(weight) || 0,
-      volumeM3: parseFloat(volume) || 0,
-      status: "pending",
-      priority: priority as any,
-      phone: "0555 000 0000",
-      orderNo: orderNo,
-      x: 52 + Math.random() * 5, // Haritada depoya yakın rastgele bir yere düşsün
-      y: 52 + Math.random() * 5,
+    if (selectedStocks.length === 0) {
+      toast.error('Lütfen siparişe en az bir ürün ekleyin!')
+      return
     }
 
-    // TaskPanel'e yeni siparişi gönderiyoruz
-    if (onAddOrder) {
-      onAddOrder(newOrder)
+    const seciliCari = carisList.find((c: CariItem) => c.id === selectedCariId)
+
+    const yeniSiparisData = {
+      cariId: selectedCariId,
+      musteriAdi: seciliCari?.name,
+      urunSayisi: selectedStocks.length,
+      toplamKilo: totalKg,
+      toplamHacim: totalM3,
+      durum: 'Beklemede'
     }
 
-    setIsOpen(false)
-    setCustomerName("") // Formu temizle
-    
-    toast.success("Acil sipariş havuza eklendi!", {
-      description: `${customerName} (Sipariş No: ${orderNo}) atanmayı bekliyor.`,
+    console.log("Sisteme Gönderilen Veri:", yeniSiparisData)
+
+    toast.success('Sipariş başarıyla oluşturuldu!', {
+      description: `${yeniSiparisData.musteriAdi} için ${totalKg} kg yük sisteme eklendi.`
     })
+    
+    handleClose()
+  }
+
+  if (!open) {
+    return (
+      <button type="button" onClick={() => setOpen(true)} className={triggerClassName}>
+        <Plus className="size-4" />
+        {triggerLabel}
+      </button>
+    )
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger className="flex w-full items-center justify-center gap-1.5 rounded-md border border-success/40 bg-transparent py-2 text-[12px] font-semibold text-success transition-colors hover:bg-success/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-success/40">
-        <Plus className="size-3.5 shrink-0" />
-        Acil Sipariş Ekle
-      </DialogTrigger>
-      
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Yeni Sipariş Ekle</DialogTitle>
-          <DialogDescription>
-            Sisteme manuel olarak eklenecek teslimatın detaylarını ve algoritma kısıtlarını girin.
-          </DialogDescription>
-        </DialogHeader>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div className="flex w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl">
         
-        <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <label htmlFor="customer" className="text-right text-sm font-medium">
-              Müşteri
-            </label>
-            <input 
-              id="customer" 
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-              placeholder="Örn: Ataşehir Migros" 
-              className="col-span-3 flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" 
-            />
+        <div className="flex items-center justify-between border-b border-border bg-secondary/30 px-5 py-4">
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">Yeni Sipariş Oluştur</h2>
+            <p className="text-sm text-muted-foreground">Müşteri seçin ve stoktan eklenecek ürünleri belirleyin.</p>
           </div>
-          
-          <div className="grid grid-cols-4 items-center gap-4">
-            <label htmlFor="weight" className="text-right text-sm font-medium">
-              Ağırlık (kg)
-            </label>
-            <input 
-              id="weight" 
-              type="number" 
-              min="1" 
-              value={weight}
-              onChange={(e) => setWeight(e.target.value)}
-              placeholder="Örn: 250" 
-              className="col-span-3 flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" 
-            />
-          </div>
+          <button onClick={handleClose} className="rounded-md p-1.5 hover:bg-secondary text-muted-foreground">
+            <X className="size-5" />
+          </button>
+        </div>
 
-          <div className="grid grid-cols-4 items-center gap-4">
-            <label htmlFor="volume" className="text-right text-sm font-medium">
-              Hacim (m³)
-            </label>
-            <input 
-              id="volume" 
-              type="number" 
-              step="0.1" 
-              min="0.1" 
-              value={volume}
-              onChange={(e) => setVolume(e.target.value)}
-              placeholder="Örn: 2.5" 
-              className="col-span-3 flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring font-mono" 
-            />
+        <div className="flex-1 overflow-y-auto p-5">
+          <div className="grid gap-6">
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-semibold uppercase text-muted-foreground">Müşteri (Cari) Seçimi</label>
+                <select 
+                  value={selectedCariId}
+                  onChange={(e) => setSelectedCariId(e.target.value)}
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/50"
+                >
+                  <option value="" disabled>Lütfen Bir Müşteri Seçin...</option>
+                  {carisList.map((cari: CariItem) => (
+                    <option key={cari.id} value={cari.id}>
+                      {cari.name} ({cari.code})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-semibold uppercase text-muted-foreground">Teslimat Penceresi</label>
+                <input 
+                  type="text" 
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none" 
+                  defaultValue="09:00 - 17:00" 
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="flex items-center justify-between text-[11px] font-semibold uppercase text-muted-foreground">
+                <span>Siparişe Eklenecek Ürünler</span>
+                <span>{selectedStocks.length} Seçili</span>
+              </label>
+              
+              <div className="max-h-64 space-y-1 overflow-y-auto rounded-md border border-border p-2 bg-background/50">
+                {erpStockItems.map((item) => {
+                  const isOutOfStock = item.quantity <= 0
+                  const isSelected = selectedStocks.includes(item.id)
+
+                  return (
+                    <label 
+                      key={item.id} 
+                      className={cn(
+                        "flex items-center gap-3 rounded-md border p-3 transition-colors",
+                        isOutOfStock ? "cursor-not-allowed border-transparent opacity-60 bg-secondary/20" : "cursor-pointer border-transparent hover:bg-secondary/50",
+                        isSelected && !isOutOfStock ? "border-primary/50 bg-primary/5" : ""
+                      )}
+                    >
+                      <input
+                        type="checkbox"
+                        disabled={isOutOfStock}
+                        checked={isSelected}
+                        onChange={(e) => {
+                          if (e.target.checked) setSelectedStocks([...selectedStocks, item.id])
+                          else setSelectedStocks(selectedStocks.filter(id => id !== item.id))
+                        }}
+                        className="size-4 cursor-pointer rounded border-border disabled:cursor-not-allowed"
+                      />
+                      <div className="flex-1">
+                        <p className={cn("text-sm font-medium", isOutOfStock ? "text-muted-foreground line-through" : "text-foreground")}>
+                          {item.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground font-mono">{item.code} • {item.category}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className={cn("text-sm font-bold", isOutOfStock ? "text-destructive" : "text-success")}>
+                          {isOutOfStock ? "Stokta Yok" : `${item.quantity} ${item.unit}`}
+                        </p>
+                      </div>
+                    </label>
+                  )
+                })}
+              </div>
+            </div>
+
           </div>
+        </div>
+
+        <div className="flex items-center justify-between border-t border-border bg-secondary/30 px-5 py-4">
           
-          <div className="grid grid-cols-4 items-center gap-4">
-            <label className="text-right text-sm font-medium">
-              Zaman
-            </label>
-            <div className="col-span-3 flex items-center gap-2">
-              <input 
-                type="time" 
-                value={windowStart}
-                onChange={(e) => setWindowStart(e.target.value)}
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring font-mono" 
-              />
-              <span className="text-muted-foreground">-</span>
-              <input 
-                type="time" 
-                value={windowEnd}
-                onChange={(e) => setWindowEnd(e.target.value)}
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring font-mono" 
-              />
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              <Scale className="size-4" />
+              <span className="font-mono font-medium text-foreground">{totalKg} <span className="text-xs text-muted-foreground">kg</span></span>
+            </div>
+            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              <Box className="size-4" />
+              <span className="font-mono font-medium text-foreground">{totalM3} <span className="text-xs text-muted-foreground">m³</span></span>
             </div>
           </div>
 
-          <div className="grid grid-cols-4 items-center gap-4">
-            <label htmlFor="priority" className="text-right text-sm font-medium">
-              Öncelik
-            </label>
-            <select 
-              id="priority" 
-              value={priority}
-              onChange={(e) => setPriority(e.target.value)}
-              className="col-span-3 flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          <div className="flex gap-3">
+            <button onClick={handleClose} className="rounded-md px-4 py-2 text-sm font-medium hover:bg-secondary">
+              İptal
+            </button>
+            <button 
+              onClick={handleSave} 
+              className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
             >
-              <option value="Yüksek">Yüksek</option>
-              <option value="Normal">Normal</option>
-              <option value="Düşük">Düşük</option>
-            </select>
+              Siparişi Kaydet
+            </button>
           </div>
         </div>
-        
-        <DialogFooter>
-          <button type="button" onClick={() => setIsOpen(false)} className="h-9 px-4 py-2 rounded-md border border-input bg-transparent hover:bg-accent hover:text-accent-foreground text-sm font-medium">
-            İptal
-          </button>
-          <button type="button" onClick={handleSave} className="h-9 px-4 py-2 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium shadow">
-            Havuza Gönder
-          </button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   )
 }
