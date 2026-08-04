@@ -21,12 +21,13 @@ import {
   Weight,
 } from 'lucide-react'
 import { toast } from "sonner"
-import { driverTheme, drivers, statusMeta, type StopDto } from '@/lib/route-data'
+import { driverTheme, statusMeta, type StopDto, type DriverDto } from '@/lib/route-data'
 import { cn } from '@/lib/utils'
 
 interface DetailPanelProps {
   stop: StopDto | null
   driverId: string | null
+  drivers: DriverDto[]
 }
 
 const customerGroups = ['Zincir Market', 'Kurumsal Bayi', 'Yapı Marketi', 'Perakende'] as const
@@ -46,7 +47,7 @@ function erpInfo(stopId: string) {
   }
 }
 
-export function DetailPanel({ stop, driverId }: DetailPanelProps) {
+export function DetailPanel({ stop, driverId, drivers }: DetailPanelProps) {
   // Yükleme animasyonları için state'ler
   const [isSendingDriver, setIsSendingDriver] = useState(false)
   const [isSendingNotification, setIsSendingNotification] = useState(false)
@@ -123,8 +124,8 @@ export function DetailPanel({ stop, driverId }: DetailPanelProps) {
             </p>
             <p className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground">
               <MapPin className="size-3 shrink-0" />
-              <span className="truncate">
-                {stop.address}, {stop.district}
+              <span className="text-sm font-medium line-clamp-1" title={stop.address}>
+                {stop.address}{stop.district ? `, ${stop.district}` : ""}
               </span>
             </p>
           </div>
@@ -144,14 +145,6 @@ export function DetailPanel({ stop, driverId }: DetailPanelProps) {
           </span>
           <span className="inline-flex items-center gap-1 rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
             {stop.priority} öncelik
-          </span>
-          <span className="inline-flex items-center gap-1 rounded border border-success/30 bg-success/10 px-1.5 py-0.5 text-[10px] font-semibold text-success">
-            <FileCheck2 className="size-2.5" />
-            İrsaliye: Kesildi
-          </span>
-          <span className="inline-flex items-center gap-1 rounded border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
-            <ReceiptText className="size-2.5" />
-            e-Fatura: Oluşturuldu
           </span>
         </div>
       </div>
@@ -203,72 +196,6 @@ export function DetailPanel({ stop, driverId }: DetailPanelProps) {
             <p className="mt-1.5 flex items-start gap-1.5 rounded-md border border-destructive/25 bg-destructive/5 px-2 py-1.5 text-[11px] font-medium leading-relaxed text-destructive">
               <TriangleAlert className="mt-px size-3.5 shrink-0" />
               ETA, pencere bitişini 20 dk aşıyor.
-            </p>
-          ) : null}
-        </fieldset>
-
-        {/* Servis Süresi */}
-        <fieldset>
-          <legend className="mb-1.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-            <Timer className="size-3.5" />
-            Servis Süresi
-          </legend>
-          <div className="relative">
-            <input
-              type="number"
-              defaultValue={stop.serviceMinutes}
-              min={0}
-              step={5}
-              aria-label="Servis süresi (dakika)"
-              className="h-9 w-full rounded-md border border-input bg-background pl-2 pr-14 font-mono text-[13px] font-semibold text-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20"
-            />
-            <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] font-medium text-muted-foreground">
-              dakika
-            </span>
-          </div>
-          <div className="mt-1.5 flex gap-1">
-            {[10, 15, 20, 30, 45].map((preset) => (
-              <button
-                key={preset}
-                type="button"
-                className={cn(
-                  'flex-1 rounded border py-1 font-mono text-[11px] font-semibold transition-colors',
-                  preset === stop.serviceMinutes
-                    ? 'border-primary bg-primary/10 text-primary'
-                    : 'border-border bg-background text-muted-foreground hover:bg-secondary hover:text-foreground',
-                )}
-              >
-                {preset}
-              </button>
-            ))}
-          </div>
-          <div
-            className={cn(
-              'mt-2 flex items-center gap-1.5 rounded-md border px-2 py-1.5',
-              erp.payment.collect
-                ? 'border-warning/30 bg-warning/10'
-                : 'border-border bg-secondary/50',
-            )}
-          >
-            <Wallet
-              className={cn(
-                'size-3.5 shrink-0',
-                erp.payment.collect ? 'text-warning' : 'text-muted-foreground',
-              )}
-            />
-            <span className="text-[11px] font-medium text-muted-foreground">Ödeme Tipi</span>
-            <span
-              className={cn(
-                'ml-auto text-[12px] font-bold',
-                erp.payment.collect ? 'text-warning' : 'text-foreground',
-              )}
-            >
-              {erp.payment.label}
-            </span>
-          </div>
-          {erp.payment.collect ? (
-            <p className="mt-1 px-0.5 text-[10px] font-medium leading-relaxed text-muted-foreground">
-              Sürücü sahada tahsilat yapacak.
             </p>
           ) : null}
         </fieldset>
@@ -391,12 +318,12 @@ export function DetailPanel({ stop, driverId }: DetailPanelProps) {
           {isSendingDriver ? (
             <>
               <Loader2 className="size-4 animate-spin" />
-              Cihaza İletiliyor...
+              e-Fatura / İrsaliye İletiliyor...
             </>
           ) : (
             <>
               <Send className="size-4" />
-              Sürücüye Gönder
+              e-Fatura / İrsaliye Gönder
             </>
           )}
         </button>
@@ -413,7 +340,7 @@ export function DetailPanel({ stop, driverId }: DetailPanelProps) {
             <BellRing className="size-3.5 shrink-0" />
           )}
           <span className="text-balance text-center leading-tight">
-            {isSendingNotification ? 'İletiliyor...' : 'Sipariş Yola Çıktı (SMS/Mail) Bildirimi Gönder'}
+            {isSendingNotification ? 'İletiliyor...' : 'Sürücüye E-Mail/SMS Gönder'}
           </span>
         </button>
 
@@ -428,18 +355,6 @@ export function DetailPanel({ stop, driverId }: DetailPanelProps) {
             className="flex-1 rounded-md border border-input bg-background py-2 text-[12px] font-semibold text-foreground transition-colors hover:bg-secondary"
           >
             Değişiklikleri Kaydet
-          </button>
-          
-          <button
-            type="button"
-            onClick={() => {
-              toast.error("Durak rotadan çıkarıldı!", {
-                description: `${stop.customerName} siparişi tekrar havuza düştü.`,
-              })
-            }}
-            className="rounded-md border border-destructive/30 bg-background px-3 py-2 text-[12px] font-semibold text-destructive transition-colors hover:bg-destructive/10"
-          >
-            Durağı Kaldır
           </button>
         </div>
       </div>

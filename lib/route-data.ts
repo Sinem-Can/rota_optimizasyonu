@@ -39,6 +39,9 @@ export interface DriverDto {
   capacityMaxKg: number
   shiftStart: string
   shiftEnd: string
+  depotName?: string
+  depotX?: number
+  depotY?: number
   stops: StopDto[]
 }
 

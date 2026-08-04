@@ -12,16 +12,16 @@ import {
   TriangleAlert,
   Warehouse,
 } from 'lucide-react'
-import { driverTheme, drivers, type StopDto } from '@/lib/route-data'
+import { driverTheme, type StopDto, type DriverDto } from '@/lib/route-data'
 import { cn } from '@/lib/utils'
 
 interface MapPanelProps {
   selectedStopId: string | null
   onSelectStop: (stop: StopDto, driverId: string) => void
   isOptimizing: boolean
+  drivers: DriverDto[]
 }
 
-const DEPOT = { x: 50, y: 52 }
 
 /** Noktalar arasında hafif kavisli yol çizgisi üretir (gerçek yol geometrisi backend'den gelir). */
 function buildRoutePath(points: { x: number; y: number }[]) {
@@ -44,7 +44,7 @@ function buildRoutePath(points: { x: number; y: number }[]) {
   return d
 }
 
-export function MapPanel({ selectedStopId, onSelectStop, isOptimizing }: MapPanelProps) {
+export function MapPanel({ selectedStopId, onSelectStop, isOptimizing, drivers }: MapPanelProps) {
   
   // --- DİNAMİK VERİ HESAPLAMALARI ---
   const activeRouteCount = drivers.length
@@ -153,7 +153,8 @@ export function MapPanel({ selectedStopId, onSelectStop, isOptimizing }: MapPane
         >
           {drivers.map((driver) => {
             const theme = driverTheme[driver.colorKey]
-            const points = [DEPOT, ...driver.stops.map((s) => ({ x: s.x, y: s.y }))]
+            const depot = { x: driver.depotX ?? 50, y: driver.depotY ?? 50 }
+            const points = [depot, ...driver.stops.map((s) => ({ x: s.x, y: s.y })), depot]
             const d = buildRoutePath(points)
             return (
               <g key={driver.id}>
@@ -182,16 +183,24 @@ export function MapPanel({ selectedStopId, onSelectStop, isOptimizing }: MapPane
           })}
         </svg>
 
-        {/* Depo işaretçisi */}
-        <div
-          className="absolute z-10 -translate-x-1/2 -translate-y-1/2"
-          style={{ left: `${DEPOT.x}%`, top: `${DEPOT.y}%` }}
-        >
-          <div className="flex items-center gap-1.5 rounded-md border-2 border-foreground bg-card px-2 py-1 shadow-md">
-            <Warehouse className="size-3.5 text-foreground" />
-            <span className="text-[11px] font-bold text-foreground">Merkez Depo</span>
+        {/* Depolar */}
+        {Array.from(new Map(
+          (drivers.length > 0 ? drivers : [{ depotName: 'Merkez Depo', depotX: 50, depotY: 50 }]).map(d => [
+            d.depotName || 'Merkez Depo', 
+            { name: d.depotName || 'Merkez Depo', x: d.depotX ?? 50, y: d.depotY ?? 50 }
+          ])
+        ).values()).map(d => (
+          <div
+            key={d.name}
+            className="absolute z-10 -translate-x-1/2 -translate-y-1/2"
+            style={{ left: `${d.x}%`, top: `${d.y}%` }}
+          >
+            <div className="flex items-center gap-1.5 rounded-md border-2 border-foreground bg-card px-2 py-1 shadow-md">
+              <Warehouse className="size-3.5 text-foreground" />
+              <span className="text-[11px] font-bold text-foreground">{d.name}</span>
+            </div>
           </div>
-        </div>
+        ))}
 
         {/* Numaralı durak pinleri */}
         {drivers.map((driver) => {

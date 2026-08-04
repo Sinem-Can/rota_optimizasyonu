@@ -12,7 +12,9 @@
     <PackageReference Include="ExcelDataReader" Version="3.9.0" />
     <PackageReference Include="ExcelDataReader.DataSet" Version="3.9.0" />
     <PackageReference Include="Google.OrTools" Version="9.15.6755" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.10" />
     <PackageReference Include="Npgsql" Version="10.0.3" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.3" />
   </ItemGroup>
 
 </Project>

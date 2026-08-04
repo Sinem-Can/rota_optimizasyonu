@@ -2,8 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import type { UnassignedTaskDto } from "@/lib/route-data"
-import { drivers } from '@/lib/route-data'
+import type { UnassignedTaskDto, DriverDto } from "@/lib/route-data"
 
 import {
   Bell,
@@ -36,6 +35,8 @@ interface TopBarProps {
   activeTab: TabKey
   onTabChange: (tab: TabKey) => void
   onImportTasks: (tasks: UnassignedTaskDto[]) => void
+  drivers: DriverDto[]
+  onSearch?: (query: string) => void
 }
 
 interface KpiItem {
@@ -47,7 +48,7 @@ interface KpiItem {
   icon: React.ComponentType<{ className?: string }>
 }
 
-export function TopBar({ activeTab, onTabChange, onImportTasks }: TopBarProps) {
+export function TopBar({ activeTab, onTabChange, onImportTasks, drivers, onSearch }: TopBarProps) {
   const isErp = activeTab === 'erp'
 
   // --- DİNAMİK HESAPLAMALAR (PLANLAMA EKRANI İÇİN) ---
@@ -148,12 +149,24 @@ export function TopBar({ activeTab, onTabChange, onImportTasks }: TopBarProps) {
 
   // Arama ve Takvim State'leri
   const searchInputRef = useRef<HTMLInputElement>(null)
-  const [selectedDate, setSelectedDate] = useState('2026-07-25')
+  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0])
+  const [currentTime, setCurrentTime] = useState(() => {
+    const now = new Date()
+    return now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
+  })
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = new Date()
+      setCurrentTime(now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }))
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [])
 
   const formatDisplayDate = () => {
     const [y, m, d] = selectedDate.split('-')
     const months = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara']
-    return `${d} ${months[parseInt(m) - 1]} ${y}`
+    return `${currentTime} · ${d} ${months[parseInt(m) - 1]} ${y}`
   }
 
   useEffect(() => {
@@ -170,17 +183,12 @@ export function TopBar({ activeTab, onTabChange, onImportTasks }: TopBarProps) {
   const handleSearchSubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       const query = e.currentTarget.value
+      // onSearch is handled by onChange for live filtering
       if (!query.trim()) return
 
-      toast.info(`"${query}" aranıyor...`, {
-        description: 'Veritabanında eşleşen kayıtlar getiriliyor.',
+      toast.info(`"${query}" arandı`, {
+        description: 'Sonuçlar listeye yansıtıldı.',
       })
-
-      setTimeout(() => {
-        toast.success("Kayıt bulundu", {
-          description: "Sonuçlar haritaya ve listeye yansıtıldı."
-        })
-      }, 1200)
     }
   }
 
@@ -227,6 +235,7 @@ export function TopBar({ activeTab, onTabChange, onImportTasks }: TopBarProps) {
           <input
             ref={searchInputRef}
             type="search"
+            onChange={(e) => onSearch?.(e.target.value)}
             onKeyDown={handleSearchSubmit}
             placeholder="Müşteri, sipariş no veya plaka ara…"
             aria-label="Genel arama"

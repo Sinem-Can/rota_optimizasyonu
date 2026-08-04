@@ -199,8 +199,8 @@ async function handleSendToRoutePool() {
     
     try {
       // 1. GERÇEK BACKEND İSTEĞİ:
-      // DİKKAT: 'http://localhost:5000/api/havuz' kısmını backend ekibinin sana verdiği gerçek adresle değiştirmelisin!
-      const response = await fetch('http://localhost:5000/api/havuz/ekle', {
+      // DİKKAT: 'http://localhost:5000/api/orders' kısmını backend ekibinin sana verdiği gerçek adresle değiştirmelisin!
+      const response = await fetch('http://localhost:5000/api/orders', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

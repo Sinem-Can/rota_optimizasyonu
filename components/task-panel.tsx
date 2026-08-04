@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, type Dispatch, type SetStateAction } from 'react'
 import { toast } from 'sonner'
 import {
   Check,
@@ -30,6 +30,7 @@ import {
   statusMeta,
   unassignedTasks,
   type StopDto,
+  type DriverDto,
 } from '@/lib/route-data'
 import { cn } from '@/lib/utils'
 import { NewOrderDialog } from "@/components/new-order-dialog"
@@ -39,8 +40,11 @@ interface TaskPanelProps {
   onSelectStop: (stop: StopDto, driverId: string) => void
   isOptimizing: boolean
   onOptimize: () => void
-  isPoolLocked: boolean
-  onPoolLockChange: (locked: boolean) => void
+  drivers: DriverDto[]
+  unassigned: StopDto[]
+  setUnassigned: Dispatch<SetStateAction<StopDto[]>>
+  setDrivers: Dispatch<SetStateAction<DriverDto[]>>
+  searchQuery?: string
 }
 
 const priorityClass: Record<string, string> = {
@@ -54,13 +58,13 @@ export function TaskPanel({
   onSelectStop,
   isOptimizing,
   onOptimize,
-  isPoolLocked,
-  onPoolLockChange,
+  drivers: localDrivers,
+  unassigned: localUnassigned,
+  setUnassigned: setLocalUnassigned,
+  setDrivers: setLocalDrivers,
+  searchQuery = '',
 }: TaskPanelProps) {
-  const [tab, setTab] = useState<'unassigned' | 'assigned'>('assigned')
-  
-  const [localUnassigned, setLocalUnassigned] = useState(unassignedTasks)
-  const [localDrivers, setLocalDrivers] = useState(drivers)
+  const [tab, setTab] = useState<'assigned' | 'unassigned'>('unassigned')
 
   const [expanded, setExpanded] = useState<string[]>(['ARC-001', 'ARC-002'])
   const [lockPopoverOpen, setLockPopoverOpen] = useState(false)
@@ -68,52 +72,6 @@ export function TaskPanel({
   const [brokenDrivers, setBrokenDrivers] = useState<string[]>([])
   
   const [waybills, setWaybills] = useState<Record<string, string>>({})
-
-  // OPTİMİZASYON SİMÜLASYONU SİHRİ
-  const handleOptimizeClick = () => {
-    onOptimize()
-
-    setTimeout(() => {
-      setLocalUnassigned((prevUnassigned) => {
-        if (prevUnassigned.length === 0) return prevUnassigned
-
-        setLocalDrivers((prevDrivers) => {
-          const updatedDrivers = [...prevDrivers]
-          
-          prevUnassigned.forEach((task, index) => {
-            const driverIndex = index % updatedDrivers.length
-            const targetDriver = updatedDrivers[driverIndex]
-            
-            // HATA ÇÖZÜMÜ: ID çakışmasını engellemek için benzersiz bir ID üretiyoruz
-            const newStop = {
-              ...task,
-              id: `ST-OPT-${task.id}-${index}-${Date.now()}`,
-              sequence: targetDriver.stops.length + 1,
-              volumeM3: 1.5,
-              status: 'pending', 
-              eta: task.windowStart,
-              serviceMinutes: 15,
-              phone: '0555 000 0000',
-              x: 50 + (index * 2),
-              y: 50 + (index * 2),
-            } as StopDto
-            
-            updatedDrivers[driverIndex] = {
-              ...targetDriver,
-              stops: [...targetDriver.stops, newStop],
-              capacityUsedKg: targetDriver.capacityUsedKg + task.weightKg
-            }
-          })
-          
-          return updatedDrivers
-        })
-
-        return []
-      })
-      
-      setTab('assigned')
-    }, 2200)
-  }
 
   const handleDropTask = (taskId: string, driverId: string) => {
     const taskToMove = localUnassigned.find((t) => t.id === taskId)
@@ -188,41 +146,28 @@ export function TaskPanel({
       <div className="shrink-0 border-b border-border p-3">
         <button
           type="button"
-          onClick={handleOptimizeClick}
-          disabled={isOptimizing || isPoolLocked || localUnassigned.length === 0}
-          aria-describedby={isPoolLocked ? 'optimize-lock-hint' : undefined}
+          onClick={() => {
+            onOptimize()
+            setTab('assigned')
+          }}
+          disabled={isOptimizing || localUnassigned.length === 0}
           title={
-            isPoolLocked
-              ? 'Havuz kilitli olduğu için optimizasyon başlatılamaz'
-              : localUnassigned.length === 0 
-                ? 'Havuzda optimize edilecek sipariş yok' 
-                : 'Rotaları yeniden optimize et'
+            localUnassigned.length === 0 
+              ? 'Havuzda optimize edilecek sipariş yok' 
+              : 'Rotaları yeniden optimize et'
           }
           className={cn(
             'group flex w-full items-center justify-center gap-2.5 rounded-lg bg-primary px-4 py-3.5 text-[15px] font-bold tracking-tight text-primary-foreground shadow-sm transition-all',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-            (isPoolLocked || localUnassigned.length === 0)
+            localUnassigned.length === 0
               ? 'cursor-not-allowed opacity-40 saturate-50'
               : 'hover:brightness-110 active:scale-[0.99]',
             isOptimizing && 'cursor-wait opacity-80',
           )}
         >
-          {isPoolLocked ? (
-            <Lock className="size-5" />
-          ) : (
-            <Sparkles className={cn('size-5', isOptimizing && 'animate-spin')} />
-          )}
+          <Sparkles className={cn('size-5', isOptimizing && 'animate-spin')} />
           {isOptimizing ? 'Optimize Ediliyor…' : 'Rotaları Optimize Et'}
         </button>
-        {isPoolLocked ? (
-          <p
-            id="optimize-lock-hint"
-            className="mt-2 flex items-center gap-1.5 rounded-md border border-warning/25 bg-warning/10 px-2 py-1.5 text-[11px] font-medium leading-relaxed text-warning"
-          >
-            <Lock className="size-3 shrink-0" />
-            Havuz kilitli — optimizasyon için acil müdahale gerekli.
-          </p>
-        ) : null}
         <div className="mt-2 flex items-center justify-between px-0.5">
           <p className="text-[11px] font-medium text-muted-foreground">
             {localUnassigned.length} atanmamış görev kuyrukta
@@ -290,74 +235,20 @@ export function TaskPanel({
         </button>
       </div>
 
-      {tab === 'unassigned' ? (
-        <div
-          className={cn(
-            'shrink-0 border-b border-border px-3 py-1.5',
-            isPoolLocked ? 'bg-warning/10' : 'bg-success/10',
-          )}
-        >
-          {isPoolLocked ? (
-            <Popover open={lockPopoverOpen} onOpenChange={setLockPopoverOpen}>
-              <PopoverTrigger
-                aria-label="Havuz kilidi hakkında bilgi ve acil müdahale seçenekleri"
-                className={cn(
-                  'inline-flex items-center gap-1 rounded border border-warning/40 bg-warning/15 px-1.5 py-0.5 text-[10px] font-bold text-warning transition-colors',
-                  'hover:border-warning/60 hover:bg-warning/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warning/40',
-                  lockPopoverOpen && 'border-warning/60 bg-warning/25',
-                )}
-              >
-                <Lock className="size-2.5 shrink-0" />
-                06:00 Cut-Off: Havuz Kilitli
-              </PopoverTrigger>
-              <PopoverContent align="start" className="w-72 p-3">
-                <div className="flex items-start gap-2">
-                  <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-md border border-warning/30 bg-warning/10 text-warning">
-                    <Lock className="size-3.5" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-[12px] font-bold text-foreground">Havuz Kilitli</p>
-                    <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
-                      Havuz şu an kilitli olduğu için yeni sipariş ataması yapılamaz. Acil durum
-                      müdahalesi için havuz kilidini geçici olarak kaldırmak istiyor musunuz?
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-3 flex items-center justify-end gap-1.5">
-                  <Button variant="ghost" size="sm" onClick={() => setLockPopoverOpen(false)}>
-                    Vazgeç
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      onPoolLockChange(false)
-                      setLockPopoverOpen(false)
-                    }}
-                  >
-                    Kilidi Kaldır
-                  </Button>
-                </div>
-              </PopoverContent>
-            </Popover>
-          ) : (
-            <button
-              type="button"
-              onClick={() => onPoolLockChange(true)}
-              aria-label="Havuz kilidini yeniden etkinleştir"
-              title="Havuz kilidini yeniden etkinleştir"
-              className="inline-flex items-center gap-1 rounded border border-success/40 bg-success/15 px-1.5 py-0.5 text-[10px] font-bold text-success transition-colors hover:border-success/60 hover:bg-success/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-success/40"
-            >
-              <LockOpen className="size-2.5 shrink-0" />
-              Havuz Kilidi Kaldırıldı (Acil Müdahale)
-            </button>
-          )}
-        </div>
-      ) : null}
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         {tab === 'assigned' ? (
           <ul className="divide-y divide-border">
             {localDrivers.map((driver) => {
+              // Arama sorgusuyla filtreleme
+              const filteredStops = driver.stops.filter((stop) => 
+                !searchQuery || 
+                stop.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                stop.orderNo.toLowerCase().includes(searchQuery.toLowerCase())
+              )
+              
+              if (searchQuery && filteredStops.length === 0) return null;
+
               const theme = driverTheme[driver.colorKey]
               const isOpen = expanded.includes(driver.id)
               const loadPct = Math.round((driver.capacityUsedKg / driver.capacityMaxKg) * 100)
@@ -470,7 +361,7 @@ export function TaskPanel({
 
                   {isOpen ? (
                     <ol className="space-y-1.5 border-t border-border bg-secondary/30 px-3 py-2.5">
-                      {driver.stops.map((stop) => {
+                      {filteredStops.map((stop) => {
                         const isSelected = selectedStopId === stop.id
                         const isConfirmed = confirmedStops.includes(stop.id)
                         const isDelivered = isConfirmed || stop.status === 'completed'
@@ -522,7 +413,7 @@ export function TaskPanel({
                                 <span className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
                                   <MapPin className="size-3 shrink-0" />
                                   <span className="truncate">
-                                    {stop.district} · {stop.address}
+                                    {stop.district ? `${stop.district} · ` : ""}{stop.address}
                                   </span>
                                 </span>
                                 <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
@@ -614,16 +505,20 @@ export function TaskPanel({
           </ul>
         ) : (
           <ul className="divide-y divide-border">
-            {!isPoolLocked ? (
-              <li className="px-3 py-2">
+            <li className="px-3 py-2">
                 <NewOrderDialog 
+                  triggerLabel="Yeni Sipariş Ekle"
+                  triggerClassName="flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-border px-3 py-2 text-xs font-semibold text-muted-foreground hover:border-primary/50 hover:bg-secondary/50 hover:text-primary transition-colors"
                   onAddOrder={(newOrder) => {
                     setLocalUnassigned((prev) => [newOrder, ...prev])
                   }} 
                 />
               </li>
-            ) : null}
-            {localUnassigned.map((task) => (
+            {localUnassigned.filter(task => 
+              !searchQuery || 
+              task.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              task.orderNo.toLowerCase().includes(searchQuery.toLowerCase())
+            ).map((task) => (
               <li 
                 key={task.id}
                 draggable
@@ -640,6 +535,7 @@ export function TaskPanel({
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
                       <p className="truncate text-[13px] font-semibold text-foreground">
+                        <span className="text-muted-foreground mr-1">{task.orderNo}</span> 
                         {task.customerName}
                       </p>
                       <span
@@ -654,7 +550,7 @@ export function TaskPanel({
                     <p className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
                       <MapPin className="size-3 shrink-0" />
                       <span className="truncate">
-                        {task.district} · {task.address}
+                        {task.district ? `${task.district} · ` : ""}{task.address}
                       </span>
                     </p>
                     <div className="mt-1.5 flex flex-wrap items-center gap-1.5">

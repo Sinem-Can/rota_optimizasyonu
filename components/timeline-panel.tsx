@@ -2,13 +2,14 @@
 
 import { useState } from 'react'
 import { ChevronsUpDown, Clock, TriangleAlert, ZoomIn } from 'lucide-react'
-import { driverTheme, drivers, toMinutes, type StopDto } from '@/lib/route-data'
+import { driverTheme, toMinutes, type StopDto, type DriverDto } from '@/lib/route-data'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
 interface TimelinePanelProps {
   selectedStopId: string | null
   onSelectStop: (stop: StopDto, driverId: string) => void
+  drivers: DriverDto[]
 }
 
 const DAY_START = 8 * 60 // 08:00
@@ -23,7 +24,7 @@ const hourTicks = Array.from(
   (_, i) => DAY_START + i * 60,
 )
 
-export function TimelinePanel({ selectedStopId, onSelectStop }: TimelinePanelProps) {
+export function TimelinePanel({ selectedStopId, onSelectStop, drivers }: TimelinePanelProps) {
   const [isExpanded, setIsExpanded] = useState(false)
 
   return (
