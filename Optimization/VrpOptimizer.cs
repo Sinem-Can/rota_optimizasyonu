@@ -388,8 +388,13 @@ public class VrpOptimizer
                 }
                 else
                 {
-                    // Müşteride kendi indirme süresini basıyoruz
-                    route += $"  -> Müşteri {origCurrentNode} (Mesafe: {legDistance} km | Sürüş: {travelTime} dk, İndirme: {printServiceTime} dk, Bekleme: {waitTime} dk)\n";
+                    // origCurrentNode numarasını alıp NodeNames dizisinden gerçek adını buluyoruz
+                    string gercekIsim = (data.NodeNames != null && origCurrentNode < data.NodeNames.Length) 
+                                        ? data.NodeNames[origCurrentNode] 
+                                        : $"Müşteri {origCurrentNode}";
+
+                    // Müşteride kendi indirme süresini ve gerçek numarasını/adını basıyoruz
+                    route += $"  -> Ziyaret: {gercekIsim} (Mesafe: {legDistance} km | Sürüş: {travelTime} dk, İndirme: {printServiceTime} dk, Bekleme: {waitTime} dk)\n";
                 }
             }
                 

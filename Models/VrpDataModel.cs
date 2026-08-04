@@ -42,4 +42,7 @@ public class VrpDataModel
 
     // Orijinal Veritabanı ID'lerini (Müşteri Numaralarını) tutar. Matris küçültüldüğünde çıktı için gereklidir.
     public int[]? OriginalNodeIds { get; set; }
+
+    // Düğümlerin gerçek isimlerini (Cari Kodlarını veya Depo Adlarını) tutacak dizi
+    public string[] NodeNames { get; set; }
 } 
