@@ -1,7 +1,8 @@
 'use client'
 
-import { AlertTriangle, ArrowUpDown, ChevronRight, FileSearch, Plus, CheckSquare } from 'lucide-react'
+import { AlertTriangle, ArrowUpDown, ChevronRight, FileSearch, Plus, CheckSquare, Loader2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import { toast } from 'sonner' // YENİ: Şık bildirimler için
 import { ErpRecordDialog } from '@/components/erp-record-dialog'
 import { GibDocumentDialog } from '@/components/gib-document-dialog'
 import { ErpRowDialog, type ErpRowMode } from '@/components/erp-row-dialog'
@@ -13,6 +14,7 @@ import { erpStatusMeta } from '@/lib/erp-data'
 import { findGibDocument, type GibDocument } from '@/lib/erp-document'
 import { erpModules, findView, type ErpCell, type ErpTone } from '@/lib/erp-modules'
 import { cn } from '@/lib/utils'
+import { NewOrderDialog } from '@/components/new-order-dialog'
 
 /** Serbest metinli pill'ler için ton eşlemesi. */
 const toneClass: Record<ErpTone, string> = {
@@ -179,14 +181,50 @@ export function ErpPanel() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [rowMode, setRowMode] = useState<ErpRowMode | null>(null)
   
-  // YENİ: Toplu işlemler için seçilen satırların ID'lerini tutan state
+  // Toplu işlemler için seçilen satırların ID'lerini tutan state
   const [selectedIdsForBatch, setSelectedIdsForBatch] = useState<string[]>([])
+  // Backend'e istek atılırken butonun dönmesini sağlayacak state
+  const [isSending, setIsSending] = useState(false)
+  
   /** Açık GİB matbu evrak önizlemesi (e-İrsaliye / e-Fatura). */
   const [gibDoc, setGibDoc] = useState<GibDocument | null>(null)
   /** UI mock: silinen kayıtlar yalnızca istemci tarafında gizlenir. */
   const [deletedIds, setDeletedIds] = useState<string[]>([])
 
   const { module, view } = findView(activeViewKey)
+
+  // 3. ADIM: GERÇEKÇİ BACKEND FONKSİYONU (Buraya eklendi)
+async function handleSendToRoutePool() {
+    setIsSending(true)
+    
+    try {
+      // 1. GERÇEK BACKEND İSTEĞİ:
+      // DİKKAT: 'http://localhost:5000/api/havuz' kısmını backend ekibinin sana verdiği gerçek adresle değiştirmelisin!
+      const response = await fetch('http://localhost:5000/api/havuz/ekle', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        // Seçtiğimiz siparişlerin ID listesini (Array) backend'e JSON olarak yolluyoruz
+        body: JSON.stringify({ siparisIds: selectedIdsForBatch }),
+      })
+
+      // Backend'den 200 OK (Başarılı) yanıtı gelmezse hata fırlat
+      if (!response.ok) {
+        throw new Error(`HTTP Hata! Durum kodu: ${response.status}`)
+      }
+
+      // Backend başarılı yanıt dönerse:
+      toast.success(`${selectedIdsForBatch.length} adet sipariş Rota Havuzuna aktarıldı!`)
+      setSelectedIdsForBatch([]) // İşlem bitince seçimleri temizle
+
+    } catch (error) {
+      console.error("Backend bağlantı hatası:", error)
+      toast.error("Siparişler gönderilirken backend'de bir hata oluştu! API adresini ve backend'in çalıştığını kontrol et.")
+    } finally {
+      setIsSending(false)
+    }
+  }
 
   const rows = useMemo(() => {
     const q = query.trim().toLocaleLowerCase('tr-TR')
@@ -205,7 +243,7 @@ export function ErpPanel() {
     setQuery('')
     setSearchOpen(false)
     setSelectedId(null)
-    setSelectedIdsForBatch([]) // YENİ: Sekme değişince eski seçimleri temizle
+    setSelectedIdsForBatch([]) // Sekme değişince eski seçimleri temizle
     const owner = erpModules.find((m) => m.views.some((v) => v.key === key))
     if (owner && !openModules.includes(owner.key)) {
       setOpenModules((prev) => [...prev, owner.key])
@@ -216,13 +254,15 @@ export function ErpPanel() {
     setOpenModules((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]))
   }
 
-  // '+ Yeni' aksiyonu: özel formu olan modüller kendi dialog'unu, diğerleri jenerik formu açar.
+  // '+ Yeni' aksiyonu
   const newTriggerClass =
     'flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-primary px-2.5 text-[12px] font-semibold text-primary-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40'
 
   const newAction =
     view.dialog === 'arac' ? (
       <NewVehicleDialog triggerLabel="Yeni" triggerClassName={newTriggerClass} />
+    ) : view.dialog === 'siparis' ? (
+      <NewOrderDialog triggerLabel="Yeni" triggerClassName={newTriggerClass} /> 
     ) : view.dialog ? (
       <ErpRecordDialog
         kind={view.dialog}
@@ -267,21 +307,23 @@ export function ErpPanel() {
           ) : null}
         </div>
 
-        {/* YENİ: Toplu İşlem Butonu Bar'ı (Sadece seçilebilir tabloysa ve en az 1 eleman seçiliyse görünür) */}
+        {/* 4. ADIM: GÜNCELLENEN BUTON BAR'I */}
         {view.selectable && selectedIdsForBatch.length > 0 && (
           <div className="flex shrink-0 items-center justify-between border-b border-border bg-primary/5 px-4 py-2.5">
             <span className="text-[13px] font-medium text-primary">
               {selectedIdsForBatch.length} adet {view.recordName.toLowerCase()} seçildi
             </span>
             <button
-              onClick={() => {
-                alert(`${selectedIdsForBatch.length} adet ${view.recordName.toLowerCase()} Rota Optimizasyon havuzuna gönderiliyor! (Backend bağlantısı bekleniyor)`)
-                setSelectedIdsForBatch([]) // İşlem bitince seçimleri kaldır
-              }}
-              className="flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-[12px] font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
+              onClick={handleSendToRoutePool}
+              disabled={isSending}
+              className="flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-[12px] font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-70 disabled:cursor-not-allowed"
             >
-              <CheckSquare className="size-4" />
-              {view.batchActionLabel || 'Seçilenleri Gönder'}
+              {isSending ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <CheckSquare className="size-4" />
+              )}
+              {isSending ? 'Gönderiliyor...' : (view.batchActionLabel || 'Seçilenleri Gönder')}
             </button>
           </div>
         )}
@@ -312,7 +354,7 @@ export function ErpPanel() {
             <table className="w-full border-collapse text-left">
               <thead>
                 <tr className="border-b border-border bg-secondary/60">
-                  {/* YENİ: En sola Checkbox sütun başlığı (Sadece selectable modüllerde) */}
+                  {/* En sola Checkbox sütun başlığı */}
                   {view.selectable && (
                     <th scope="col" className="w-12 px-4 py-3 align-middle">
                       <input 
@@ -330,7 +372,6 @@ export function ErpPanel() {
                     </th>
                   )}
                   {view.columns.map((col, i) => {
-                    // 'İşlemler' sütunu sıralanabilir değildir.
                     const isActionCol =
                       view.docAction !== undefined && i === view.columns.length - 1
                     return (
@@ -354,7 +395,7 @@ export function ErpPanel() {
               <tbody>
                 {rows.map((row) => {
                   const active = row.id === selectedId
-                  const isChecked = selectedIdsForBatch.includes(row.id) // YENİ: Bu satır seçili mi?
+                  const isChecked = selectedIdsForBatch.includes(row.id)
 
                   return (
                     <tr
@@ -370,7 +411,7 @@ export function ErpPanel() {
                         active ? 'bg-accent/60' : isChecked ? 'bg-primary/5' : 'hover:bg-secondary/50',
                       )}
                     >
-                      {/* YENİ: Satırın en başına checkbox (Sadece selectable modüllerde) */}
+                      {/* Satırın en başına checkbox */}
                       {view.selectable && (
                         <td className="w-12 px-4 py-3 align-middle" onClick={(e) => e.stopPropagation()}>
                           <input 
@@ -396,7 +437,6 @@ export function ErpPanel() {
                           <button
                             type="button"
                             onClick={(e) => {
-                              // Satır seçimini tetiklemeden evrağı aç.
                               e.stopPropagation()
                               setGibDoc(findGibDocument(row.id))
                             }}

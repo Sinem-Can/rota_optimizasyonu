@@ -69,7 +69,7 @@ export interface ErpView {
   /** Kayıt tekil adı; "Yeni ... Kaydı" başlığı ve toolbar ipuçlarında kullanılır. */
   recordName: string
   /** Özel form dialog'u olan modüller. Yoksa jenerik form açılır. */
-  dialog?: 'cari' | 'stok' | 'depo' | 'arac'
+  dialog?: 'cari' | 'stok' | 'depo' | 'arac' | 'siparis'
   /** Ayarlandığında tabloya 'İşlemler' sütunu eklenir ve satır bazında matbu evrak önizlemesi açılır. */
   docAction?: 'irsaliye' | 'fatura'
   
@@ -261,6 +261,9 @@ const siparisler: ErpView = {
   // YENİ: Bu iki satır sayesinde Siparişler tablosu artık rota planlamaya veri gönderebilecek!
   selectable: true, 
   batchActionLabel: 'Seçilenleri Rota Havuzuna Gönder',
+
+  // YENİ EKLENEN SATIR: Siparişlere özel formumuzun açılması için anahtar kelime
+  dialog: 'siparis',
   
   columns: [
     'Sipariş No', 'Müşteri', 'Sipariş İçeriği', 'Araç / Plaka', 
