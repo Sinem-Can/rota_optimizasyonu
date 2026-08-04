@@ -44,5 +44,5 @@ public class VrpDataModel
     public int[]? OriginalNodeIds { get; set; }
 
     // Düğümlerin gerçek isimlerini (Cari Kodlarını veya Depo Adlarını) tutacak dizi
-    public string[] NodeNames { get; set; }
+    public string[]? NodeNames { get; set; }
 } 

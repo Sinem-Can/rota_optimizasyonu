@@ -74,9 +74,16 @@ public class VrpOptimizer
                 if (data.DistanceMatrix != null)
                     distance = data.DistanceMatrix[fromNode, toNode];
 
+                long toStartTime = 0;
+                if (data.TimeWindows != null && data.TimeWindows.GetLength(0) > toNode)
+                {
+                    toStartTime = data.TimeWindows[toNode, 0];
+                }
+
                 long time = 0;
-                if (data.TimeMatrixOgle != null)
-                    time = data.TimeMatrixOgle[fromNode, toNode]; // Varsayılan öğle trafiği
+                if (toStartTime < 600) time = data.TimeMatrixSabah[fromNode, toNode];
+                else if (toStartTime >= 960) time = data.TimeMatrixAksam[fromNode, toNode];
+                else time = data.TimeMatrixOgle[fromNode, toNode];
                 
                 if (!Array.Exists(data.Starts, s => s == fromNode) && !Array.Exists(data.Ends, e => e == fromNode))
                 {
@@ -251,7 +258,7 @@ public class VrpOptimizer
 
         // 3. Arama Parametrelerini Ayarla
         RoutingSearchParameters searchParameters = operations_research_constraint_solver.DefaultRoutingSearchParameters();
-        searchParameters.FirstSolutionStrategy = FirstSolutionStrategy.Types.Value.LocalCheapestInsertion;
+        searchParameters.FirstSolutionStrategy = FirstSolutionStrategy.Types.Value.PathCheapestArc;
         searchParameters.LocalSearchMetaheuristic = LocalSearchMetaheuristic.Types.Value.GuidedLocalSearch;
         searchParameters.TimeLimit = new Google.Protobuf.WellKnownTypes.Duration { Seconds = 30 };
 
@@ -341,10 +348,16 @@ public class VrpOptimizer
                 long prevCumul = solution.Min(timeDimension.CumulVar(previousIndex));
                 long departureTime = prevCumul + serviceTime;
                 
+                long toStartTime = 0;
+                if (data.TimeWindows != null && data.TimeWindows.GetLength(0) > currentNode)
+                {
+                    toStartTime = data.TimeWindows[currentNode, 0];
+                }
+
                 long travelTime = 0;
-                if (departureTime < 600) 
+                if (toStartTime < 600) 
                     travelTime = data.TimeMatrixSabah[previousNode, currentNode];
-                else if (departureTime >= 960) 
+                else if (toStartTime >= 960) 
                     travelTime = data.TimeMatrixAksam[previousNode, currentNode];
                 else 
                     travelTime = data.TimeMatrixOgle[previousNode, currentNode];
