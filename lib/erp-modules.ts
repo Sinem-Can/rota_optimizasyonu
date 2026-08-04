@@ -70,11 +70,14 @@ export interface ErpView {
   recordName: string
   /** Özel form dialog'u olan modüller. Yoksa jenerik form açılır. */
   dialog?: 'cari' | 'stok' | 'depo' | 'arac'
-  /**
-   * Ayarlandığında tabloya 'İşlemler' sütunu eklenir ve satır bazında
-   * GİB matbu evrak önizlemesi (Görüntüle/İndir) açılır.
-   */
+  /** Ayarlandığında tabloya 'İşlemler' sütunu eklenir ve satır bazında matbu evrak önizlemesi açılır. */
   docAction?: 'irsaliye' | 'fatura'
+  
+  // --- YENİ EKLENEN KISIMLAR ---
+  /** Tablonun en soluna seçim (checkbox) sütunu ekler */
+  selectable?: boolean
+  /** Seçili öğelerle yapılacak toplu işlemin buton metni (Örn: "Rota Havuzuna Gönder") */
+  batchActionLabel?: string
 }
 
 export interface ErpModule {
@@ -254,22 +257,25 @@ const siparisler: ErpView = {
   label: 'Siparişler',
   recordName: 'Sipariş',
   searchPlaceholder: 'Sipariş no, müşteri veya ürün ara…',
+  
+  // YENİ: Bu iki satır sayesinde Siparişler tablosu artık rota planlamaya veri gönderebilecek!
+  selectable: true, 
+  batchActionLabel: 'Seçilenleri Rota Havuzuna Gönder',
+  
   columns: [
     'Sipariş No', 'Müşteri', 'Sipariş İçeriği', 'Araç / Plaka', 
     'Toplam Kg / Hacim', 'Sipariş Durumu', 'Pencere'
   ],
   rows: erpOrders.map((o) => ({
+    // ... (içerideki kodlar daha önce yazdığımız gibi aynı kalacak)
     id: o.id,
-    // YENİ: Arama motoruna ürün isimlerini de ekledik, aratınca çıkar!
     search: s(o.id, o.offerId, o.cariName, o.vehiclePlate, o.status, ...o.lines.map(l => l.stockName)),
     cells: [
       { t: 'code', v: o.id, sub: `Teklif: ${o.offerId}` },
       { t: 'text', v: o.cariName, sub: o.cariCode, strong: true },
       { 
         t: 'text', 
-        // Üst metin: "50x Coca-Cola 1 L, 120x Fanta 1 L" şeklinde yazar
         v: o.lines.map(l => `${l.quantity}x ${l.stockName}`).join(', '), 
-        // Alt metin: Stok kodlarını "CC-1001, FNT-1001" şeklinde yazar
         sub: o.lines.map(l => l.stockCode).join(', ') 
       },
       { t: 'text', v: o.vehicleCode, sub: o.vehiclePlate },
