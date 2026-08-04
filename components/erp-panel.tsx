@@ -1,6 +1,6 @@
 'use client'
 
-import { AlertTriangle, ArrowUpDown, ChevronRight, FileSearch, Plus } from 'lucide-react'
+import { AlertTriangle, ArrowUpDown, ChevronRight, FileSearch, Plus, CheckSquare } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { ErpRecordDialog } from '@/components/erp-record-dialog'
 import { GibDocumentDialog } from '@/components/gib-document-dialog'
@@ -178,6 +178,9 @@ export function ErpPanel() {
   const [searchOpen, setSearchOpen] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [rowMode, setRowMode] = useState<ErpRowMode | null>(null)
+  
+  // YENİ: Toplu işlemler için seçilen satırların ID'lerini tutan state
+  const [selectedIdsForBatch, setSelectedIdsForBatch] = useState<string[]>([])
   /** Açık GİB matbu evrak önizlemesi (e-İrsaliye / e-Fatura). */
   const [gibDoc, setGibDoc] = useState<GibDocument | null>(null)
   /** UI mock: silinen kayıtlar yalnızca istemci tarafında gizlenir. */
@@ -202,6 +205,7 @@ export function ErpPanel() {
     setQuery('')
     setSearchOpen(false)
     setSelectedId(null)
+    setSelectedIdsForBatch([]) // YENİ: Sekme değişince eski seçimleri temizle
     const owner = erpModules.find((m) => m.views.some((v) => v.key === key))
     if (owner && !openModules.includes(owner.key)) {
       setOpenModules((prev) => [...prev, owner.key])
@@ -263,6 +267,25 @@ export function ErpPanel() {
           ) : null}
         </div>
 
+        {/* YENİ: Toplu İşlem Butonu Bar'ı (Sadece seçilebilir tabloysa ve en az 1 eleman seçiliyse görünür) */}
+        {view.selectable && selectedIdsForBatch.length > 0 && (
+          <div className="flex shrink-0 items-center justify-between border-b border-border bg-primary/5 px-4 py-2.5">
+            <span className="text-[13px] font-medium text-primary">
+              {selectedIdsForBatch.length} adet {view.recordName.toLowerCase()} seçildi
+            </span>
+            <button
+              onClick={() => {
+                alert(`${selectedIdsForBatch.length} adet ${view.recordName.toLowerCase()} Rota Optimizasyon havuzuna gönderiliyor! (Backend bağlantısı bekleniyor)`)
+                setSelectedIdsForBatch([]) // İşlem bitince seçimleri kaldır
+              }}
+              className="flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-[12px] font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
+            >
+              <CheckSquare className="size-4" />
+              {view.batchActionLabel || 'Seçilenleri Gönder'}
+            </button>
+          </div>
+        )}
+
         <ErpToolbar
           newAction={newAction}
           hasSelection={selectedRow !== null}
@@ -289,6 +312,23 @@ export function ErpPanel() {
             <table className="w-full border-collapse text-left">
               <thead>
                 <tr className="border-b border-border bg-secondary/60">
+                  {/* YENİ: En sola Checkbox sütun başlığı (Sadece selectable modüllerde) */}
+                  {view.selectable && (
+                    <th scope="col" className="w-12 px-4 py-3 align-middle">
+                      <input 
+                        type="checkbox"
+                        className="size-3.5 cursor-pointer rounded border-border"
+                        checked={rows.length > 0 && selectedIdsForBatch.length === rows.length}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedIdsForBatch(rows.map(r => r.id)) // Hepsini seç
+                          } else {
+                            setSelectedIdsForBatch([]) // Hiçbirini seçme
+                          }
+                        }}
+                      />
+                    </th>
+                  )}
                   {view.columns.map((col, i) => {
                     // 'İşlemler' sütunu sıralanabilir değildir.
                     const isActionCol =
@@ -314,6 +354,8 @@ export function ErpPanel() {
               <tbody>
                 {rows.map((row) => {
                   const active = row.id === selectedId
+                  const isChecked = selectedIdsForBatch.includes(row.id) // YENİ: Bu satır seçili mi?
+
                   return (
                     <tr
                       key={row.id}
@@ -325,9 +367,25 @@ export function ErpPanel() {
                       aria-selected={active}
                       className={cn(
                         'cursor-pointer border-b border-border transition-colors last:border-0',
-                        active ? 'bg-accent/60' : 'hover:bg-secondary/50',
+                        active ? 'bg-accent/60' : isChecked ? 'bg-primary/5' : 'hover:bg-secondary/50',
                       )}
                     >
+                      {/* YENİ: Satırın en başına checkbox (Sadece selectable modüllerde) */}
+                      {view.selectable && (
+                        <td className="w-12 px-4 py-3 align-middle" onClick={(e) => e.stopPropagation()}>
+                          <input 
+                            type="checkbox"
+                            className="size-3.5 cursor-pointer rounded border-border"
+                            checked={isChecked}
+                            onChange={() => {
+                              setSelectedIdsForBatch(prev => 
+                                prev.includes(row.id) ? prev.filter(id => id !== row.id) : [...prev, row.id]
+                              )
+                            }}
+                          />
+                        </td>
+                      )}
+                      
                       {row.cells.map((cell, i) => (
                         <td key={`${row.id}-${i}`} className="px-4 py-3 align-middle">
                           <Cell cell={cell} />
@@ -356,7 +414,7 @@ export function ErpPanel() {
                 {rows.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={view.columns.length}
+                      colSpan={view.columns.length + (view.selectable ? 1 : 0)}
                       className="px-4 py-12 text-center text-[13px] text-muted-foreground"
                     >
                       Aramanızla eşleşen kayıt bulunamadı.
