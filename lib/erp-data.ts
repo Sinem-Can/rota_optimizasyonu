@@ -584,6 +584,29 @@ export const erpOrders: ErpOrderDto[] = erpOffers
 // (Buradaki export const erpWarehouseNames... satırını sildik!)
 export const erpWarehouseNames = erpWarehouses.map((w) => w.name)
 
+/* -------------------------------- Satınalma ------------------------------- */
+
+export interface ErpPurchaseOrderDto {
+  id: string
+  supplierName: string
+  orderDate: string
+  deliveryDate: string
+  totalAmount: number
+  status: 'Beklemede' | 'Onaylandı' | 'Teslim Alındı' | 'İptal'
+  items: string 
+}
+
+// Stoklar eksiye düşmesin diye uydurduğumuz örnek tedarikçi siparişleri
+export const erpPurchaseOrders: ErpPurchaseOrderDto[] = [
+  { id: 'ALM-2026-0001', supplierName: 'Coca-Cola İçecek A.Ş.', orderDate: '01.08.2026', deliveryDate: '04.08.2026', totalAmount: 125000, status: 'Teslim Alındı', items: '2000x Coca-Cola 1 L, 1500x Fanta 1 L' },
+  { id: 'ALM-2026-0002', supplierName: 'Doğuş Çay ve Gıda', orderDate: '02.08.2026', deliveryDate: '05.08.2026', totalAmount: 48000, status: 'Onaylandı', items: '1000x Fuse Tea Şeftali' },
+  { id: 'ALM-2026-0003', supplierName: 'Damla Su Dağıtım', orderDate: '03.08.2026', deliveryDate: '04.08.2026', totalAmount: 15000, status: 'Onaylandı', items: '3000x Damla 1.5 L' },
+  { id: 'ALM-2026-0004', supplierName: 'Marmara Ambalaj San.', orderDate: '03.08.2026', deliveryDate: '06.08.2026', totalAmount: 32000, status: 'Beklemede', items: '5000x Koli Bandı, 1000x Palet' },
+  { id: 'ALM-2026-0005', supplierName: 'Meyve Konsantreleri A.Ş.', orderDate: '04.08.2026', deliveryDate: '07.08.2026', totalAmount: 89000, status: 'İptal', items: '2000 L Meyve Özü' },
+]
+
+
+
 /** ERP sekmesi KPI özetleri. */
 export const erpSummary = {
   accountCount: erpAccounts.length,
