@@ -429,3 +429,6 @@ FodyWeavers.xsd
 *.msp
 bin/
 obj/
+.vercel
+
+.next

@@ -2,16 +2,17 @@ using Google.OrTools.ConstraintSolver;
 #nullable disable
 using System;
 using System.Collections.Generic;
+using Uyumsoft.RouteOptimizer.Models;
 
 public class VrpOptimizer
 {
-    public void Solve(VrpDataModel data)
+    public List<DriverDto> Solve(VrpDataModel data)
     {
         // 1. Yöneticiyi Başlat (Node sayısı, Araç Sayısı, Başlangıç ve Bitiş Noktaları)
         RoutingIndexManager manager = new RoutingIndexManager(
-            data.TimeMatrixOgle.GetLength(0), 
-            data.VehicleNumber, 
-            data.Starts, 
+            data.TimeMatrixOgle.GetLength(0),
+            data.VehicleNumber,
+            data.Starts,
             data.Ends);
 
         RoutingModel routing = new RoutingModel(manager);
@@ -21,7 +22,7 @@ public class VrpOptimizer
         {
             var fromNode = manager.IndexToNode(fromIndex);
             var toNode = manager.IndexToNode(toIndex);
-            
+
             if (data.DistanceMatrix != null)
                 return data.DistanceMatrix[fromNode, toNode];
             return 0;
@@ -34,13 +35,13 @@ public class VrpOptimizer
         {
             var fromNode = manager.IndexToNode(fromIndex);
             var toNode = manager.IndexToNode(toIndex);
-            
+
             long toStartTime = 0;
             if (data.TimeWindows != null && data.TimeWindows.GetLength(0) > toNode)
             {
                 toStartTime = data.TimeWindows[toNode, 0];
             }
-            
+
             long travelTime = 0;
             // Mutlak Zaman (00:00 = 0)
             // Sabah: 08:00-10:00 (480-600) | Öğle: 10:00-16:00 (600-960) | Akşam: 16:00-19:00 (960-1140)
@@ -50,15 +51,15 @@ public class VrpOptimizer
                 travelTime = data.TimeMatrixAksam[fromNode, toNode];
             else
                 travelTime = data.TimeMatrixOgle[fromNode, toNode];
-            
+
             long serviceTime = 0;
             if (!Array.Exists(data.Starts, s => s == fromNode) && !Array.Exists(data.Ends, e => e == fromNode))
             {
-            // Dinamik Hizmet Süresi: 5 dk sabit yanaşma/evrak + her 100 kg için 2 dk indirme süresi
-            long demandKg = data.WeightDemands[fromNode];
-            serviceTime = 5 + (demandKg / 100) * 2; 
+                // Dinamik Hizmet Süresi: 5 dk sabit yanaşma/evrak + her 100 kg için 2 dk indirme süresi
+                long demandKg = data.WeightDemands[fromNode];
+                serviceTime = 5 + (demandKg / 100) * 2;
             }
-            
+
             return travelTime + serviceTime;
         });
         // ANA HEDEF (COST): Rota çizerken Parasal Hibrit Maliyeti (Yakıt + Zaman) minimize et!
@@ -70,39 +71,39 @@ public class VrpOptimizer
                 var fromNode = manager.IndexToNode(fromIndex);
                 var toNode = manager.IndexToNode(toIndex);
 
-                long distance = 0;
-                if (data.DistanceMatrix != null)
-                    distance = data.DistanceMatrix[fromNode, toNode];
+                long distance = 0;
+                if (data.DistanceMatrix != null)
+                    distance = data.DistanceMatrix[fromNode, toNode];
 
-                long toStartTime = 0;
-                if (data.TimeWindows != null && data.TimeWindows.GetLength(0) > toNode)
-                {
-                    toStartTime = data.TimeWindows[toNode, 0];
-                }
+                long toStartTime = 0;
+                if (data.TimeWindows != null && data.TimeWindows.GetLength(0) > toNode)
+                {
+                    toStartTime = data.TimeWindows[toNode, 0];
+                }
 
-                long time = 0;
-                if (toStartTime < 600) time = data.TimeMatrixSabah[fromNode, toNode];
-                else if (toStartTime >= 960) time = data.TimeMatrixAksam[fromNode, toNode];
-                else time = data.TimeMatrixOgle[fromNode, toNode];
-                
-                if (!Array.Exists(data.Starts, s => s == fromNode) && !Array.Exists(data.Ends, e => e == fromNode))
-                {
-                // Maliyete yansıyacak dinamik indirme süresi
-                long demandKg = data.WeightDemands[fromNode];
-                time += 5 + (demandKg / 100) * 2; 
-                }
+                long time = 0;
+                if (toStartTime < 600) time = data.TimeMatrixSabah[fromNode, toNode];
+                else if (toStartTime >= 960) time = data.TimeMatrixAksam[fromNode, toNode];
+                else time = data.TimeMatrixOgle[fromNode, toNode];
+
+                if (!Array.Exists(data.Starts, s => s == fromNode) && !Array.Exists(data.Ends, e => e == fromNode))
+                {
+                    // Maliyete yansıyacak dinamik indirme süresi
+                    long demandKg = data.WeightDemands[fromNode];
+                    time += 5 + (demandKg / 100) * 2;
+                }
 
                 // Aracın veritabanından gelen KM başı yakıt maliyeti (0 ise varsayılan 5 TL)
                 long vehicleKmCost = data.VehicleKmCosts != null && vehicleIndex < data.VehicleKmCosts.Length ? data.VehicleKmCosts[vehicleIndex] : 0;
                 if (vehicleKmCost <= 0) vehicleKmCost = 5;
-                
+
                 // Şoför ve aracın yolda geçirdiği her dakikanın maliyeti (Örn: 2 TL)
-                long driverMinuteCost = 2; 
+                long driverMinuteCost = 2;
 
                 // Toplam parasal maliyet = (Mesafe * Yakıt) + (Zaman * Şoför)
                 return (distance * vehicleKmCost) + (time * driverMinuteCost);
             });
-            
+
             routing.SetArcCostEvaluatorOfVehicle(costCallbackIndex, vehicleIndex);
         }
 
@@ -122,7 +123,7 @@ public class VrpOptimizer
         for (int i = 0; i < data.TimeMatrixSabah.GetLength(0); ++i)
         {
             long index = manager.NodeToIndex(i);
-            
+
             // Veritabanından (mutlak dakika olarak, örn 08:00 = 480)
             long startTime = 480;
             long endTime = 1080; // 18:00
@@ -157,7 +158,7 @@ public class VrpOptimizer
                         continue;
 
                     int nodeRegion = data.NodeRegions[node];
-                    
+
                     // Eğer noktanın yakası belli (0 değilse) ve aracın izinli olduğu yaka ile uyuşmuyorsa
                     if (nodeRegion != 0 && nodeRegion != allowedRegion)
                     {
@@ -173,7 +174,7 @@ public class VrpOptimizer
         // ====================================================================
         // ARAÇ SABİT MALİYETİ (Mümkün olan en az aracı kullanmaya zorlar)
         // ====================================================================
-        long vehicleFixedCost = 5000; 
+        long vehicleFixedCost = 5000;
         routing.SetFixedCostOfAllVehicles(vehicleFixedCost);
         // ====================================================================
 
@@ -185,67 +186,70 @@ public class VrpOptimizer
             var fromNode = manager.IndexToNode(fromIndex);
             return data.WeightDemands[fromNode];
         });
-        
+
         routing.AddDimensionWithVehicleCapacity(
             weightCallbackIndex,
-            0,  
-            data.VehicleWeightCapacities, 
-            true, 
+            0,
+            data.VehicleWeightCapacities,
+            true,
             "Weight");
 
         // ====================================================================
         // KISIT 2: HACİM (m3)
         // ====================================================================
-        if (data.VehicleVolumeCapacities != null && data.VehicleVolumeCapacities.Length > 0) {
+        if (data.VehicleVolumeCapacities != null && data.VehicleVolumeCapacities.Length > 0)
+        {
             int volumeCallbackIndex = routing.RegisterUnaryTransitCallback((long fromIndex) =>
         {
             var fromNode = manager.IndexToNode(fromIndex);
             return data.VolumeDemands[fromNode];
         });
 
-        routing.AddDimensionWithVehicleCapacity(
-            volumeCallbackIndex,
-            0,
-            data.VehicleVolumeCapacities, 
-            true,
-            "Volume"); 
+            routing.AddDimensionWithVehicleCapacity(
+                volumeCallbackIndex,
+                0,
+                data.VehicleVolumeCapacities,
+                true,
+                "Volume");
         }
 
         // ====================================================================
         // KISIT 3: MAKSİMUM MESAİ/SÜRÜŞ SÜRESİ
         // ====================================================================
         // Süre hesaplaması için 'transitCallbackIndex'i zaten en üstte tanımlamıştık, onu kullanıyoruz.
-        if (data.VehicleMaxTimes != null && data.VehicleMaxTimes.Length > 0) {
+        if (data.VehicleMaxTimes != null && data.VehicleMaxTimes.Length > 0)
+        {
             routing.AddDimensionWithVehicleCapacity(
             timeCallbackIndex, // Burada timeCallbackIndex kullanıyoruz (Artık süreleri bu tutuyor)
             0,  // Bekleme süresi toleransı
             data.VehicleMaxTimes, // Modelden gelen maksimum süreler
-            true, 
-            "MaxTimeDimension"); 
+            true,
+            "MaxTimeDimension");
         }
         // ====================================================================
         // KISIT 4: MAKSİMUM DURAK (MÜŞTERİ) SAYISI
         // ====================================================================
         // Her gidilen noktayı "1" birim olarak sayan bir sayaç oluşturuyoruz
-        if (data.VehicleMaxStops != null && data.VehicleMaxStops.Length > 0) {
+        if (data.VehicleMaxStops != null && data.VehicleMaxStops.Length > 0)
+        {
             int stopsCallbackIndex = routing.RegisterUnaryTransitCallback((long fromIndex) =>
         {
             return 1; // Gidilen her durak maliyeti 1 artırır
         });
-        
-        routing.AddDimensionWithVehicleCapacity(
-            stopsCallbackIndex,
-            0,
-            data.VehicleMaxStops, // Modelden gelen maksimum durak sayıları
-            true,
-            "Stops");
+
+            routing.AddDimensionWithVehicleCapacity(
+                stopsCallbackIndex,
+                0,
+                data.VehicleMaxStops, // Modelden gelen maksimum durak sayıları
+                true,
+                "Stops");
         }
         // ====================================================================
 
         // ====================================================================
         // ATANAMAYAN SİPARİŞLER (PENALTY / DISJUNCTION)
         // ====================================================================
-        long penalty = 100000; 
+        long penalty = 100000;
         for (int i = 0; i < data.TimeMatrixOgle.GetLength(0); ++i)
         {
             if (Array.Exists(data.Starts, start => start == i) || Array.Exists(data.Ends, end => end == i))
@@ -257,14 +261,21 @@ public class VrpOptimizer
         // ====================================================================
 
         // 3. Arama Parametrelerini Ayarla
-        RoutingSearchParameters searchParameters = operations_research_constraint_solver.DefaultRoutingSearchParameters();
-        searchParameters.FirstSolutionStrategy = FirstSolutionStrategy.Types.Value.PathCheapestArc;
-        searchParameters.LocalSearchMetaheuristic = LocalSearchMetaheuristic.Types.Value.GuidedLocalSearch;
-        searchParameters.TimeLimit = new Google.Protobuf.WellKnownTypes.Duration { Seconds = 30 };
+        RoutingSearchParameters searchParameters = operations_research_constraint_solver.DefaultRoutingSearchParameters();
+        searchParameters.FirstSolutionStrategy = FirstSolutionStrategy.Types.Value.PathCheapestArc;
+        searchParameters.LocalSearchMetaheuristic = LocalSearchMetaheuristic.Types.Value.GuidedLocalSearch;
+        searchParameters.TimeLimit = new Google.Protobuf.WellKnownTypes.Duration { Seconds = 30 };
 
-        // 4. Çöz ve Yazdır
+        // 4. Çöz
         Assignment solution = routing.SolveWithParameters(searchParameters);
+
+        Console.WriteLine($"[SOLVER] OR-Tools Çözüm Durumu (Kod): {routing.GetStatus()}");
         
+        if (solution == null)
+        {
+            Console.WriteLine("[ERROR] Çözüm bulunamadı veya tüm kısıtlar sağlanamadı!");
+        }
+
         if (solution != null)
         {
             Console.WriteLine("\nOptimum Rota Başarıyla Bulundu!\n");
@@ -292,145 +303,181 @@ public class VrpOptimizer
                 Console.WriteLine("Tüm siparişler başarıyla araçlara atandı!\n");
             }
 
-            long gercekToplamSure = 0; 
+            long gercekToplamSure = 0;
+            var driverList = new List<DriverDto>();
+            string[] colorKeys = new string[] { "a", "b", "c", "d", "e" };
 
             for (int i = 0; i < data.VehicleNumber; ++i)
             {
-                Console.WriteLine($"--- Araç {i + 1} Rotası ---");
+                int startNode = data.Starts != null && i < data.Starts.Length ? data.Starts[i] : 0;
+                string dName = (data.NodeNames != null && startNode < data.NodeNames.Length && !string.IsNullOrWhiteSpace(data.NodeNames[startNode])) ? data.NodeNames[startNode] : "Merkez Depo";
+                double dX = (startNode == 1) ? 30 : 50;
+                double dY = (startNode == 1) ? 70 : 50;
+
+                var driver = new DriverDto
+                {
+                    id = $"VHC-00{i + 1}",
+                    label = $"Araç {i + 1}",
+                    fullName = $"Şoför {i + 1}",
+                    plate = $"34 VHC 0{i + 1}",
+                    vehicleType = "Panelvan",
+                    capacityMaxKg = data.VehicleWeightCapacities != null && i < data.VehicleWeightCapacities.Length ? data.VehicleWeightCapacities[i] : 1500,
+                    colorKey = colorKeys[i % colorKeys.Length],
+                    depotName = dName,
+                    depotX = dX,
+                    depotY = dY,
+                    stops = new List<StopDto>()
+                };
+
+                Console.WriteLine($"\n--- Araç {i + 1} Rotası ---");
+                Console.WriteLine($"  [Çıkış] {driver.depotName}");
+
                 long routeDistance = 0;
-                long routeWeight = 0; 
-                long routeVolume = 0; 
-                long routeStops = 0; // YENİ: Uğranılan durak sayısını ekrana basmak için eklendi
+                long routeWeight = 0;
+                long routeVolume = 0;
                 long routeTravelTime = 0;
                 long routeServiceTime = 0;
                 long routeWaitTime = 0;
-                
-                var index = routing.Start(i);
-                string route = "";
+                int sequenceCounter = 1;
 
-                var startNode = manager.IndexToNode(index);
-                int origStartNode = data.OriginalNodeIds != null ? data.OriginalNodeIds[startNode] : startNode;
-                route += $"  [Çıkış] Depo {origStartNode}\n";
+                var index = routing.Start(i);
 
                 while (routing.IsEnd(index) == false)
                 {
-                var previousIndex = index;
-                index = solution.Value(routing.NextVar(index));
+                    var previousIndex = index;
+                    index = solution.Value(routing.NextVar(index));
 
-                var previousNode = manager.IndexToNode(previousIndex);
-                var currentNode = manager.IndexToNode(index);
-                int origCurrentNode = data.OriginalNodeIds != null ? data.OriginalNodeIds[currentNode] : currentNode;
-                
-                // =================================================================
-                // YENİ EKLENEN KISIM: Ağırlık, Hacim ve Ziyaret Edilen Müşteri Sayacı
-                // Eğer gidilen durak (currentNode) bir depo değilse değerleri topla
-                // =================================================================
-                if (!Array.Exists(data.Starts, s => s == currentNode) && !Array.Exists(data.Ends, e => e == currentNode))
-                {
-                    // NOT: Kendi kodundaki değişken isimleri neyse (routeWeight, toplamAgirlik vs.) onlarla değiştir.
-                    // DİKKAT: Burada origCurrentNode DEĞİL, motorun kendi indeksi olan currentNode kullanılıyor!
-                    routeStops++; 
-                    routeWeight += data.WeightDemands[currentNode]; 
-                    routeVolume += data.VolumeDemands[currentNode]; 
+                    var previousNode = manager.IndexToNode(previousIndex);
+                    var currentNode = manager.IndexToNode(index);
+                    int origCurrentNode = data.OriginalNodeIds != null ? data.OriginalNodeIds[currentNode] : currentNode;
+
+                    if (!Array.Exists(data.Starts, s => s == currentNode) && !Array.Exists(data.Ends, e => e == currentNode))
+                    {
+                        routeWeight += data.WeightDemands[currentNode];
+                        routeVolume += data.VolumeDemands != null ? data.VolumeDemands[currentNode] : 0;
+                    }
+
+                    long serviceTime = 0;
+                    if (!Array.Exists(data.Starts, s => s == previousNode) && !Array.Exists(data.Ends, e => e == previousNode))
+                    {
+                        long demandKg = data.WeightDemands[previousNode];
+                        serviceTime = 5 + (demandKg / 100) * 2; 
+                    }
+                    routeServiceTime += serviceTime;
+
+                    long prevCumul = solution.Min(timeDimension.CumulVar(previousIndex));
+                    long departureTime = prevCumul + serviceTime;
+
+                    long toStartTime = 0;
+                    if (data.TimeWindows != null && data.TimeWindows.GetLength(0) > currentNode)
+                    {
+                        toStartTime = data.TimeWindows[currentNode, 0];
+                    }
+
+                    long travelTime = 0;
+                    if (toStartTime < 600)
+                        travelTime = data.TimeMatrixSabah[previousNode, currentNode];
+                    else if (toStartTime >= 960)
+                        travelTime = data.TimeMatrixAksam[previousNode, currentNode];
+                    else
+                        travelTime = data.TimeMatrixOgle[previousNode, currentNode];
+
+                    routeTravelTime += travelTime;
+
+                    long arrivalTime = departureTime + travelTime;
+                    long currentStartTime = solution.Min(timeDimension.CumulVar(index));
+                    long waitTime = currentStartTime - arrivalTime;
+                    if (waitTime < 0) waitTime = 0;
+
+                    if (routing.IsEnd(index))
+                    {
+                        waitTime = 0;
+                    }
+
+                    routeWaitTime += waitTime;
+
+                    long legDistance = 0;
+                    if (data.DistanceMatrix != null)
+                    {
+                        legDistance = data.DistanceMatrix[previousNode, currentNode];
+                        routeDistance += legDistance;
+                    }
+
+                    long printServiceTime = 0;
+                    if (!Array.Exists(data.Starts, s => s == currentNode) && !Array.Exists(data.Ends, e => e == currentNode))
+                    {
+                        long demandKg = data.WeightDemands[currentNode];
+                        printServiceTime = 5 + (demandKg / 100) * 2;
+                    }
+
+                    if (!routing.IsEnd(index))
+                    {
+                        string gercekIsim = (data.NodeNames != null && currentNode < data.NodeNames.Length && !string.IsNullOrEmpty(data.NodeNames[currentNode]))
+                                            ? data.NodeNames[currentNode]
+                                            : $"Müşteri {origCurrentNode}";
+                        string cariKodu = (data.NodeCodes != null && currentNode < data.NodeCodes.Length && !string.IsNullOrEmpty(data.NodeCodes[currentNode]))
+                                            ? data.NodeCodes[currentNode]
+                                            : $"CAR{origCurrentNode:000}";
+
+                        string gercekAdres = (data.NodeAddresses != null && currentNode < data.NodeAddresses.Length && !string.IsNullOrEmpty(data.NodeAddresses[currentNode]))
+                                            ? data.NodeAddresses[currentNode]
+                                            : $"Adres {origCurrentNode}";
+
+                        var rnd = new Random(origCurrentNode);
+                        var stop = new StopDto
+                        {
+                            id = $"ST-{origCurrentNode}-{Guid.NewGuid().ToString().Substring(0, 4)}",
+                            sequence = sequenceCounter++,
+                            customerName = gercekIsim,
+                            address = gercekAdres,
+                            district = "",
+                            eta = TimeSpan.FromMinutes(currentStartTime).ToString(@"hh\:mm"),
+                            windowStart = toStartTime > 0 ? TimeSpan.FromMinutes(toStartTime).ToString(@"hh\:mm") : "08:00",
+                            windowEnd = "18:00",
+                            serviceMinutes = (int)printServiceTime,
+                            weightKg = data.WeightDemands[currentNode],
+                            volumeM3 = data.VolumeDemands != null ? data.VolumeDemands[currentNode] : 0,
+                            status = "pending",
+                            priority = "Normal",
+                            phone = "0555 000 0000",
+                            orderNo = $"ORD-{origCurrentNode}",
+                            x = 10 + (rnd.NextDouble() * 80),
+                            y = 10 + (rnd.NextDouble() * 80)
+                        };
+                        driver.stops.Add(stop);
+                        Console.WriteLine($"  -> Ziyaret: {cariKodu} (Mesafe: {legDistance} km | Sürüş: {travelTime} dk, İndirme: {printServiceTime} dk, Bekleme: {waitTime} dk)");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"  -> [Dönüş] {driver.depotName} (Mesafe: {legDistance} km | Sürüş: {travelTime} dk)");
+                    }
                 }
-                // =================================================================
 
-                // 1. Önceki Noktadaki İndirme Süresi
-                long serviceTime = 0;
-                if (!Array.Exists(data.Starts, s => s == previousNode) && !Array.Exists(data.Ends, e => e == previousNode))
-                {
-                    long demandKg = data.WeightDemands[previousNode];
-                    serviceTime = 5 + (demandKg / 100) * 2; // Dinamik indirme süremiz
-                }
-                routeServiceTime += serviceTime;
-
-                // 2. Net Sürüş Süresi (Önceki noktadan çıkış saatine göre matristen çekilir)
-                long prevCumul = solution.Min(timeDimension.CumulVar(previousIndex));
-                long departureTime = prevCumul + serviceTime;
-                
-                long toStartTime = 0;
-                if (data.TimeWindows != null && data.TimeWindows.GetLength(0) > currentNode)
-                {
-                    toStartTime = data.TimeWindows[currentNode, 0];
-                }
-
-                long travelTime = 0;
-                if (toStartTime < 600) 
-                    travelTime = data.TimeMatrixSabah[previousNode, currentNode];
-                else if (toStartTime >= 960) 
-                    travelTime = data.TimeMatrixAksam[previousNode, currentNode];
-                else 
-                    travelTime = data.TimeMatrixOgle[previousNode, currentNode];
-                    
-                routeTravelTime += travelTime;
-
-                // 3. Bekleme Süresi Hesaplama
-                long arrivalTime = departureTime + travelTime;
-                long currentStartTime = solution.Min(timeDimension.CumulVar(index));
-                long waitTime = currentStartTime - arrivalTime;
-                if (waitTime < 0) waitTime = 0; 
-                
-                // EĞER SON DURAKSA (DEPOYA DÖNÜŞ), BEKLEMEYİ MATEMATİKSEL OLARAK SIFIRLA
-                if (routing.IsEnd(index))
-                {
-                    waitTime = 0;
-                }
-
-                routeWaitTime += waitTime;
-
-                // 4. Mesafe Hesaplama
-                long legDistance = 0;
-                if (data.DistanceMatrix != null)
-                {
-                    legDistance = data.DistanceMatrix[previousNode, currentNode];
-                    routeDistance += legDistance;
-                }
-                
-                // YENİ: Ekrana doğru satırda basmak için ŞU ANKİ (currentNode) düğümün indirme süresini hesaplayalım
-                long printServiceTime = 0;
-                if (!Array.Exists(data.Starts, s => s == currentNode) && !Array.Exists(data.Ends, e => e == currentNode))
-                {
-                    long demandKg = data.WeightDemands[currentNode];
-                    printServiceTime = 5 + (demandKg / 100) * 2;
-                }
-
-                // 5. Çıktıyı Detaylı Yazdırma
-                if (routing.IsEnd(index))
-                {
-                    route += $"  -> [Dönüş] Depo {origCurrentNode} (Mesafe: {legDistance} km | Sürüş: {travelTime} dk)\n";
-                }
-                else
-                {
-                    // DÜZELTME BURADA: origCurrentNode YERİNE currentNode KULLANILDI
-                    string gercekIsim = (data.NodeNames != null && currentNode < data.NodeNames.Length && !string.IsNullOrEmpty(data.NodeNames[currentNode])) 
-                                        ? data.NodeNames[currentNode] 
-                                        : $"Müşteri {origCurrentNode}";
-
-                    // Müşteride kendi indirme süresini ve gerçek numarasını/adını basıyoruz
-                    route += $"  -> Ziyaret: {gercekIsim} (Mesafe: {legDistance} km | Sürüş: {travelTime} dk, İndirme: {printServiceTime} dk, Bekleme: {waitTime} dk)\n";
-                }
-            }
-                
                 long routeTime = solution.Min(timeDimension.CumulVar(index)) - solution.Min(timeDimension.CumulVar(routing.Start(i)));
-                
-                Console.WriteLine(route);
-                Console.WriteLine($"Toplam Geçen Süre: {routeTime} dakika (Sürüş: {routeTravelTime} dk + İndirme: {routeServiceTime} dk + Bekleme: {routeWaitTime} dk)");
-                Console.WriteLine($"Maksimum Çalışma (Sürüş+İndirme) İzni: {data.VehicleMaxTimes[i]} dk");
+
+                driver.totalDistanceKm = routeDistance;
+                driver.totalDurationMin = routeTime;
+                driver.capacityUsedKg = routeWeight;
+                driverList.Add(driver);
+
+                Console.WriteLine($"\nToplam Geçen Süre: {routeTime} dakika (Sürüş: {routeTravelTime} dk + İndirme: {routeServiceTime} dk + Bekleme: {routeWaitTime} dk)");
+                Console.WriteLine($"Maksimum Çalışma (Sürüş+İndirme) İzni: 480 dk");
                 Console.WriteLine($"Toplam Katedilen Mesafe: {routeDistance} birim");
-                Console.WriteLine($"Ziyaret Edilen Müşteri: {routeStops} / Maksimum Müşteri İzni: {data.VehicleMaxStops[i]}");
-                Console.WriteLine($"Taşınan Toplam Ağırlık: {routeWeight} Kg / Kapasite: {data.VehicleWeightCapacities[i]} Kg");
-                Console.WriteLine($"Taşınan Toplam Hacim: {routeVolume} m3 / Kapasite: {data.VehicleVolumeCapacities[i]} m3\n");
-                
-                gercekToplamSure += routeTime; 
+                Console.WriteLine($"Ziyaret Edilen Müşteri: {driver.stops.Count} / Maksimum Müşteri İzni: 50");
+                long capMax = data.VehicleWeightCapacities != null && i < data.VehicleWeightCapacities.Length ? data.VehicleWeightCapacities[i] : 1500;
+                long volMax = data.VehicleVolumeCapacities != null && i < data.VehicleVolumeCapacities.Length ? data.VehicleVolumeCapacities[i] : 15;
+                Console.WriteLine($"Taşınan Toplam Ağırlık: {routeWeight} Kg / Kapasite: {capMax} Kg");
+                Console.WriteLine($"Taşınan Toplam Hacim: {routeVolume} m3 / Kapasite: {volMax} m3\n");
+
+                gercekToplamSure += routeTime;
             }
 
-            Console.WriteLine($"===================================================");
-            Console.WriteLine($"SAHADAKİ GERÇEK TOPLAM MESAİ (Geçen Süre): {gercekToplamSure} dakika");
-            Console.WriteLine($"===================================================\n");
+            return driverList;
         }
         else
         {
             Console.WriteLine("Verilen kapasitelerle ve süre limitleriyle bu siparişler dağıtılamaz (Çözüm bulunamadı).");
+            return new List<DriverDto>();
         }
     }
 }

@@ -50,12 +50,12 @@ namespace Uyumsoft.RouteOptimizer
                         kmCosts.Add(reader.IsDBNull(3) ? 0 : Convert.ToInt64(reader.GetDecimal(3)));
                     }
                 }
-                
+
                 data.VehicleNumber = weightCaps.Count;
                 data.VehicleWeightCapacities = weightCaps.ToArray();
                 data.VehicleVolumeCapacities = volCaps.ToArray();
                 data.VehicleKmCosts = kmCosts.ToArray();
-                
+
                 data.Starts = depots.ToArray();
                 data.Ends = depots.ToArray();
 
@@ -67,8 +67,8 @@ namespace Uyumsoft.RouteOptimizer
 
                 for (int i = 0; i < data.VehicleNumber; i++)
                 {
-                    data.VehicleMaxTimes[i] = 480; 
-                    data.VehicleMaxStops[i] = 50;  
+                    data.VehicleMaxTimes[i] = 480;
+                    data.VehicleMaxStops[i] = 50;
                 }
 
                 // 2. Nokta (Node) sayısını belirle ve Mesafe Matrisini (KM) çek
@@ -128,7 +128,7 @@ namespace Uyumsoft.RouteOptimizer
                     data.TimeMatrixSabah[t.k, t.v] = t.ss;
                     data.TimeMatrixOgle[t.k, t.v] = t.so;
                     data.TimeMatrixAksam[t.k, t.v] = t.sa;
-                    
+
                     data.NodeRegions[t.k] = t.ky;
                     data.NodeRegions[t.v] = t.vy;
                 }
@@ -136,28 +136,54 @@ namespace Uyumsoft.RouteOptimizer
                 // 3. Sipariş taleplerini çek (satis_siparisi)
                 data.WeightDemands = new long[nodeCount];
                 data.VolumeDemands = new long[nodeCount];
-                
+
                 // --- EKSİK OLAN VE EKLENEN İSİM DİZİSİ BAŞLATMA ---
                 data.NodeNames = new string[nodeCount];
+                data.NodeCodes = new string[nodeCount];
+                data.NodeAddresses = new string[nodeCount];
                 data.NodeNames[0] = "Merkez Depo";
                 data.NodeNames[1] = "Şube Depo";
-                // --------------------------------------------------
+                data.NodeCodes[0] = "DP001";
+                data.NodeCodes[1] = "DP002";
+                data.NodeAddresses[0] = "Merkez Depo Adresi";
+                data.NodeAddresses[1] = "Şube Depo Adresi";
+                
+                try 
+                {
+                    using (var cmd = new NpgsqlCommand("SELECT depo_kodu, depo_adi FROM depo ORDER BY depo_kodu ASC", conn))
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        int dIdx = 0;
+                        while (reader.Read())
+                        {
+                            string kod = reader.GetString(0);
+                            string adi = reader.IsDBNull(1) ? kod : reader.GetString(1);
+                            if (kod == "DP001" || dIdx == 0) { data.NodeNames[0] = adi; data.NodeCodes[0] = kod; }
+                            else if (kod == "DP002" || dIdx == 1) { data.NodeNames[1] = adi; data.NodeCodes[1] = kod; }
+                            dIdx++;
+                        }
+                    }
+                } catch { } // Depo tablosu yoksa veya hatalıysa yoksay
 
-                using (var cmd = new NpgsqlCommand("SELECT cari_kodu, matris_id, SUM(toplam_kg), SUM(toplam_hacim_m3) FROM satis_siparisi GROUP BY cari_kodu, matris_id", conn))
+                using (var cmd = new NpgsqlCommand("SELECT s.cari_kodu, s.matris_id, SUM(s.toplam_kg), SUM(s.toplam_hacim_m3), MAX(c.cari_adi), MAX(c.adres_metni) FROM satis_siparisi s LEFT JOIN cari_kart c ON s.cari_kodu = c.cari_kodu GROUP BY s.cari_kodu, s.matris_id", conn))
                 using (var reader = cmd.ExecuteReader())
                 {
                     while (reader.Read())
                     {
                         string cariKodu = reader.IsDBNull(0) ? "" : reader.GetString(0);
-                        
+
                         if (!reader.IsDBNull(1))
                         {
-                            int nodeIndex = reader.GetInt32(1); 
-                            
+                            int nodeIndex = reader.GetInt32(1);
+
                             if (nodeIndex >= 2 && nodeIndex < nodeCount)
                             {
-                                data.NodeNames[nodeIndex] = cariKodu; 
-                                data.WeightDemands[nodeIndex] = reader.IsDBNull(2) ? 0 : Convert.ToInt64(reader.GetDecimal(2)); 
+                                string unvan = reader.IsDBNull(4) ? "" : reader.GetString(4);
+                                string adres = reader.IsDBNull(5) ? "" : reader.GetString(5);
+                                data.NodeNames[nodeIndex] = string.IsNullOrWhiteSpace(unvan) ? cariKodu : unvan;
+                                data.NodeCodes[nodeIndex] = cariKodu;
+                                data.NodeAddresses[nodeIndex] = string.IsNullOrWhiteSpace(adres) ? "Adres Yok" : adres;
+                                data.WeightDemands[nodeIndex] = reader.IsDBNull(2) ? 0 : Convert.ToInt64(reader.GetDecimal(2));
                                 data.VolumeDemands[nodeIndex] = reader.IsDBNull(3) ? 0 : Convert.ToInt64(reader.GetDecimal(3));
                             }
                         }
@@ -179,8 +205,8 @@ namespace Uyumsoft.RouteOptimizer
                     {
                         if (!reader.IsDBNull(1))
                         {
-                            int nodeIndex = reader.GetInt32(1); 
-                            
+                            int nodeIndex = reader.GetInt32(1);
+
                             if (nodeIndex >= 2 && nodeIndex < nodeCount)
                             {
                                 string startStr = reader.IsDBNull(2) ? "" : reader.GetString(2);
@@ -188,7 +214,7 @@ namespace Uyumsoft.RouteOptimizer
 
                                 if (TimeSpan.TryParse(startStr, out TimeSpan startTs))
                                     data.TimeWindows[nodeIndex, 0] = (long)startTs.TotalMinutes;
-                                
+
                                 if (TimeSpan.TryParse(endStr, out TimeSpan endTs))
                                     data.TimeWindows[nodeIndex, 1] = (long)endTs.TotalMinutes;
                             }
@@ -198,7 +224,7 @@ namespace Uyumsoft.RouteOptimizer
 
                 // 5. MATRİSLERİ FİLTRELEME VE KÜÇÜLTME AŞAMASI
                 var activeNodes = new System.Collections.Generic.List<int>();
-                
+
                 int totalNodes = data.DistanceMatrix.GetLength(0);
                 for (int i = 0; i < totalNodes; i++)
                 {
@@ -210,7 +236,7 @@ namespace Uyumsoft.RouteOptimizer
 
                 int newCount = activeNodes.Count;
                 var filteredData = new VrpDataModel();
-                
+
                 filteredData.VehicleNumber = data.VehicleNumber;
                 filteredData.VehicleWeightCapacities = data.VehicleWeightCapacities;
                 filteredData.VehicleVolumeCapacities = data.VehicleVolumeCapacities;
@@ -224,15 +250,15 @@ namespace Uyumsoft.RouteOptimizer
                 for (int v = 0; v < data.VehicleNumber; v++)
                 {
                     int oldStartNode = data.Starts[v];
-                    
+
                     if (oldStartNode >= data.WeightDemands.Length)
                     {
                         oldStartNode = 0;
                     }
 
                     int newStartNode = activeNodes.IndexOf(oldStartNode);
-                    if (newStartNode == -1) newStartNode = 0; 
-                    
+                    if (newStartNode == -1) newStartNode = 0;
+
                     filteredData.Starts[v] = newStartNode;
                     filteredData.Ends[v] = newStartNode;
                 }
@@ -242,13 +268,15 @@ namespace Uyumsoft.RouteOptimizer
                 filteredData.TimeMatrixOgle = new long[newCount, newCount];
                 filteredData.TimeMatrixAksam = new long[newCount, newCount];
                 filteredData.TimeWindows = new long[newCount, 2];
-                
+
                 filteredData.WeightDemands = new long[newCount];
                 filteredData.VolumeDemands = new long[newCount];
                 filteredData.NodeRegions = new int[newCount];
                 filteredData.OriginalNodeIds = new int[newCount];
-                
+
                 filteredData.NodeNames = new string[newCount];
+                filteredData.NodeCodes = new string[newCount];
+                filteredData.NodeAddresses = new string[newCount];
 
                 for (int i = 0; i < newCount; i++)
                 {
@@ -257,11 +285,19 @@ namespace Uyumsoft.RouteOptimizer
                     filteredData.WeightDemands[i] = data.WeightDemands[old_i];
                     filteredData.VolumeDemands[i] = data.VolumeDemands[old_i];
                     filteredData.NodeRegions[i] = data.NodeRegions[old_i];
-                    
-                    filteredData.NodeNames[i] = data.NodeNames != null && old_i < data.NodeNames.Length 
-                                                ? data.NodeNames[old_i] 
+
+                    filteredData.NodeNames[i] = data.NodeNames != null && old_i < data.NodeNames.Length
+                                                ? data.NodeNames[old_i]
                                                 : $"Düğüm {old_i}";
-                    
+                                                
+                    filteredData.NodeCodes[i] = data.NodeCodes != null && old_i < data.NodeCodes.Length
+                                                ? data.NodeCodes[old_i]
+                                                : $"CAR{old_i:000}";
+
+                    filteredData.NodeAddresses[i] = data.NodeAddresses != null && old_i < data.NodeAddresses.Length
+                                                ? data.NodeAddresses[old_i]
+                                                : "Adres Yok";
+
                     filteredData.TimeWindows[i, 0] = data.TimeWindows[old_i, 0];
                     filteredData.TimeWindows[i, 1] = data.TimeWindows[old_i, 1];
 
@@ -274,7 +310,7 @@ namespace Uyumsoft.RouteOptimizer
                         filteredData.TimeMatrixAksam[i, j] = data.TimeMatrixAksam[old_i, old_j];
                     }
                 }
-                return filteredData; 
+                return filteredData;
             }
         }
     }
