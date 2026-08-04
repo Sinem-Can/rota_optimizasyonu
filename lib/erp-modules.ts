@@ -13,6 +13,7 @@ import {
   Landmark,
   ReceiptText,
   ShoppingCart,
+  ShoppingBag, // <--- BUNU EKLE
   Tags,
   Truck,
   Users,
@@ -22,8 +23,9 @@ import {
   erpStockItems,
   erpWarehouses,
   erpVehicles,
-  erpOffers, // <--- YENİ EKLENDİ
-  erpOrders, // <--- YENİ EKLENDİ
+  erpOffers,
+  erpOrders,
+  erpPurchaseOrders, // <--- BUNU EKLE
   type ErpRecordStatus,
 } from '@/lib/erp-data'
 import { faturaSeeds, irsaliyeSeeds } from '@/lib/erp-document'
@@ -278,6 +280,31 @@ const siparisler: ErpView = {
         tone: o.status === 'Teslim Edildi' ? 'success' : o.status === 'Yolda' ? 'primary' : 'warning',
       },
       { t: 'code', v: `${o.windowStart} - ${o.windowEnd}` },
+    ],
+  })),
+}
+
+const satinalmaSiparisleri: ErpView = {
+  key: 'satinalma-siparisleri',
+  label: 'Satınalma Siparişleri',
+  recordName: 'Satınalma',
+  searchPlaceholder: 'Sipariş no, tedarikçi veya ürün ara…',
+  columns: ['Alım No', 'Tedarikçi', 'Sipariş İçeriği', 'Sipariş Tarihi', 'Teslim Tarihi', 'Tutar', 'Durum'],
+  rows: erpPurchaseOrders.map((p) => ({
+    id: p.id,
+    search: s(p.id, p.supplierName, p.items, p.status),
+    cells: [
+      { t: 'code', v: p.id },
+      { t: 'text', v: p.supplierName, strong: true },
+      { t: 'text', v: p.items },
+      { t: 'code', v: p.orderDate },
+      { t: 'code', v: p.deliveryDate },
+      { t: 'money', v: p.totalAmount },
+      {
+        t: 'tone',
+        v: p.status,
+        tone: p.status === 'Teslim Alındı' ? 'success' : p.status === 'Onaylandı' ? 'primary' : p.status === 'İptal' ? 'destructive' : 'warning',
+      },
     ],
   })),
 }
@@ -560,6 +587,7 @@ export const erpModules: ErpModule[] = [
   { key: 'filo', label: 'Filo & Araçlar', icon: Truck, views: [aracKartlari] },
   { key: 'depo', label: 'Depo & Stok', icon: Boxes, views: [stokKartlari, depolar] },
   { key: 'satis', label: 'Satış & Sipariş', icon: ShoppingCart, views: [teklifler, siparisler] },
+  { key: 'satinalma', label: 'Satınalma', icon: ShoppingBag, views: [satinalmaSiparisleri] },
   { key: 'fatura', label: 'Fatura & İrsaliye', icon: FileText, views: [faturalar, irsaliyeler] },
   { key: 'banka', label: 'Banka & Kasa', icon: Landmark, views: [bankaHesaplari, kasaHareketleri] },
   { key: 'cek', label: 'Çek Defteri', icon: ReceiptText, views: [alinanCekler, verilenCekler] },
