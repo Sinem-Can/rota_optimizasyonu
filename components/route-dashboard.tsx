@@ -19,8 +19,8 @@ export function RouteDashboard() {
   const [activeTab, setActiveTab] = useState<TabKey>('planlama')
   const [searchQuery, setSearchQuery] = useState('')
 
-  const [localDrivers, setLocalDrivers] = useState<DriverDto[]>(drivers)
-  const [localUnassigned, setLocalUnassigned] = useState<StopDto[]>(unassignedTasks as unknown as StopDto[])
+  const [localDrivers, setLocalDrivers] = useState<DriverDto[]>([])
+  const [localUnassigned, setLocalUnassigned] = useState<StopDto[]>([])
 
   // Türetilmiş state: Seçili araç ve durak
   const activeDriver = selectedDriverId ? localDrivers.find(d => d.id === selectedDriverId) ?? null : null
@@ -28,7 +28,42 @@ export function RouteDashboard() {
   const activeStopId = selectedStopId
   const activeDriverId = selectedDriverId
 
-const handleClearSelection = useCallback(() => { setSelectedStopId(null); setSelectedDriverId(null) }, []); const handleSelectStop = useCallback((stop: StopDto, driverId: string) => { setSelectedStopId(stop.id); setSelectedDriverId(driverId) }, []); useEffect(() => { void (async () => { try { const response = await fetch(apiUrl + "/api/initial-state"); if (!response.ok) throw new Error(`Başlangıç verisi yüklenemedi`); const data = await response.json(); if (!Array.isArray(data.drivers) || data.drivers.length === 0) throw new Error(`Boş başlangıç verisi`); const colorKeys = [`a`, `b`, `c`, `d`, `e`, `f`, `g`, `h`, `i`, `j`, `k`, `l`]; const coloredDrivers = data.drivers.map((driver: any, index: number) => ({ ...driver, colorKey: colorKeys[index % colorKeys.length] })); setLocalDrivers(coloredDrivers); setLocalUnassigned(data.unassigned ?? []); } catch (error) { console.error(`Başlangıç verisi çekilemedi:`, error); setLocalUnassigned(unassignedTasks as unknown as StopDto[]); setLocalDrivers(drivers); } })() }, [apiUrl])
+  const handleClearSelection = useCallback(() => {
+    setSelectedStopId(null)
+    setSelectedDriverId(null)
+  }, [])
+
+  useEffect(() => {
+    const fetchInitialState = async () => {
+      try {
+        const response = await fetch(`${apiUrl}/api/initial-state`)
+        if (!response.ok) throw new Error('Başlangıç verisi yüklenemedi.')
+
+        const data = await response.json()
+        if (!Array.isArray(data.drivers) || data.drivers.length === 0) {
+          throw new Error('Başlangıç verisi boş geldi.')
+        }
+
+        const colorKeys = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l']
+        const coloredDrivers = data.drivers.map((driver: DriverDto, index: number) => ({
+          ...driver,
+          colorKey: colorKeys[index % colorKeys.length],
+        }))
+        setLocalDrivers(coloredDrivers)
+        setLocalUnassigned(data.unassigned ?? [])
+      } catch (error) {
+        console.error("Başlangıç verisi çekilemedi:", error)
+        setLocalUnassigned(unassignedTasks as unknown as StopDto[])
+        setLocalDrivers(drivers)
+      }
+    }
+    fetchInitialState()
+  }, [apiUrl])
+
+  const handleSelectStop = useCallback((stop: StopDto, driverId: string) => {
+    setSelectedStopId(stop.id)
+    setSelectedDriverId(driverId)
+  }, [])
 
   const handleOptimize = async () => {
     setIsOptimizing(true)
@@ -45,11 +80,10 @@ const handleClearSelection = useCallback(() => { setSelectedStopId(null); setSel
       }
 
       const optimizedDrivers = await response.json()
-      // RENK MÜDAHALESİ: Optimizasyon sonrası gelen yeni rotalara da renkleri dağıtıyoruz
       const colorKeys = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l']
-      const coloredDrivers = optimizedDrivers.map((driver: any, index: number) => ({
+      const coloredDrivers = optimizedDrivers.map((driver: DriverDto, index: number) => ({
         ...driver,
-        colorKey: colorKeys[index % colorKeys.length]
+        colorKey: colorKeys[index % colorKeys.length],
       }))
       setLocalDrivers(coloredDrivers)
       setLocalUnassigned([])
