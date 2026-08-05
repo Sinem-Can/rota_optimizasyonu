@@ -427,6 +427,7 @@ public class VrpOptimizer
                         var stop = new StopDto
                         {
                             id = $"ST-{origCurrentNode}-{Guid.NewGuid().ToString().Substring(0, 4)}",
+                            cariKod = cariKodu,
                             sequence = sequenceCounter++,
                             customerName = gercekIsim,
                             address = gercekAdres,

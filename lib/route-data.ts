@@ -7,6 +7,7 @@ export type StopStatus = 'completed' | 'enroute' | 'pending' | 'risk'
 
 export interface StopDto {
   id: string
+  cariKod?: string
   sequence: number
   customerName: string
   address: string

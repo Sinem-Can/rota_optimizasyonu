@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useState, useEffect } from 'react'
+import { PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { DetailPanel } from '@/components/detail-panel'
 import { ErpPanel } from '@/components/erp-panel'
 import { MapPanel } from '@/components/map-panel'
@@ -8,6 +9,7 @@ import { TaskPanel } from '@/components/task-panel'
 import { TimelinePanel } from '@/components/timeline-panel'
 import { TopBar, type TabKey } from '@/components/top-bar'
 import { drivers, unassignedTasks, type StopDto, type DriverDto } from '@/lib/route-data'
+import { cn } from '@/lib/utils'
 import { toast } from "sonner"
 
 export function RouteDashboard() {
@@ -18,6 +20,8 @@ export function RouteDashboard() {
   const [isOptimizing, setIsOptimizing] = useState(false)
   const [activeTab, setActiveTab] = useState<TabKey>('planlama')
   const [searchQuery, setSearchQuery] = useState('')
+  const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(true)
+  const [isBottomPanelOpen, setIsBottomPanelOpen] = useState(false)
 
   const [localDrivers, setLocalDrivers] = useState<DriverDto[]>([])
   const [localUnassigned, setLocalUnassigned] = useState<StopDto[]>([])
@@ -113,18 +117,50 @@ export function RouteDashboard() {
         <ErpPanel />
       ) : (
         <>
-          <main className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[30%_50%_20%]">
-            <TaskPanel
-              selectedStopId={activeStopId}
-              onSelectStop={handleSelectStop}
-              isOptimizing={isOptimizing}
-              onOptimize={handleOptimize}
-              drivers={localDrivers}
-              unassigned={localUnassigned}
-              setUnassigned={setLocalUnassigned}
-              setDrivers={setLocalDrivers}
-              searchQuery={searchQuery}
-            />
+          <main
+            className={cn(
+              'grid min-h-0 flex-1 grid-cols-1 transition-[grid-template-columns] duration-300 ease-in-out',
+              isLeftPanelOpen
+                ? 'lg:grid-cols-[30%_50%_20%]'
+                : 'lg:grid-cols-[44px_minmax(0,1fr)_20%]',
+            )}
+          >
+            {isLeftPanelOpen ? (
+              <aside className="relative min-w-0 overflow-hidden border-r border-border">
+                <TaskPanel
+                  selectedStopId={activeStopId}
+                  onSelectStop={handleSelectStop}
+                  isOptimizing={isOptimizing}
+                  onOptimize={handleOptimize}
+                  drivers={localDrivers}
+                  unassigned={localUnassigned}
+                  setUnassigned={setLocalUnassigned}
+                  setDrivers={setLocalDrivers}
+                  searchQuery={searchQuery}
+                />
+                <button
+                  type="button"
+                  onClick={() => setIsLeftPanelOpen(false)}
+                  aria-label="Araç panelini daralt"
+                  title="Araç panelini daralt"
+                  className="absolute right-2 top-2 z-20 grid size-8 place-items-center rounded-md border border-border bg-card/95 text-muted-foreground shadow-sm transition-colors hover:bg-muted hover:text-foreground"
+                >
+                  <PanelLeftClose className="size-4" />
+                </button>
+              </aside>
+            ) : (
+              <aside className="flex min-w-0 justify-center border-r border-border bg-card pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsLeftPanelOpen(true)}
+                  aria-label="Araç panelini aç"
+                  title="Araç panelini aç"
+                  className="grid size-8 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                  <PanelLeftOpen className="size-4" />
+                </button>
+              </aside>
+            )}
             <MapPanel
               selectedStopId={activeStopId}
               onSelectStop={handleSelectStop}
@@ -138,6 +174,8 @@ export function RouteDashboard() {
             selectedStopId={activeStopId} 
             onSelectStop={handleSelectStop} 
             drivers={localDrivers}
+            isOpen={isBottomPanelOpen}
+            onToggle={() => setIsBottomPanelOpen((isOpen) => !isOpen)}
           />
         </>
       )}
