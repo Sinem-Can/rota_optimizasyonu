@@ -10,6 +10,8 @@ using Uyumsoft.RouteOptimizer;
 Env.TraversePath().Load();
 
 var builder = WebApplication.CreateBuilder(args);
+var apiUrl = builder.Configuration["ASPNETCORE_URLS"] ?? "http://localhost:5100";
+builder.WebHost.UseUrls(apiUrl);
 
 // Add Swagger and Controllers
 builder.Services.AddControllers();
@@ -42,5 +44,5 @@ app.UseSwaggerUI(c =>
 // API Uçları (Controllers'a Yönlendir)
 app.MapControllers();
 
-// Uygulamayı Başlat (Port 5000'e sabitle)
-app.Run("http://localhost:5000");
+// ASPNETCORE_URLS verilmezse API yerelde 5100 portunda çalışır.
+app.Run();

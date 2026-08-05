@@ -11,6 +11,7 @@ import { drivers, unassignedTasks, type StopDto, type DriverDto } from '@/lib/ro
 import { toast } from "sonner"
 
 export function RouteDashboard() {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5100'
   const [selectedStopId, setSelectedStopId] = useState<string | null>(null)
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null)
 
@@ -30,10 +31,16 @@ export function RouteDashboard() {
   useEffect(() => {
     const fetchInitialState = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/initial-state')
+        const response = await fetch(`${apiUrl}/api/initial-state`)
         if (response.ok) {
           const data = await response.json()
-          setLocalDrivers(data.drivers)
+          // RENK MÜDAHALESİ: Backend'den gelen araçlara sırayla renk paletimizi atıyoruz
+          const colorKeys = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l']
+          const coloredDrivers = data.drivers.map((driver: any, index: number) => ({
+            ...driver,
+            colorKey: colorKeys[index % colorKeys.length]
+          }))
+          setLocalDrivers(coloredDrivers)
           setLocalUnassigned(data.unassigned)
         }
       } catch (error) {
@@ -43,7 +50,7 @@ export function RouteDashboard() {
       }
     }
     fetchInitialState()
-  }, [])
+  }, [apiUrl])
 
   const handleSelectStop = useCallback((stop: StopDto, driverId: string) => {
     setSelectedStopId(stop.id)
@@ -55,7 +62,7 @@ export function RouteDashboard() {
     toast.info("Yapay zeka rotaları hesaplıyor...", { duration: 2000 })
     
     try {
-      const response = await fetch('http://localhost:5000/api/optimize', {
+      const response = await fetch(`${apiUrl}/api/optimize`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       })
@@ -65,7 +72,13 @@ export function RouteDashboard() {
       }
 
       const optimizedDrivers = await response.json()
-      setLocalDrivers(optimizedDrivers)
+      // RENK MÜDAHALESİ: Optimizasyon sonrası gelen yeni rotalara da renkleri dağıtıyoruz
+      const colorKeys = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l']
+      const coloredDrivers = optimizedDrivers.map((driver: any, index: number) => ({
+        ...driver,
+        colorKey: colorKeys[index % colorKeys.length]
+      }))
+      setLocalDrivers(coloredDrivers)
       setLocalUnassigned([])
       toast.success("Rotalar başarıyla oluşturuldu!", {
         description: "C# OR-Tools motorundan veriler çekildi.",

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ChevronsUpDown, Clock, TriangleAlert, ZoomIn } from 'lucide-react'
 import { driverTheme, toMinutes, type StopDto, type DriverDto } from '@/lib/route-data'
 import { cn } from '@/lib/utils'
@@ -15,7 +15,6 @@ interface TimelinePanelProps {
 const DAY_START = 8 * 60 // 08:00
 const DAY_END = 19 * 60 // 19:00
 const SPAN = DAY_END - DAY_START
-const NOW = 12 * 60 + 40 // 12:40 — canlı imleç
 
 const pct = (minutes: number) => ((minutes - DAY_START) / SPAN) * 100
 
@@ -26,6 +25,28 @@ const hourTicks = Array.from(
 
 export function TimelinePanel({ selectedStopId, onSelectStop, drivers }: TimelinePanelProps) {
   const [isExpanded, setIsExpanded] = useState(false)
+
+  // 1. DİNAMİK SAAT: Gerçek sistem saatini alıp her dakika güncelliyoruz
+  const [nowMinutes, setNowMinutes] = useState(() => {
+    const now = new Date()
+    return now.getHours() * 60 + now.getMinutes()
+  })
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = new Date()
+      setNowMinutes(now.getHours() * 60 + now.getMinutes())
+    }, 60000) // Her dakika tetiklenir
+    return () => clearInterval(interval)
+  }, [])
+
+  // Dakikayı "11:21" gibi şık bir HH:MM formatına çeviren yardımcı metot
+  const formattedTime = `${String(Math.floor(nowMinutes / 60)).padStart(2, '0')}:${String(nowMinutes % 60).padStart(2, '0')}`
+
+  // 2. DİNAMİK RİSK SAYACI: Tüm sürücülerin duraklarını tarayıp risk statüsünde olanları topluyoruz
+  const riskCount = drivers.reduce((total, driver) => {
+    return total + driver.stops.filter((stop) => stop.status === 'risk').length
+  }, 0)
 
   return (
     <section
@@ -41,13 +62,18 @@ export function TimelinePanel({ selectedStopId, onSelectStop, drivers }: Timelin
           <Clock className="size-3.5 text-muted-foreground" />
           Zaman Çizelgesi · Vardiya Planı
         </p>
-        <span className="flex items-center gap-1 rounded border border-destructive/25 bg-destructive/10 px-1.5 py-0.5 text-[10px] font-bold text-destructive">
-          <TriangleAlert className="size-2.5" />
-          1 Gecikme Riski
-        </span>
+        
+        {/* Sadece risk varsa bu butonu göster */}
+        {riskCount > 0 && (
+          <span className="flex items-center gap-1 rounded border border-destructive/25 bg-destructive/10 px-1.5 py-0.5 text-[10px] font-bold text-destructive">
+            <TriangleAlert className="size-2.5" />
+            {riskCount} Gecikme Riski
+          </span>
+        )}
+
         <div className="ml-auto flex items-center gap-1.5">
           <span className="hidden font-mono text-[10px] font-medium text-muted-foreground sm:inline">
-            Şu an 12:40
+            Şu an {formattedTime}
           </span>
           <button
             type="button"
@@ -85,11 +111,13 @@ export function TimelinePanel({ selectedStopId, onSelectStop, drivers }: Timelin
                 {String(Math.floor(tick / 60)).padStart(2, '0')}
               </span>
             ))}
+            
+            {/* Dinamik Saat İkonu */}
             <span
-              className="absolute top-0 -translate-x-1/2 rounded bg-destructive px-1 font-mono text-[9px] font-bold leading-5 text-primary-foreground"
-              style={{ left: `${pct(NOW)}%` }}
+              className="absolute top-0 -translate-x-1/2 rounded bg-destructive px-1 font-mono text-[9px] font-bold leading-5 text-primary-foreground transition-all duration-1000"
+              style={{ left: `${pct(nowMinutes)}%` }}
             >
-              12:40
+              {formattedTime}
             </span>
           </div>
         </div>
@@ -136,10 +164,10 @@ export function TimelinePanel({ selectedStopId, onSelectStop, drivers }: Timelin
                     }}
                   />
 
-                  {/* Canlı zaman imleci */}
+                  {/* Canlı zaman imleci (Kırmızı dikey çizgi) */}
                   <span
-                    className="absolute inset-y-0 z-10 w-px bg-destructive/70"
-                    style={{ left: `${pct(NOW)}%` }}
+                    className="absolute inset-y-0 z-10 w-px bg-destructive/70 transition-all duration-1000"
+                    style={{ left: `${pct(nowMinutes)}%` }}
                   />
 
                   {/* Durak barları */}
@@ -155,12 +183,7 @@ export function TimelinePanel({ selectedStopId, onSelectStop, drivers }: Timelin
                       <button
                         key={stop.id}
                         type="button"
-                        onClick={() => {
-                        onSelectStop(stop, driver.id)
-                        toast.info(`Odaklanıldı: ${stop.customerName}`, {
-                        description: `Harita pini ve detaylar güncellendi.`,
-                        })
-                        }}
+                        onClick={() => onSelectStop(stop, driver.id)}
                         title={`${stop.customerName} · ETA ${stop.eta} · ${stop.serviceMinutes} dk servis`}
                         className={cn(
                           'group absolute inset-y-2 z-20 flex items-center gap-1 rounded px-1.5 text-left transition-all',
