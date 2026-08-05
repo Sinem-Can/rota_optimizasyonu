@@ -1,38 +1,57 @@
 'use client'
 
-import { useState } from 'react'
-import { ChevronsUpDown, Clock, TriangleAlert, ZoomIn } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { ChevronsUpDown, Clock, TriangleAlert } from 'lucide-react'
 import { driverTheme, toMinutes, type StopDto, type DriverDto } from '@/lib/route-data'
 import { cn } from '@/lib/utils'
-import { toast } from 'sonner'
 
 interface TimelinePanelProps {
   selectedStopId: string | null
   onSelectStop: (stop: StopDto, driverId: string) => void
   drivers: DriverDto[]
+  isOpen: boolean
+  onToggle: () => void
 }
 
 const DAY_START = 8 * 60 // 08:00
 const DAY_END = 19 * 60 // 19:00
 const SPAN = DAY_END - DAY_START
-const NOW = 12 * 60 + 40 // 12:40 — canlı imleç
-
 const pct = (minutes: number) => ((minutes - DAY_START) / SPAN) * 100
+
+const getLocalMinutes = () => {
+  const now = new Date()
+  return now.getHours() * 60 + now.getMinutes()
+}
+
+const formatTime = (minutes: number) =>
+  `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`
 
 const hourTicks = Array.from(
   { length: (DAY_END - DAY_START) / 60 + 1 },
   (_, i) => DAY_START + i * 60,
 )
 
-export function TimelinePanel({ selectedStopId, onSelectStop, drivers }: TimelinePanelProps) {
-  const [isExpanded, setIsExpanded] = useState(false)
+export function TimelinePanel({ selectedStopId, onSelectStop, drivers, isOpen, onToggle }: TimelinePanelProps) {
+  const [nowMinutes, setNowMinutes] = useState<number | null>(null)
+
+  useEffect(() => {
+    const updateTime = () => setNowMinutes(getLocalMinutes())
+    updateTime()
+    const intervalId = window.setInterval(updateTime, 30_000)
+    return () => window.clearInterval(intervalId)
+  }, [])
+
+  const currentMinutes = nowMinutes === null
+    ? null
+    : Math.min(Math.max(nowMinutes, DAY_START), DAY_END)
+  const currentTimeLabel = nowMinutes === null ? '--:--' : formatTime(nowMinutes)
 
   return (
     <section
       aria-label="Sürücü zaman çizelgesi"
       className={cn(
-        'flex shrink-0 flex-col border-t border-border bg-card transition-[height] duration-200',
-        isExpanded ? 'h-[300px]' : 'h-[150px]',
+        'flex shrink-0 flex-col overflow-hidden border-t border-border bg-card transition-[height] duration-300 ease-in-out',
+        isOpen ? 'h-[300px]' : 'h-8',
       )}
     >
       {/* Başlık çubuğu */}
@@ -41,27 +60,16 @@ export function TimelinePanel({ selectedStopId, onSelectStop, drivers }: Timelin
           <Clock className="size-3.5 text-muted-foreground" />
           Zaman Çizelgesi · Vardiya Planı
         </p>
-        <span className="flex items-center gap-1 rounded border border-destructive/25 bg-destructive/10 px-1.5 py-0.5 text-[10px] font-bold text-destructive">
-          <TriangleAlert className="size-2.5" />
-          1 Gecikme Riski
-        </span>
         <div className="ml-auto flex items-center gap-1.5">
           <span className="hidden font-mono text-[10px] font-medium text-muted-foreground sm:inline">
-            Şu an 12:40
+            Şu an {currentTimeLabel}
           </span>
           <button
             type="button"
-            aria-label="Zaman aralığını yakınlaştır"
-            className="grid size-6 place-items-center rounded text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-          >
-            <ZoomIn className="size-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setIsExpanded((v) => !v)}
-            aria-expanded={isExpanded}
-            aria-label={isExpanded ? 'Paneli küçült' : 'Paneli genişlet'}
-            title={isExpanded ? 'Paneli küçült' : 'Tüm sürücüleri göster'}
+            onClick={onToggle}
+            aria-expanded={isOpen}
+            aria-label={isOpen ? 'Zaman çizelgesini kapat' : 'Zaman çizelgesini aç'}
+            title={isOpen ? 'Zaman çizelgesini kapat' : 'Zaman çizelgesini aç'}
             className="grid size-6 place-items-center rounded text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
           >
             <ChevronsUpDown className="size-3.5" />
@@ -85,12 +93,14 @@ export function TimelinePanel({ selectedStopId, onSelectStop, drivers }: Timelin
                 {String(Math.floor(tick / 60)).padStart(2, '0')}
               </span>
             ))}
-            <span
-              className="absolute top-0 -translate-x-1/2 rounded bg-destructive px-1 font-mono text-[9px] font-bold leading-5 text-primary-foreground"
-              style={{ left: `${pct(NOW)}%` }}
-            >
-              12:40
-            </span>
+            {currentMinutes !== null ? (
+              <span
+                className="absolute top-0 -translate-x-1/2 rounded bg-destructive px-1 font-mono text-[9px] font-bold leading-5 text-primary-foreground"
+                style={{ left: `${pct(currentMinutes)}%` }}
+              >
+                {currentTimeLabel}
+              </span>
+            ) : null}
           </div>
         </div>
       </div>
@@ -137,10 +147,12 @@ export function TimelinePanel({ selectedStopId, onSelectStop, drivers }: Timelin
                   />
 
                   {/* Canlı zaman imleci */}
-                  <span
-                    className="absolute inset-y-0 z-10 w-px bg-destructive/70"
-                    style={{ left: `${pct(NOW)}%` }}
-                  />
+                  {currentMinutes !== null ? (
+                    <span
+                      className="absolute inset-y-0 z-10 w-px bg-destructive/70"
+                      style={{ left: `${pct(currentMinutes)}%` }}
+                    />
+                  ) : null}
 
                   {/* Durak barları */}
                   {driver.stops.map((stop) => {
@@ -156,10 +168,7 @@ export function TimelinePanel({ selectedStopId, onSelectStop, drivers }: Timelin
                         key={stop.id}
                         type="button"
                         onClick={() => {
-                        onSelectStop(stop, driver.id)
-                        toast.info(`Odaklanıldı: ${stop.customerName}`, {
-                        description: `Harita pini ve detaylar güncellendi.`,
-                        })
+                          onSelectStop(stop, driver.id)
                         }}
                         title={`${stop.customerName} · ETA ${stop.eta} · ${stop.serviceMinutes} dk servis`}
                         className={cn(
