@@ -35,7 +35,7 @@ namespace Uyumsoft.RouteOptimizer
                 using (var reader = ExcelReaderFactory.CreateReader(stream))
                 {
                     var result = reader.AsDataSet(new ExcelDataSetConfiguration() { ConfigureDataTable = (_) => new ExcelDataTableConfiguration() { UseHeaderRow = true } });
-                    
+
                     DataTable table = result.Tables[0];
                     if (result.Tables.Contains("Mesafe Matrisi")) table = result.Tables["Mesafe Matrisi"];
 
@@ -97,7 +97,7 @@ namespace Uyumsoft.RouteOptimizer
                 using (var reader = ExcelReaderFactory.CreateReader(stream))
                 {
                     var result = reader.AsDataSet(new ExcelDataSetConfiguration() { ConfigureDataTable = (_) => new ExcelDataTableConfiguration() { UseHeaderRow = true } });
-                    
+
                     DataTable table = result.Tables[0];
                     if (result.Tables.Contains("Mesafe Matrisi")) table = result.Tables["Mesafe Matrisi"];
 
@@ -116,7 +116,7 @@ namespace Uyumsoft.RouteOptimizer
 
                             int kalkisYaka = kalkisAd.Contains("(Avrupa)") ? 1 : (kalkisAd.Contains("(Anadolu)") ? 2 : 0);
                             int varisYaka = varisAd.Contains("(Avrupa)") ? 1 : (varisAd.Contains("(Anadolu)") ? 2 : 0);
-                            
+
                             decimal sabahToplam = 0, ogleToplam = 0, aksamToplam = 0;
                             int sabahSay = 0, ogleSay = 0, aksamSay = 0;
 
@@ -141,7 +141,7 @@ namespace Uyumsoft.RouteOptimizer
                             }
 
                             decimal sureSabah = sabahSay > 0 ? sabahToplam / sabahSay : 0;
-                            decimal sureOgle = ogleSay > 0 ? ogleToplam / ogleSay : sureSabah; 
+                            decimal sureOgle = ogleSay > 0 ? ogleToplam / ogleSay : sureSabah;
                             decimal sureAksam = aksamSay > 0 ? aksamToplam / aksamSay : sureOgle;
 
                             string sql = "INSERT INTO trafik_matrisi (kalkis_kodu, varis_kodu, sure_sabah_dk, sure_ogle_dk, sure_aksam_dk, kalkis_yaka, varis_yaka) VALUES (@k, @v, @ss, @so, @sa, @ky, @vy)";

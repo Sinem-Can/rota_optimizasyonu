@@ -4,21 +4,21 @@ public class VrpDataModel
     public long[,]? DistanceMatrix { get; set; }
 
     // Trafik yoğunluğuna göre Noktalar arası süre matrisleri
-    public long[,]? TimeMatrixSabah { get; set; } 
-    public long[,]? TimeMatrixOgle { get; set; } 
-    public long[,]? TimeMatrixAksam { get; set; } 
+    public long[,]? TimeMatrixSabah { get; set; }
+    public long[,]? TimeMatrixOgle { get; set; }
+    public long[,]? TimeMatrixAksam { get; set; }
 
     // Her siparişin ağırlık (Kg) talebi
-    public long[]? WeightDemands { get; set; } 
-    
+    public long[]? WeightDemands { get; set; }
+
     // Her siparişin hacim (m3) talebi
-    public long[]? VolumeDemands { get; set; } 
+    public long[]? VolumeDemands { get; set; }
 
     // Araçların kapasiteleri (Örn: 8 araç varsa 8 elemanlı dizi)
     public long[]? VehicleWeightCapacities { get; set; }
     public long[]? VehicleVolumeCapacities { get; set; }
     public long[]? VehicleKmCosts { get; set; }
-    
+
     public int VehicleNumber { get; set; }
 
     // ÇOK MERKEZLİ (MULTI-DEPOT) YAPI İÇİN:
@@ -37,7 +37,7 @@ public class VrpDataModel
 
     // KÖPRÜ/YAKA GEÇİŞ KISITLARI (Bridge Restrictions)
     // 0: Bilinmiyor/Farketmez, 1: Avrupa Yakası, 2: Anadolu Yakası
-    public int[]? NodeRegions { get; set; } 
+    public int[]? NodeRegions { get; set; }
     public int[]? VehicleAllowedRegions { get; set; }
 
     // Orijinal Veritabanı ID'lerini (Müşteri Numaralarını) tutar. Matris küçültüldüğünde çıktı için gereklidir.
@@ -45,4 +45,6 @@ public class VrpDataModel
 
     // Düğümlerin gerçek isimlerini (Cari Kodlarını veya Depo Adlarını) tutacak dizi
     public string[]? NodeNames { get; set; }
-} 
+    public string[]? NodeCodes { get; set; }
+    public string[]? NodeAddresses { get; set; }
+}
