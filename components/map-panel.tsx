@@ -63,6 +63,9 @@ export function MapPanel({ selectedStopId, onSelectStop, isOptimizing, drivers }
     }
   }
 
+  // HANGİ ARACIN ODAKTA OLDUĞUNU BULUYORUZ
+  const activeDriver = drivers.find((d) => d.stops.some((s) => s.id === selectedStopId))
+  const activeDriverId = activeDriver?.id
   return (
     <section
       aria-label="Rota haritası"
@@ -136,121 +139,173 @@ export function MapPanel({ selectedStopId, onSelectStop, isOptimizing, drivers }
 
       {/* Harita gövdesi */}
       <div className="relative min-h-0 flex-1">
-        <img
+       <img
           src="/images/map-base.png"
           alt=""
           aria-hidden="true"
-          className="absolute inset-0 size-full object-cover opacity-90"
+          className="absolute inset-0 size-full object-cover grayscale opacity-40 dark:opacity-60 dark:invert dark:hue-rotate-180"
         />
-        <div className="absolute inset-0 bg-background/10" />
+        <div className="absolute inset-0 bg-background/50 dark:bg-background/60 backdrop-blur-[1px]" />
 
-        {/* Rota çizgileri */}
+{/* Rota çizgileri */}
         <svg
           className="absolute inset-0 size-full"
           viewBox="0 0 100 100"
           preserveAspectRatio="none"
           aria-hidden="true"
         >
-          {drivers.map((driver) => {
-            const theme = driverTheme[driver.colorKey]
-            const depot = { x: driver.depotX ?? 50, y: driver.depotY ?? 50 }
-            const points = [depot, ...driver.stops.map((s) => ({ x: s.x, y: s.y })), depot]
-            const d = buildRoutePath(points)
-            return (
-              <g key={driver.id}>
-                <path
-                  d={d}
-                  fill="none"
-                  stroke="var(--color-background)"
-                  strokeWidth={5}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  vectorEffect="non-scaling-stroke"
-                  opacity={0.75}
-                />
-                <path
-                  d={d}
-                  fill="none"
-                  stroke={theme.cssVar}
-                  strokeWidth={2.5}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  vectorEffect="non-scaling-stroke"
-                  strokeDasharray={isOptimizing ? '6 5' : undefined}
-                />
-              </g>
-            )
-          })}
+          {/* 1. Z-ORDER SİHRİ: Seçili aracı her zaman en son (en üstte) çizmek için sıralıyoruz */}
+          {[...drivers]
+            .sort((a, b) => {
+              const aActive = a.id === activeDriverId
+              const bActive = b.id === activeDriverId
+              return Number(aActive) - Number(bActive)
+            })
+            .map((driver) => {
+              const theme = driverTheme[driver.colorKey]
+              const depot = { x: driver.depotX ?? 50, y: driver.depotY ?? 50 }
+              const points = [depot, ...driver.stops.map((s) => ({ x: s.x, y: s.y })), depot]
+              const d = buildRoutePath(points)
+              
+              // 2. RENDER KURALI: Hiçbir şey seçili değilse hepsi normal. Biri seçiliyse DİĞERLERİ GRİ olur.
+              const isFaded = activeDriverId ? activeDriverId !== driver.id : false
+              
+              // Seçili değilse Tailwind'in standart gri rengini veriyoruz, renk karmasını bitiriyoruz.
+              const colorClass = isFaded ? 'text-muted-foreground/40 dark:text-muted-foreground/20' : theme.text
+              const strokeWidthClass = isFaded ? 1.5 : (activeDriverId === driver.id ? 4 : 2.5)
+
+              return (
+                <g 
+                  key={driver.id} 
+                  className={cn(
+                    'transition-all duration-300 ease-in-out',
+                    colorClass
+                  )}
+                >
+                  {/* Gölge/Arka plan çizgisi */}
+                  <path
+                    d={d}
+                    fill="none"
+                    stroke="var(--color-background)"
+                    strokeWidth={strokeWidthClass + 3}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    vectorEffect="non-scaling-stroke"
+                    opacity={isFaded ? 0.1 : 0.6}
+                  />
+                  {/* Asıl rota çizgisi */}
+                  <path
+                    d={d}
+                    fill="none"
+                    stroke="currentColor" 
+                    strokeWidth={strokeWidthClass}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    vectorEffect="non-scaling-stroke"
+                    strokeDasharray={isOptimizing ? '6 5' : undefined}
+                  />
+                </g>
+              )
+            })}
         </svg>
 
         {/* Depolar */}
         {Array.from(new Map(
-          (drivers.length > 0 ? drivers : [{ depotName: 'Merkez Depo', depotX: 50, depotY: 50 }]).map(d => [
-            d.depotName || 'Merkez Depo', 
-            { name: d.depotName || 'Merkez Depo', x: d.depotX ?? 50, y: d.depotY ?? 50 }
+          drivers.map(d => [
+            d.depotName || 'Merkez Depo',
+            {
+              name: d.depotName || 'Merkez Depo',
+              x: d.depotX ?? 50,
+              y: d.depotY ?? 50,
+              // Bu depoya ait olan araçların ID'lerini haritalıyoruz
+              driverIds: drivers.filter(dr => (dr.depotName || 'Merkez Depo') === (d.depotName || 'Merkez Depo')).map(dr => dr.id)
+            }
           ])
-        ).values()).map(d => (
-          <div
-            key={d.name}
-            className="absolute z-10 -translate-x-1/2 -translate-y-1/2"
-            style={{ left: `${d.x}%`, top: `${d.y}%` }}
-          >
-            <div className="flex items-center gap-1.5 rounded-md border-2 border-foreground bg-card px-2 py-1 shadow-md">
-              <Warehouse className="size-3.5 text-foreground" />
-              <span className="text-[11px] font-bold text-foreground">{d.name}</span>
-            </div>
-          </div>
-        ))}
+        ).values()).map(d => {
+          // ODAK SİHRİ: Seçili bir araç varsa ve bu depo o araca ait değilse soluklaştır
+          const isFaded = activeDriverId ? !d.driverIds.includes(activeDriverId) : false
 
-        {/* Numaralı durak pinleri */}
-        {drivers.map((driver) => {
-          const theme = driverTheme[driver.colorKey]
-          return driver.stops.map((stop) => {
-            const isSelected = selectedStopId === stop.id
-            const isRisk = stop.status === 'risk'
-            return (
-              <button
-                key={stop.id}
-                type="button"
-                onClick={() => onSelectStop(stop, driver.id)}
-                title={`${stop.customerName} · ${stop.eta}`}
-                className={cn(
-                  'group absolute z-20 -translate-x-1/2 -translate-y-full transition-transform focus:outline-none',
-                  isSelected ? 'z-30 scale-110' : 'hover:scale-110',
-                )}
-                style={{ left: `${stop.x}%`, top: `${stop.y}%` }}
-              >
-                <span className="relative flex flex-col items-center">
-                  <span
-                    className={cn(
-                      'grid size-7 place-items-center rounded-full border-2 border-background font-mono text-[11px] font-bold text-primary-foreground shadow-md',
-                      theme.solid,
-                      isSelected && 'ring-2 ring-foreground ring-offset-1',
-                    )}
-                  >
-                    {stop.sequence}
-                  </span>
-                  <span
-                    className={cn('-mt-0.5 size-2 rotate-45 border-b-2 border-r-2 border-background', theme.solid)}
-                  />
-                  {isRisk ? (
-                    <span className="absolute -right-1.5 -top-1.5 grid size-4 place-items-center rounded-full border border-background bg-destructive">
-                      <TriangleAlert className="size-2.5 text-primary-foreground" />
+          return (
+            <div
+              key={d.name}
+              className={cn(
+                "absolute z-10 -translate-x-1/2 -translate-y-1/2 transition-all duration-500 ease-in-out",
+                isFaded ? "opacity-20 grayscale scale-95 z-0" : "opacity-100 scale-100 z-20"
+              )}
+              style={{ left: `${d.x}%`, top: `${d.y}%` }}
+            >
+              <div className="flex items-center gap-1.5 rounded-full border border-border/40 bg-background/70 px-3 py-1.5 shadow-lg backdrop-blur-md">
+                <Warehouse className="size-3.5 text-muted-foreground" />
+                <span className="text-[10px] font-bold tracking-wider text-foreground/90">{d.name}</span>
+              </div>
+            </div>
+          )
+        })}
+
+{/* Numaralı durak pinleri */}
+        {[...drivers]
+          // Durakları da z-order için sıralıyoruz
+          .sort((a, b) => Number(a.id === activeDriverId) - Number(b.id === activeDriverId))
+          .map((driver) => {
+            const theme = driverTheme[driver.colorKey]
+            const isFaded = activeDriverId ? activeDriverId !== driver.id : false
+
+            return driver.stops.map((stop) => {
+              const isSelected = selectedStopId === stop.id
+              const isRisk = stop.status === 'risk'
+              
+              return (
+                <button
+                  key={stop.id}
+                  type="button"
+                  onClick={() => onSelectStop(stop, driver.id)}
+                  className={cn(
+                    'group absolute -translate-x-1/2 -translate-y-full transition-all duration-300 ease-in-out focus:outline-none',
+                    isSelected ? 'z-40 scale-125' : 'z-20 hover:scale-110 hover:z-30',
+                    isFaded ? 'opacity-40 grayscale saturate-0' : 'opacity-100'
+                  )}
+                  style={{ left: `${stop.x}%`, top: `${stop.y}%` }}
+                >
+                  <span className="relative flex flex-col items-center">
+                    <span
+                      className={cn(
+                        'grid size-7 place-items-center rounded-full font-mono text-[11px] font-bold shadow-md transition-colors',
+                        // Griye düşme durumu:
+                        isFaded 
+                          ? 'bg-muted text-muted-foreground border-2 border-background' 
+                          : `${theme.solid} text-white ring-2 ring-background/40`,
+                        isSelected && 'ring-4 ring-foreground ring-offset-1 ring-offset-background'
+                      )}
+                    >
+                      {stop.sequence}
                     </span>
-                  ) : null}
-                  {/* Hover etiketi */}
-                  <span
-                    className={cn(
-                      'pointer-events-none absolute bottom-full mb-1 whitespace-nowrap rounded border border-border bg-card px-1.5 py-0.5 text-[10px] font-semibold text-foreground shadow-sm transition-opacity',
-                      isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
-                    )}
-                  >
-                    {stop.customerName} · {stop.eta}
+                    <span
+                      className={cn(
+                        '-mt-0.5 size-2 rotate-45 border-b-2 border-r-2 border-background transition-colors',
+                        isFaded ? 'bg-muted' : theme.solid
+                      )}
+                    />
+                    
+                    {/* Sadece aktif rotada risk ikonu göster */}
+                    {isRisk && !isFaded ? (
+                      <span className="absolute -right-1.5 -top-1.5 grid size-4 place-items-center rounded-full border border-background bg-destructive">
+                        <TriangleAlert className="size-2.5 text-white" />
+                      </span>
+                    ) : null}
+
+                    {/* Tooltip (Etiket): Sadece seçiliyse veya üzerine gelindiğinde açık kalır (Claude Madde 5) */}
+                    <span
+                      className={cn(
+                        'pointer-events-none absolute bottom-full mb-1 whitespace-nowrap rounded border border-border bg-card px-2 py-1 text-[10px] font-semibold text-foreground shadow-lg transition-opacity',
+                        isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                      )}
+                    >
+                      {stop.customerName} · {stop.eta}
+                    </span>
                   </span>
-                </span>
-              </button>
-            )
-          })
+                </button>
+              )
+            })
         })}
 
         {/* DİNAMİK: Gecikme uyarı balonu sadece sistemde riskli bir durak varsa çıkar */}

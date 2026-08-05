@@ -1,7 +1,7 @@
 // Veri sözleşmeleri C# .NET backend DTO'ları ile birebir eşleşecek şekilde tanımlanmıştır.
 // Örn: GET /api/v1/optimization/plans/{planId}
 
-export type DriverKey = 'a' | 'b' | 'c' | 'd' | 'e'
+export type DriverKey = 'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' | 'j' | 'k' | 'l'
 
 export type StopStatus = 'completed' | 'enroute' | 'pending' | 'risk'
 
@@ -59,57 +59,19 @@ export interface UnassignedTaskDto {
 }
 
 /** Sürücü rengi -> statik Tailwind sınıf eşlemesi (dinamik sınıf üretimi yapılmaz) */
-export const driverTheme: Record<
-  DriverKey,
-  {
-    solid: string
-    text: string
-    soft: string
-    border: string
-    ring: string
-    cssVar: string
-  }
-> = {
-  a: {
-    solid: 'bg-driver-a',
-    text: 'text-driver-a',
-    soft: 'bg-driver-a/10',
-    border: 'border-driver-a',
-    ring: 'ring-driver-a/30',
-    cssVar: 'var(--driver-a)',
-  },
-  b: {
-    solid: 'bg-driver-b',
-    text: 'text-driver-b',
-    soft: 'bg-driver-b/10',
-    border: 'border-driver-b',
-    ring: 'ring-driver-b/30',
-    cssVar: 'var(--driver-b)',
-  },
-  c: {
-    solid: 'bg-driver-c',
-    text: 'text-driver-c',
-    soft: 'bg-driver-c/10',
-    border: 'border-driver-c',
-    ring: 'ring-driver-c/30',
-    cssVar: 'var(--driver-c)',
-  },
-  d: {
-    solid: 'bg-driver-d',
-    text: 'text-driver-d',
-    soft: 'bg-driver-d/10',
-    border: 'border-driver-d',
-    ring: 'ring-driver-d/30',
-    cssVar: 'var(--driver-d)',
-  },
-  e: {
-    solid: 'bg-driver-e',
-    text: 'text-driver-e',
-    soft: 'bg-driver-e/10',
-    border: 'border-driver-e',
-    ring: 'ring-driver-e/30',
-    cssVar: 'var(--driver-e)',
-  },
+export const driverTheme: Record<string, { solid: string, soft: string, border: string, text: string, cssVar: string }> = {
+  a: { solid: 'bg-blue-500', soft: 'bg-blue-500/10', border: 'border-blue-500/20', text: 'text-blue-500', cssVar: '#3b82f6' },
+  b: { solid: 'bg-emerald-500', soft: 'bg-emerald-500/10', border: 'border-emerald-500/20', text: 'text-emerald-500', cssVar: '#10b981' },
+  c: { solid: 'bg-orange-500', soft: 'bg-orange-500/10', border: 'border-orange-500/20', text: 'text-orange-500', cssVar: '#f97316' },
+  d: { solid: 'bg-fuchsia-500', soft: 'bg-fuchsia-500/10', border: 'border-fuchsia-500/20', text: 'text-fuchsia-500', cssVar: '#d946ef' },
+  e: { solid: 'bg-purple-500', soft: 'bg-purple-500/10', border: 'border-purple-500/20', text: 'text-purple-500', cssVar: '#a855f7' },
+  f: { solid: 'bg-yellow-500', soft: 'bg-yellow-500/10', border: 'border-yellow-500/20', text: 'text-yellow-500', cssVar: '#eab308' },
+  g: { solid: 'bg-cyan-500', soft: 'bg-cyan-500/10', border: 'border-cyan-500/20', text: 'text-cyan-500', cssVar: '#06b6d4' },
+  h: { solid: 'bg-rose-500', soft: 'bg-rose-500/10', border: 'border-rose-500/20', text: 'text-rose-500', cssVar: '#f43f5e' },
+  i: { solid: 'bg-lime-500', soft: 'bg-lime-500/10', border: 'border-lime-500/20', text: 'text-lime-500', cssVar: '#84cc16' },
+  j: { solid: 'bg-indigo-500', soft: 'bg-indigo-500/10', border: 'border-indigo-500/20', text: 'text-indigo-500', cssVar: '#6366f1' },
+  k: { solid: 'bg-pink-500', soft: 'bg-pink-500/10', border: 'border-pink-500/20', text: 'text-pink-500', cssVar: '#ec4899' },
+  l: { solid: 'bg-teal-500', soft: 'bg-teal-500/10', border: 'border-teal-500/20', text: 'text-teal-500', cssVar: '#14b8a6' },
 }
 
 export const kpiSummary = {
