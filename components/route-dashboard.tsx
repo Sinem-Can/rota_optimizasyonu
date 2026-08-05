@@ -19,43 +19,16 @@ export function RouteDashboard() {
   const [activeTab, setActiveTab] = useState<TabKey>('planlama')
   const [searchQuery, setSearchQuery] = useState('')
 
-  const [localDrivers, setLocalDrivers] = useState<DriverDto[]>([])
-  const [localUnassigned, setLocalUnassigned] = useState<StopDto[]>([])
+  const [localDrivers, setLocalDrivers] = useState<DriverDto[]>(drivers)
+  const [localUnassigned, setLocalUnassigned] = useState<StopDto[]>(unassignedTasks as unknown as StopDto[])
 
   // Türetilmiş state: Seçili araç ve durak
-  const activeDriver = localDrivers.find(d => d.id === selectedDriverId) || localDrivers[0]
-  const activeStop = activeDriver?.stops?.find(s => s.id === selectedStopId) || activeDriver?.stops?.[0] || null
-  const activeStopId = activeStop?.id || null
-  const activeDriverId = activeDriver?.id || null
+  const activeDriver = selectedDriverId ? localDrivers.find(d => d.id === selectedDriverId) ?? null : null
+  const activeStop = activeDriver && selectedStopId ? activeDriver.stops.find(s => s.id === selectedStopId) ?? null : null
+  const activeStopId = selectedStopId
+  const activeDriverId = selectedDriverId
 
-  useEffect(() => {
-    const fetchInitialState = async () => {
-      try {
-        const response = await fetch(`${apiUrl}/api/initial-state`)
-        if (response.ok) {
-          const data = await response.json()
-          // RENK MÜDAHALESİ: Backend'den gelen araçlara sırayla renk paletimizi atıyoruz
-          const colorKeys = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l']
-          const coloredDrivers = data.drivers.map((driver: any, index: number) => ({
-            ...driver,
-            colorKey: colorKeys[index % colorKeys.length]
-          }))
-          setLocalDrivers(coloredDrivers)
-          setLocalUnassigned(data.unassigned)
-        }
-      } catch (error) {
-        console.error("Başlangıç verisi çekilemedi:", error)
-        setLocalUnassigned(unassignedTasks as unknown as StopDto[])
-        setLocalDrivers(drivers)
-      }
-    }
-    fetchInitialState()
-  }, [apiUrl])
-
-  const handleSelectStop = useCallback((stop: StopDto, driverId: string) => {
-    setSelectedStopId(stop.id)
-    setSelectedDriverId(driverId)
-  }, [])
+const handleClearSelection = useCallback(() => { setSelectedStopId(null); setSelectedDriverId(null) }, []); const handleSelectStop = useCallback((stop: StopDto, driverId: string) => { setSelectedStopId(stop.id); setSelectedDriverId(driverId) }, []); useEffect(() => { void (async () => { try { const response = await fetch(apiUrl + "/api/initial-state"); if (!response.ok) throw new Error(`Başlangıç verisi yüklenemedi`); const data = await response.json(); if (!Array.isArray(data.drivers) || data.drivers.length === 0) throw new Error(`Boş başlangıç verisi`); const colorKeys = [`a`, `b`, `c`, `d`, `e`, `f`, `g`, `h`, `i`, `j`, `k`, `l`]; const coloredDrivers = data.drivers.map((driver: any, index: number) => ({ ...driver, colorKey: colorKeys[index % colorKeys.length] })); setLocalDrivers(coloredDrivers); setLocalUnassigned(data.unassigned ?? []); } catch (error) { console.error(`Başlangıç verisi çekilemedi:`, error); setLocalUnassigned(unassignedTasks as unknown as StopDto[]); setLocalDrivers(drivers); } })() }, [apiUrl])
 
   const handleOptimize = async () => {
     setIsOptimizing(true)
@@ -93,15 +66,11 @@ export function RouteDashboard() {
     }
   }
 
-  // TypeScript sussun ve hata gitsin diye eklediğimiz boş fonksiyon
-  const handleImportTasks = () => {}
-
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-background">
       <TopBar
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        onImportTasks={handleImportTasks}
         drivers={localDrivers}
         onSearch={setSearchQuery}
       />
@@ -128,7 +97,7 @@ export function RouteDashboard() {
               isOptimizing={isOptimizing}
               drivers={localDrivers}
             />
-            <DetailPanel stop={activeStop} driverId={activeDriverId} drivers={localDrivers} />
+            <DetailPanel stop={activeStop} driverId={activeDriverId} drivers={localDrivers} onClose={handleClearSelection} />
           </main>
 
           <TimelinePanel 
