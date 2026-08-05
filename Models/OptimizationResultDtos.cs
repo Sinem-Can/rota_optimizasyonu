@@ -5,6 +5,7 @@ namespace Uyumsoft.RouteOptimizer.Models
     public class StopDto
     {
         public string id { get; set; } = string.Empty;
+        public string cariKod { get; set; } = string.Empty;
         public int sequence { get; set; }
         public string customerName { get; set; } = string.Empty;
         public string address { get; set; } = string.Empty;

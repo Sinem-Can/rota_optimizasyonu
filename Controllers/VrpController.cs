@@ -129,6 +129,9 @@ namespace Uyumsoft.RouteOptimizer.Controllers
                             string gercekIsim = (data.NodeNames != null && i < data.NodeNames.Length && !string.IsNullOrEmpty(data.NodeNames[i]))
                                                 ? data.NodeNames[i]
                                                 : $"Müşteri {origCurrentNode}";
+                            string cariKodu = (data.NodeCodes != null && i < data.NodeCodes.Length && !string.IsNullOrEmpty(data.NodeCodes[i]))
+                                                ? data.NodeCodes[i]
+                                                : string.Empty;
 
                             string gercekAdres = (data.NodeAddresses != null && i < data.NodeAddresses.Length && !string.IsNullOrEmpty(data.NodeAddresses[i]))
                                                 ? data.NodeAddresses[i]
@@ -144,6 +147,7 @@ namespace Uyumsoft.RouteOptimizer.Controllers
                                 unassigned.Add(new StopDto
                                 {
                                     id = $"ST-{origCurrentNode}-{Guid.NewGuid().ToString().Substring(0, 4)}",
+                                    cariKod = cariKodu,
                                     sequence = sequenceCounter++,
                                     customerName = gercekIsim,
                                     address = gercekAdres,
