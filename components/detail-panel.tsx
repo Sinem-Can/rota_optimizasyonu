@@ -7,18 +7,21 @@ import {
   Building2,
   Clock,
   FileCheck2,
+  Fuel,
   History,
   Loader2,
   MapPin,
   Package,
   Phone,
   ReceiptText,
+  Route,
   Send,
   Timer,
   TriangleAlert,
   Truck,
   Wallet,
   Weight,
+  X,
 } from 'lucide-react'
 import { toast } from "sonner"
 import { driverTheme, statusMeta, type StopDto, type DriverDto } from '@/lib/route-data'
@@ -28,6 +31,7 @@ interface DetailPanelProps {
   stop: StopDto | null
   driverId: string | null
   drivers: DriverDto[]
+  onClose: () => void
 }
 
 const customerGroups = ['Zincir Market', 'Kurumsal Bayi', 'Yapı Marketi', 'Perakende'] as const
@@ -47,7 +51,7 @@ function erpInfo(stopId: string) {
   }
 }
 
-export function DetailPanel({ stop, driverId, drivers }: DetailPanelProps) {
+export function DetailPanel({ stop, driverId, drivers, onClose }: DetailPanelProps) {
   // Yükleme animasyonları için state'ler
   const [isSendingDriver, setIsSendingDriver] = useState(false)
   const [isSendingNotification, setIsSendingNotification] = useState(false)
@@ -55,16 +59,40 @@ export function DetailPanel({ stop, driverId, drivers }: DetailPanelProps) {
   const driver = drivers.find((d) => d.id === driverId) ?? null
 
   if (!stop || !driver) {
+    const totalDistance = drivers.reduce((sum, item) => sum + item.totalDistanceKm, 0)
+    const totalMinutes = drivers.reduce((sum, item) => sum + item.totalDurationMin, 0)
+    const estimatedFuel = Math.round((totalDistance / 100) * 12)
+    const summaryItems = [
+      { label: 'Toplam Mesafe', value: totalDistance.toLocaleString('tr-TR'), unit: 'km', icon: Route },
+      { label: 'Toplam Süre', value: `${Math.floor(totalMinutes / 60)}s ${totalMinutes % 60}d`, icon: Timer },
+      { label: 'Araç Sayısı', value: drivers.length.toString(), unit: 'araç', icon: Truck },
+      { label: 'Yakıt Tahmini', value: estimatedFuel.toLocaleString('tr-TR'), unit: 'lt', icon: Fuel },
+      { label: 'Maliyet', value: (estimatedFuel * 42.5).toLocaleString('tr-TR'), unit: '₺', icon: Wallet },
+    ]
+
     return (
-      <aside className="flex h-full flex-col items-center justify-center gap-3 border-l border-border bg-card px-6 text-center">
-        <div className="grid size-11 place-items-center rounded-lg border border-dashed border-border bg-muted text-muted-foreground">
-          <MapPin className="size-5" />
-        </div>
-        <div>
-          <p className="text-[13px] font-semibold text-foreground">Durak seçilmedi</p>
+      <aside className="flex h-full min-h-0 flex-col border-l border-border bg-card">
+        <div className="border-b border-border px-3.5 py-3">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Plan Özeti</p>
           <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
-            Detayları görüntülemek ve düzenlemek için haritadan veya listeden bir durak seçin.
+            Bir durağı seçtiğinizde burada durak detayları gösterilir.
           </p>
+        </div>
+        <div className="grid flex-1 content-start gap-2.5 overflow-y-auto p-3.5">
+          {summaryItems.map((item) => (
+            <div key={item.label} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-card p-3 shadow-sm dark:border-border">
+              <div className="grid size-9 shrink-0 place-items-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
+                <item.icon className="size-4.5" />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{item.label}</p>
+                <div className="mt-0.5 flex items-baseline gap-1.5">
+                  <span className="font-mono text-lg font-bold text-foreground">{item.value}</span>
+                  {item.unit ? <span className="text-[11px] font-medium text-muted-foreground">{item.unit}</span> : null}
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </aside>
     )
@@ -103,7 +131,12 @@ export function DetailPanel({ stop, driverId, drivers }: DetailPanelProps) {
           <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
             Durak Detayı
           </p>
-          <span className="font-mono text-[10px] font-medium text-muted-foreground">{stop.id}</span>
+          <div className="flex items-center gap-1.5">
+            <span className="font-mono text-[10px] font-medium text-muted-foreground">{stop.id}</span>
+            <button type="button" onClick={onClose} aria-label="Durak detayını kapat" className="grid size-6 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+              <X className="size-4" />
+            </button>
+          </div>
         </div>
         <div className="mt-2 flex items-start gap-2.5">
           <span
