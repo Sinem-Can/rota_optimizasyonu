@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import { ChevronsUpDown, Clock, TriangleAlert } from 'lucide-react'
 import { driverTheme, toMinutes, type StopDto, type DriverDto } from '@/lib/route-data'
 import { cn } from '@/lib/utils'
-import { toast } from 'sonner'
 
 interface TimelinePanelProps {
   selectedStopId: string | null
@@ -169,10 +168,7 @@ export function TimelinePanel({ selectedStopId, onSelectStop, drivers, isOpen, o
                         key={stop.id}
                         type="button"
                         onClick={() => {
-                        onSelectStop(stop, driver.id)
-                        toast.info(`Odaklanıldı: ${stop.customerName}`, {
-                        description: `Harita pini ve detaylar güncellendi.`,
-                        })
+                          onSelectStop(stop, driver.id)
                         }}
                         title={`${stop.customerName} · ETA ${stop.eta} · ${stop.serviceMinutes} dk servis`}
                         className={cn(
