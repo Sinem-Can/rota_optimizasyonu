@@ -42,5 +42,5 @@ app.UseSwaggerUI(c =>
 // API Uçları (Controllers'a Yönlendir)
 app.MapControllers();
 
-// Uygulamayı Başlat (Port 5000'e sabitle)
-app.Run("http://localhost:5000");
+// Port, ASPNETCORE_URLS ortam değişkeninden gelir.
+app.Run();

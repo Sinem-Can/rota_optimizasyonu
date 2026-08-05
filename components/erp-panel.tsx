@@ -198,9 +198,8 @@ async function handleSendToRoutePool() {
     setIsSending(true)
     
     try {
-      // 1. GERÇEK BACKEND İSTEĞİ:
-      // DİKKAT: 'http://localhost:5000/api/orders' kısmını backend ekibinin sana verdiği gerçek adresle değiştirmelisin!
-      const response = await fetch('http://localhost:5000/api/orders', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5099'
+      const response = await fetch(`${apiUrl}/api/orders`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
