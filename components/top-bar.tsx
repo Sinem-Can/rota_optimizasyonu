@@ -1,6 +1,6 @@
 'use client'
 
-import { toast } from 'sonner'
+import { useEffect, useState } from 'react'
 import type { DriverDto } from "@/lib/route-data"
 
 import {
@@ -13,6 +13,7 @@ import {
   Truck,
   Wallet,
   Warehouse,
+  X,
 } from 'lucide-react'
 // YENİ: Bütün özet bilgilerimizi artık erp-data.ts içindeki erpSummary'den alıyoruz!
 import { erpSummary } from '@/lib/erp-data'
@@ -41,6 +42,8 @@ interface KpiItem {
 
 export function TopBar({ activeTab, onTabChange, drivers, onSearch }: TopBarProps) {
   const isErp = activeTab === 'erp'
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false)
+  const [searchValue, setSearchValue] = useState('')
 
   // --- DİNAMİK HESAPLAMALAR (PLANLAMA EKRANI İÇİN) ---
   const activeVehicleCount = drivers.length
@@ -125,13 +128,16 @@ export function TopBar({ activeTab, onTabChange, drivers, onSearch }: TopBarProp
 
   const activeKpis = isErp ? erpKpis : kpis
 
-  const handleSearchSubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && e.currentTarget.value.trim()) {
-      toast.info(`"${e.currentTarget.value}" arandı`, {
-        description: 'Sonuçlar listeye yansıtıldı.',
-      })
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault()
+        setIsSearchExpanded(true)
+      }
     }
-  }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
 
   return (
     <header className="shrink-0 border-b border-border bg-card">
@@ -157,22 +163,49 @@ export function TopBar({ activeTab, onTabChange, drivers, onSearch }: TopBarProp
           })}
         </nav>
 
-        <div className="relative ml-auto w-full max-w-xs">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="search"
-            onChange={(e) => onSearch?.(e.target.value)}
-            onKeyDown={handleSearchSubmit}
-            placeholder="Müşteri, sipariş no veya plaka ara…"
-            aria-label="Genel arama"
-            className="h-9 w-full rounded-md border border-input bg-background pl-8 pr-3 text-[13px] text-foreground outline-none transition placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/20"
-          />
+        <div className="ml-auto flex items-center gap-2 text-[11px] font-medium text-muted-foreground">
+          {!isErp ? <span className="hidden lg:inline">İstanbul · Avrupa/Anadolu</span> : null}
+          <div className={`flex h-9 items-center overflow-hidden rounded-md border border-border bg-secondary/50 transition-all duration-300 ease-in-out focus-within:ring-2 focus-within:ring-ring/30 ${isSearchExpanded ? 'w-72' : 'w-9'}`}>
+            {isSearchExpanded ? (
+              <>
+                <Search className="ml-2.5 size-4 shrink-0 text-muted-foreground" />
+                <input
+                  autoFocus
+                  type="text"
+                  value={searchValue}
+                  onChange={(event) => {
+                    setSearchValue(event.target.value)
+                    onSearch?.(event.target.value)
+                  }}
+                  placeholder="Müşteri, sipariş no veya plaka ara..."
+                  aria-label="Genel arama"
+                  className="h-full min-w-0 flex-1 bg-transparent px-2 text-[13px] text-foreground outline-none placeholder:text-muted-foreground"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchValue('')
+                    onSearch?.('')
+                    setIsSearchExpanded(false)
+                  }}
+                  aria-label="Aramayı temizle ve kapat"
+                  title="Kapat"
+                  className="mr-1 grid size-7 shrink-0 place-items-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                  <X className="size-3.5" />
+                </button>
+              </>
+            ) : (
+              <button type="button" onClick={() => setIsSearchExpanded(true)} aria-label="Ara" title="Ara (⌘K)" className="grid size-8 place-items-center text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+                <Search className="size-4" />
+              </button>
+            )}
+          </div>
         </div>
 
         <ThemeToggle />
 
       </div>
-
     </header>
   )
 }
