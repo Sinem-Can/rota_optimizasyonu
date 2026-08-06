@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { toast } from 'sonner'
 import type { DriverDto } from "@/lib/route-data"
 
 import {
@@ -14,11 +13,11 @@ import {
   Truck,
   Wallet,
   Warehouse,
+  X,
 } from 'lucide-react'
 // YENİ: Bütün özet bilgilerimizi artık erp-data.ts içindeki erpSummary'den alıyoruz!
 import { erpSummary } from '@/lib/erp-data'
 import { ThemeToggle } from '@/components/theme-toggle'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 export type TabKey = 'planlama' | 'erp'
 
@@ -43,7 +42,8 @@ interface KpiItem {
 
 export function TopBar({ activeTab, onTabChange, drivers, onSearch }: TopBarProps) {
   const isErp = activeTab === 'erp'
-  const [searchOpen, setSearchOpen] = useState(false)
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false)
+  const [searchValue, setSearchValue] = useState('')
 
   // --- DİNAMİK HESAPLAMALAR (PLANLAMA EKRANI İÇİN) ---
   const activeVehicleCount = drivers.length
@@ -128,20 +128,11 @@ export function TopBar({ activeTab, onTabChange, drivers, onSearch }: TopBarProp
 
   const activeKpis = isErp ? erpKpis : kpis
 
-  const handleSearchSubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && e.currentTarget.value.trim()) {
-      toast.info(`"${e.currentTarget.value}" arandı`, {
-        description: 'Sonuçlar listeye yansıtıldı.',
-      })
-      setSearchOpen(false)
-    }
-  }
-
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault()
-        setSearchOpen(true)
+        setIsSearchExpanded(true)
       }
     }
     window.addEventListener('keydown', onKeyDown)
@@ -174,29 +165,47 @@ export function TopBar({ activeTab, onTabChange, drivers, onSearch }: TopBarProp
 
         <div className="ml-auto flex items-center gap-2 text-[11px] font-medium text-muted-foreground">
           {!isErp ? <span className="hidden lg:inline">İstanbul · Avrupa/Anadolu</span> : null}
-          <button type="button" onClick={() => setSearchOpen(true)} aria-label="Ara" title="Ara (⌘K)" className="grid size-8 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-            <Search className="size-4" />
-          </button>
+          <div className={`flex h-9 items-center overflow-hidden rounded-md border border-border bg-secondary/50 transition-all duration-300 ease-in-out focus-within:ring-2 focus-within:ring-ring/30 ${isSearchExpanded ? 'w-72' : 'w-9'}`}>
+            {isSearchExpanded ? (
+              <>
+                <Search className="ml-2.5 size-4 shrink-0 text-muted-foreground" />
+                <input
+                  autoFocus
+                  type="text"
+                  value={searchValue}
+                  onChange={(event) => {
+                    setSearchValue(event.target.value)
+                    onSearch?.(event.target.value)
+                  }}
+                  placeholder="Müşteri, sipariş no veya plaka ara..."
+                  aria-label="Genel arama"
+                  className="h-full min-w-0 flex-1 bg-transparent px-2 text-[13px] text-foreground outline-none placeholder:text-muted-foreground"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchValue('')
+                    onSearch?.('')
+                    setIsSearchExpanded(false)
+                  }}
+                  aria-label="Aramayı temizle ve kapat"
+                  title="Kapat"
+                  className="mr-1 grid size-7 shrink-0 place-items-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                  <X className="size-3.5" />
+                </button>
+              </>
+            ) : (
+              <button type="button" onClick={() => setIsSearchExpanded(true)} aria-label="Ara" title="Ara (⌘K)" className="grid size-8 place-items-center text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+                <Search className="size-4" />
+              </button>
+            )}
+          </div>
         </div>
 
         <ThemeToggle />
 
       </div>
-
-      <Dialog open={searchOpen} onOpenChange={setSearchOpen}>
-        <DialogContent className="sm:max-w-md" showCloseButton={false}>
-          <DialogHeader>
-            <DialogTitle>Arama</DialogTitle>
-            <DialogDescription>Müşteri, sipariş numarası veya plaka ile arayın.</DialogDescription>
-          </DialogHeader>
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <input autoFocus type="search" onChange={(e) => onSearch?.(e.target.value)} onKeyDown={handleSearchSubmit} placeholder="Aramaya başlayın…" className="h-11 w-full rounded-md border border-input bg-background pl-9 pr-3 text-[13px] text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/20" />
-          </div>
-          <p className="text-[11px] text-muted-foreground">Aramak için Enter, kapatmak için Esc.</p>
-        </DialogContent>
-      </Dialog>
-
     </header>
   )
 }

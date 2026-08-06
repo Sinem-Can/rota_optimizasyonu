@@ -132,11 +132,9 @@ export function RouteDashboard() {
                   onSelectStop={handleSelectStop}
                   isOptimizing={isOptimizing}
                   onOptimize={handleOptimize}
-                  drivers={localDrivers}
-                  unassigned={localUnassigned}
-                  setUnassigned={setLocalUnassigned}
-                  setDrivers={setLocalDrivers}
-                  searchQuery={searchQuery}
+              drivers={localDrivers}
+              unassigned={localUnassigned}
+              searchQuery={searchQuery}
                 />
                 <button
                   type="button"
