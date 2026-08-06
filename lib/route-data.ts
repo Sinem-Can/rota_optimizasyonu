@@ -78,7 +78,7 @@ export const driverTheme: Record<string, { solid: string, soft: string, border: 
 }
 
 /** 
- * Semt ve İlçe Bazlı Detaylı İstanbul Koordinat Sözlüğü
+ * Semt and İlçe Bazlı Detaylı İstanbul Koordinat Sözlüğü (Yedek / Akıllı Eşleşme)
  */
 const locationCoordinates: Record<string, { lat: number; lng: number }> = {
     // Depolar
@@ -123,44 +123,38 @@ const locationCoordinates: Record<string, { lat: number; lng: number }> = {
 }
 
 /** 
- * Kesin Nokta Atışı Koordinat Sözlüğü (Sürücülerdeki C-xx ve CAR kodları için)
+ * Kesin Nokta Atışı Koordinat Sözlüğü (CAR001 - CAR027 ve Depolar için)
  */
 const exactLocations: Record<string, { lat: number; lng: number }> = {
-    'DP001': { lat: 40.9850, lng: 28.7200 },
-    'DP002': { lat: 41.0280, lng: 29.0200 },
-    'C-11': { lat: 41.0150, lng: 28.9700 }, // Eminönü Toptancı
-    'C-19': { lat: 40.9922, lng: 28.7832 }, // Sefaköy CarrefourSA
-    'C-03': { lat: 40.9785, lng: 28.8772 }, // Bakırköy Migros
-    'C-20': { lat: 40.9952, lng: 28.7752 }, // Küçükçekmece Çağrı
-    'C-08': { lat: 41.0762, lng: 29.0148 }, // Levent File
-    'C-10': { lat: 41.1660, lng: 29.0500 }, // Sarıyer Bakkal
-    'CAR001': { lat: 40.9958, lng: 28.8415 },
-    'CAR002': { lat: 40.9785, lng: 28.8772 },
-    'CAR003': { lat: 41.0438, lng: 29.0078 },
-    'CAR004': { lat: 41.0552, lng: 28.9859 },
-    'CAR005': { lat: 41.0648, lng: 28.9932 },
-    'CAR006': { lat: 41.0762, lng: 29.0148 },
-    'CAR007': { lat: 41.0183, lng: 28.9482 },
-    'CAR008': { lat: 41.0482, lng: 28.9348 },
-    'CAR009': { lat: 41.0412, lng: 28.8955 },
-    'CAR010': { lat: 41.0332, lng: 28.8552 },
-    'CAR011': { lat: 40.9922, lng: 28.7832 },
-    'CAR012': { lat: 40.9952, lng: 28.7752 },
-    'CAR013': { lat: 41.0022, lng: 28.6452 },
-    'CAR014': { lat: 40.9782, lng: 29.0382 },
-    'CAR015': { lat: 40.9572, lng: 29.1022 },
-    'CAR016': { lat: 40.9252, lng: 29.1332 },
-    'CAR017': { lat: 40.8752, lng: 29.2342 },
-    'CAR018': { lat: 40.8142, lng: 29.3032 },
-    'CAR019': { lat: 41.0272, lng: 29.1002 },
-    'CAR020': { lat: 41.0152, lng: 29.1282 },
-    'CAR021': { lat: 40.9852, lng: 29.1152 },
-    'CAR022': { lat: 40.9732, lng: 29.1502 },
-    'CAR023': { lat: 40.9702, lng: 29.1122 },
-    'CAR024': { lat: 41.0392, lng: 29.1762 },
-    'CAR025': { lat: 41.0922, lng: 29.0782 },
-    'CAR026': { lat: 41.0452, lng: 29.0482 },
-    'CAR027': { lat: 41.0222, lng: 29.0352 },
+    'DP001': { lat: 40.9850, lng: 28.7200 }, // Avcılar Depo 
+    'DP002': { lat: 41.0280, lng: 29.0200 }, // Üsküdar Depo
+    'CAR001': { lat: 40.992404131764815, lng: 28.844353794325045 }, // Şirinevler Şok
+    'CAR002': { lat: 40.97840849053126, lng: 28.87284091951669 }, // Bakırköy Migros
+    'CAR003': { lat: 41.0460943758809, lng: 29.007194281826056 }, // Beşiktaş Macrocenter
+    'CAR004': { lat: 41.05554647951909, lng: 28.987209886020832 }, // Şişli CarrefourSA
+    'CAR005': { lat: 41.067101927524476, lng: 28.999953539498645 }, // Mecidiyeköy Çağrı
+    'CAR006': { lat: 41.075458877522614, lng: 29.019000854842666 }, // Levent File
+    'CAR007': { lat: 41.021434505681825, lng: 28.946206056692148 }, // Fatih BİM
+    'CAR008': { lat: 41.04838123081621, lng: 28.93217598367751 }, // Eyüp Şok
+    'CAR009': { lat: 41.05099747465778, lng: 28.88871180335774 }, // Bayrampaşa Hal İçi (Yorum satırında koordinat yok, pas geçildi)
+    'CAR010': { lat: 41.034358971410576, lng: 28.858157115835283 }, // Bağcılar Migros
+    'CAR011': { lat: 41.02552735191915, lng: 28.796229241348684 }, // Sefaköy CarrefourSA
+    'CAR012': { lat: 41.021075684528746, lng: 28.788965170184387 }, // Küçükçekmece Çağrı
+    'CAR013': { lat: 41.00503654713486, lng: 28.65968775484004 }, // Beylikdüzü Migros 5M
+    'CAR014': { lat: 40.977187370855795, lng: 29.047530268331165 }, // Fenerbahçe Şok
+    'CAR015': { lat: 40.957908580665695, lng: 29.085188241346142 }, // Bostancı Migros
+    'CAR016': { lat: 40.90239897587793, lng: 29.14607558215053 }, // Maltepe CarrefourSA
+    'CAR017': { lat: 40.89523643145974, lng: 29.248460897164286 }, // Pendik File
+    'CAR018': { lat: 40.81700988501976, lng: 29.296462701849556 }, // Tuzla Çağrı
+    'CAR019': { lat: 41.02569876344699, lng: 29.096772088584558 }, // Ümraniye Çarşı Migros
+    'CAR020': { lat: 41.02531915519853, lng: 29.098778619760292 }, // Çakmak Şok
+    'CAR021': { lat: 40.99415446338037, lng: 29.12197097798803 }, // Ataşehir Migros
+    'CAR022': { lat: 40.98588454824705, lng: 29.17597147997232 }, // Kayışdağı BİM
+    'CAR023': { lat: 40.98181325756917, lng: 29.112914068331474 }, // İçerenköy CarrefourSA
+    'CAR024': { lat: 41.028635125252045, lng: 29.17342908182534 }, // Çekmeköy File
+    'CAR025': { lat: 41.09523740949902, lng: 29.097574397171503 }, // Kavacık Migros
+    'CAR026': { lat: 41.04962093156573, lng: 29.054415621039627 }, // Çengelköy Şok
+    'CAR027': { lat: 41.02197118952549, lng: 29.045063449556718 }, // Altunizade Çağrı
 }
 
 /** 
@@ -173,7 +167,6 @@ export function getCoordinatesForAddress(address: string, fallbackId: string): {
         }
     }
 
-    // Bulunamazsa ID bazlı güvenli mikro sapma
     let hash = 0
     for (let i = 0; i < fallbackId.length; i++) {
         hash = fallbackId.charCodeAt(i) + ((hash << 5) - hash)
@@ -184,38 +177,23 @@ export function getCoordinatesForAddress(address: string, fallbackId: string): {
     }
 }
 
-/** 
- * Harita bileşeninin doğrudan kullandığı durak koordinat çözücü.
- * Birebir aynı noktaya düşen durakları ID hash değerine göre çok küçük bir sapma ile ayırır.
- */
-export function getCoordinatesForStop(stop: { id: string; address?: string; district?: string; lat?: number; lng?: number }): { lat: number; lng: number } {
-    let base: { lat: number; lng: number }
-
-    if (stop.lat && stop.lng) {
-        base = { lat: stop.lat, lng: stop.lng }
-    } else if (exactLocations[stop.id]) {
-        base = exactLocations[stop.id]
-    } else {
-        const fullSearchText = `${stop.address || ''} ${stop.district || ''}`
-        base = getCoordinatesForAddress(fullSearchText, stop.id)
+export function getCoordinatesForStop(stop: { id?: string; cariKod?: string; lat?: number; lng?: number }): { lat: number; lng: number } {
+    // 1. Doğrudan lat/lng varsa kullan
+    if (stop?.lat && stop?.lng) {
+        return { lat: Number(stop.lat), lng: Number(stop.lng) }
     }
 
-    // Aynı koordinata denk gelen farklı ID'li duraklar için kararlı mikro sapma (Çakışma Önleyici)
-    let hash = 0
-    for (let i = 0; i < stop.id.length; i++) {
-        hash = stop.id.charCodeAt(i) + ((hash << 5) - hash)
+    // 2. Önce cariKod'a bak (Örn: CAR013), yoksa id'ye bak
+    const targetKey = stop?.cariKod || stop?.id;
+    const cleanKey = targetKey ? String(targetKey).trim().toUpperCase() : '';
+
+    if (cleanKey && exactLocations[cleanKey]) {
+        return exactLocations[cleanKey]
     }
 
-    // ~10-15 metre oynatan çok küçük ve güvenli ofset katsayısı
-    const jitterLat = ((Math.abs(hash) % 10) - 5) * 0.00012
-    const jitterLng = ((Math.abs(hash * 13) % 10) - 5) * 0.00012
-
-    return {
-        lat: base.lat + jitterLat,
-        lng: base.lng + jitterLng,
-    }
+// Hiçbiri tutmazsa
+    return { lat: 41.0082, lng: 28.9784 }
 }
-
 export function getCoordinatesForDepot(depotName: string): { lat: number; lng: number } {
     if ((depotName || '').toLowerCase().includes('üsküdar')) {
         return exactLocations['DP002']
@@ -250,21 +228,21 @@ export const drivers: DriverDto[] = [
         colorKey: 'a',
         stops: [
             {
-                id: 'C-11',
+                id: 'CAR001',
                 sequence: 1,
-                customerName: 'Müşteri 11 (Eminönü Toptancı)',
-                address: 'Eminönü Meydanı',
-                district: 'Fatih',
+                customerName: 'Şirinevler Şok Market',
+                address: 'Şirinevler Mah. Meriç Sok. No:15',
+                district: 'Bahçelievler',
                 eta: '08:45',
-                windowStart: '08:00',
-                windowEnd: '12:00',
+                windowStart: '13:00',
+                windowEnd: '18:00',
                 serviceMinutes: 15,
-                weightKg: 440,
-                volumeM3: 3,
+                weightKg: 2,
+                volumeM3: 0.7,
                 status: 'completed',
                 priority: 'Normal',
                 phone: '0555 111 2233',
-                orderNo: 'SP-10011',
+                orderNo: 'SP-10001',
                 x: 52,
                 y: 48,
             }
@@ -285,36 +263,36 @@ export const drivers: DriverDto[] = [
         colorKey: 'b',
         stops: [
             {
-                id: 'C-19',
+                id: 'CAR002',
                 sequence: 1,
-                customerName: 'Müşteri 19 (Sefaköy CarrefourSA)',
-                address: 'Sefaköy Merkez',
-                district: 'Küçükçekmece',
+                customerName: 'Bakırköy Migros',
+                address: 'Zeytinlik Mah. Fişekhane Cad. No:22',
+                district: 'Bakırköy',
                 eta: '10:14',
-                windowStart: '09:00',
+                windowStart: '08:00',
                 windowEnd: '12:00',
                 serviceMinutes: 15,
-                weightKg: 400,
-                volumeM3: 3,
+                weightKg: 3,
+                volumeM3: 1.7,
                 status: 'enroute',
                 priority: 'Normal',
                 phone: '0555 222 3344',
-                orderNo: 'SP-10019',
+                orderNo: 'SP-10002',
                 x: 22,
                 y: 62,
             },
             {
-                id: 'C-03',
+                id: 'CAR003',
                 sequence: 2,
-                customerName: 'Müşteri 3 (Bakırköy Migros)',
-                address: 'İncirli Cad.',
-                district: 'Bakırköy',
+                customerName: 'Beşiktaş Macrocenter',
+                address: 'Sinanpaşa Mah. Barbaros Bulvarı No:45',
+                district: 'Beşiktaş',
                 eta: '12:44',
-                windowStart: '11:00',
-                windowEnd: '15:00',
+                windowStart: '09:00',
+                windowEnd: '17:00',
                 serviceMinutes: 15,
-                weightKg: 480,
-                volumeM3: 3,
+                weightKg: 5,
+                volumeM3: 2.0,
                 status: 'pending',
                 priority: 'Yüksek',
                 phone: '0555 333 4455',
@@ -339,61 +317,42 @@ export const drivers: DriverDto[] = [
         colorKey: 'c',
         stops: [
             {
-                id: 'C-20',
+                id: 'CAR004',
                 sequence: 1,
-                customerName: 'Müşteri 20 (Küçükçekmece Çağrı)',
-                address: 'Merkez',
-                district: 'Küçükçekmece',
+                customerName: 'Şişli CarrefourSA',
+                address: 'Merkez Mah. Halaskargazi Cad. No:112',
+                district: 'Şişli',
                 eta: '09:09',
-                windowStart: '08:00',
-                windowEnd: '17:00',
+                windowStart: '13:00',
+                windowEnd: '18:00',
                 serviceMinutes: 20,
-                weightKg: 1000,
-                volumeM3: 5,
+                weightKg: 6,
+                volumeM3: 2.5,
                 status: 'completed',
                 priority: 'Normal',
                 phone: '0555 444 5566',
-                orderNo: 'SP-10020',
+                orderNo: 'SP-10004',
                 x: 20,
                 y: 60,
             },
             {
-                id: 'C-08',
+                id: 'CAR005',
                 sequence: 2,
-                customerName: 'Müşteri 8 (Levent File)',
-                address: 'Levent Çarşı',
-                district: 'Beşiktaş',
+                customerName: 'Mecidiyeköy Çağrı Market',
+                address: 'Mecidiyeköy Mah. Büyükdere Cad. No:85',
+                district: 'Şişli',
                 eta: '10:18',
-                windowStart: '10:00',
-                windowEnd: '14:00',
+                windowStart: '08:00',
+                windowEnd: '12:00',
                 serviceMinutes: 25,
-                weightKg: 1520,
-                volumeM3: 10,
+                weightKg: 7,
+                volumeM3: 3.0,
                 status: 'enroute',
                 priority: 'Yüksek',
                 phone: '0555 555 6677',
-                orderNo: 'SP-10008',
+                orderNo: 'SP-10005',
                 x: 46,
                 y: 33,
-            },
-            {
-                id: 'C-10',
-                sequence: 3,
-                customerName: 'Müşteri 10 (Sarıyer Bakkal)',
-                address: 'Sarıyer Merkez',
-                district: 'Sarıyer',
-                eta: '11:20',
-                windowStart: '11:00',
-                windowEnd: '16:00',
-                serviceMinutes: 20,
-                weightKg: 1200,
-                volumeM3: 8,
-                status: 'pending',
-                priority: 'Normal',
-                phone: '0555 666 7788',
-                orderNo: 'SP-10010',
-                x: 74,
-                y: 30,
             }
         ],
     }
