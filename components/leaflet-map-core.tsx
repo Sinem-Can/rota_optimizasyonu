@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMapEvents } from 'react-leaflet'
+import { useEffect, useState } from 'react'
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, useMapEvents } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
 import { driverTheme, getCoordinatesForStop, getCoordinatesForDepot, type StopDto, type DriverDto } from '@/lib/route-data'
@@ -11,6 +11,30 @@ interface LeafletMapCoreProps {
     selectedStopId: string | null
     activeDriverId?: string
     onSelectStop: (stop: StopDto, driverId: string) => void
+}
+
+/** ✨ Konteyner boyut değişikliklerini (panel açılma/kapanma) algılayıp haritayı tazele yen gözlemci */
+function MapResizeHandler() {
+    const map = useMap()
+
+    useEffect(() => {
+        const container = map.getContainer()
+        if (!container) return
+
+        const observer = new ResizeObserver(() => {
+            setTimeout(() => {
+                map.invalidateSize()
+            }, 100)
+        })
+
+        observer.observe(container)
+
+        return () => {
+            observer.disconnect()
+        }
+    }, [map])
+
+    return null
 }
 
 function MapZoomObserver({ onZoomChange }: { onZoomChange: (zoom: number) => void }) {
@@ -79,6 +103,7 @@ export default function LeafletMapCore({
             attributionControl={false}
         >
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+            <MapResizeHandler />
             <MapZoomObserver onZoomChange={setCurrentZoom} />
 
             {/* ROTA ÇİZGİLERİ (Çevrim Döngüleri) */}
