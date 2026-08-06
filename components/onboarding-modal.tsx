@@ -1,66 +1,142 @@
-"use client"
+'use client'
 
-import { useState, useEffect } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { ListTodo, MapPin, PlayCircle } from "lucide-react"
+import { useEffect, useState } from 'react'
+import {
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Mail,
+  MapPinned,
+  PanelLeft,
+  PlayCircle,
+} from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+
+const onboardingSteps = [
+  {
+    title: 'Haritadan başlayın',
+    description:
+      'Planlama ekranının merkezinde harita yer alır. Rotaları, durakları ve araç dağılımını buradan tek bakışta takip edin.',
+    icon: MapPinned,
+  },
+  {
+    title: 'Sol paneli yönetin',
+    description:
+      'Sol panelden atanmamış siparişleri inceleyin ve “Rotaları Optimize Et” ile araçlara otomatik dağıtın. Sağ üstteki ikonla paneli daraltıp haritaya daha fazla alan açabilirsiniz.',
+    icon: PanelLeft,
+  },
+  {
+    title: 'Zaman çizelgesini açın',
+    description:
+      'Alt çubuktaki ok ile Zaman Çizelgesi’ni açıp vardiya ve teslimat saatlerini inceleyin. İşiniz bittiğinde aynı ikonla tekrar kapatabilirsiniz.',
+    icon: Clock,
+  },
+  {
+    title: 'Bir durağı seçin',
+    description:
+      'Haritadaki bir pine veya çizelgedeki durağa tıkladığınızda sağ panel durak detayına dönüşür. Adres, cari kod ve teslim edilen saat gibi bilgileri burada görürsünüz.',
+    icon: MapPinned,
+  },
+  {
+    title: 'Hızlı aksiyonla bilgilendirin',
+    description:
+      'Durak detayındaki Hızlı İşlemler alanından sürücüye e-posta gönderebilir; gerekirse kalem ikonuyla zaman ve kapasite bilgilerini düzenleyebilirsiniz.',
+    icon: Mail,
+  },
+] as const
 
 export function OnboardingModal() {
   const [isOpen, setIsOpen] = useState(false)
+  const [activeStep, setActiveStep] = useState(0)
+  const step = onboardingSteps[activeStep]
+  const StepIcon = step.icon
+  const isLastStep = activeStep === onboardingSteps.length - 1
 
   useEffect(() => {
-    const timer = setTimeout(() => setIsOpen(true), 500)
-    return () => clearTimeout(timer)
+    const timer = window.setTimeout(() => setIsOpen(true), 500)
+    return () => window.clearTimeout(timer)
   }, [])
 
+  const closeTour = () => {
+    setIsOpen(false)
+    setActiveStep(0)
+  }
+
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) closeTour()
+        else setIsOpen(true)
+      }}
+    >
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold text-center">
-            Operasyon Ekranına Hoş Geldiniz
+          <DialogTitle className="text-center text-2xl font-bold">
+            Planlama Ekranına Hoş Geldiniz
           </DialogTitle>
-          <DialogDescription className="text-center text-muted-foreground pt-2">
-            Günlük rota planlamanızı başlatmak için aşağıdaki 3 adımı izleyin.
+          <DialogDescription className="pt-2 text-center text-muted-foreground">
+            Güncel operasyon ekranını kısaca tanıyın.
           </DialogDescription>
         </DialogHeader>
-        
-        <div className="flex flex-col gap-4 py-4">
-          <div className="flex items-center gap-4 p-3 bg-secondary/50 rounded-lg">
-            <div className="bg-primary/10 p-2 rounded-full">
-              <ListTodo className="w-6 h-6 text-primary" />
-            </div>
-            <div>
-              <h4 className="font-semibold">1. Siparişleri Kontrol Edin</h4>
-              <p className="text-sm text-muted-foreground">Sol paneldeki "Atanmamışlar" listesinden bekleyen teslimatları ve aciliyet durumlarını inceleyin.</p>
-            </div>
+
+        <div className="py-4">
+          <div className="mb-5 flex justify-center gap-1.5" aria-label="Tur ilerlemesi">
+            {onboardingSteps.map((item, index) => (
+              <span
+                key={item.title}
+                className={
+                  index === activeStep
+                    ? 'h-1.5 w-6 rounded-full bg-primary transition-all'
+                    : 'size-1.5 rounded-full bg-muted transition-all'
+                }
+              />
+            ))}
           </div>
-          
-          <div className="flex items-center gap-4 p-3 bg-secondary/50 rounded-lg">
-            <div className="bg-primary/10 p-2 rounded-full">
-              <MapPin className="w-6 h-6 text-primary" />
+
+          <div className="flex min-h-40 flex-col items-center justify-center rounded-xl border border-border bg-secondary/40 p-5 text-center">
+            <div className="mb-3 grid size-12 place-items-center rounded-full bg-primary/10 text-primary">
+              <StepIcon className="size-6" />
             </div>
-            <div>
-              <h4 className="font-semibold">2. Araçlara Görev Dağıtın</h4>
-              <p className="text-sm text-muted-foreground">Siparişleri sürükleyerek veya harita üzerinden seçerek uygun kapasitedeki araçlara atayın.</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-4 p-3 bg-secondary/50 rounded-lg">
-            <div className="bg-primary/10 p-2 rounded-full">
-              <PlayCircle className="w-6 h-6 text-emerald-500" />
-            </div>
-            <div>
-              <h4 className="font-semibold">3. Rotaları Başlatın</h4>
-              <p className="text-sm text-muted-foreground">Atamalar bitince üstteki "Rotaları Optimize Et" butonuna basarak şoförlerin iş emirlerini sisteme gönderin.</p>
-            </div>
+            <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+              Adım {activeStep + 1} / {onboardingSteps.length}
+            </p>
+            <h3 className="mt-1 text-lg font-bold text-foreground">{step.title}</h3>
+            <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
+              {step.description}
+            </p>
           </div>
         </div>
 
-        <DialogFooter>
-          <Button className="w-full" size="lg" onClick={() => setIsOpen(false)}>
-            Planlamaya Başla
+        <DialogFooter className="flex-row justify-between gap-2 sm:justify-between">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => setActiveStep((index) => Math.max(0, index - 1))}
+            disabled={activeStep === 0}
+          >
+            <ChevronLeft className="size-4" />
+            Geri
           </Button>
+          {isLastStep ? (
+            <Button type="button" onClick={closeTour}>
+              <PlayCircle className="size-4" />
+              Planlamaya Başla
+            </Button>
+          ) : (
+            <Button type="button" onClick={() => setActiveStep((index) => index + 1)}>
+              Devam
+              <ChevronRight className="size-4" />
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

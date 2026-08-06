@@ -6,43 +6,50 @@ export type DriverKey = 'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' | 'j
 export type StopStatus = 'completed' | 'enroute' | 'pending' | 'risk'
 
 export interface StopDto {
-  id: string
-  sequence: number
-  customerName: string
-  address: string
-  district: string
-  eta: string
-  windowStart: string
-  windowEnd: string
-  serviceMinutes: number
-  weightKg: number
-  volumeM3: number
-  status: StopStatus
-  priority: 'Yüksek' | 'Normal' | 'Düşük'
-  phone: string
-  orderNo: string
-  /** Harita katmanı için normalize koordinat (yüzde) */
-  x: number
-  y: number
+    id: string
+    cariKod?: string
+    sequence: number
+    customerName: string
+    address: string
+    district: string
+    eta: string
+    windowStart: string
+    windowEnd: string
+    serviceMinutes: number
+    weightKg: number
+    volumeM3: number
+    status: StopStatus
+    priority: 'Yüksek' | 'Normal' | 'Düşük'
+    phone: string
+    orderNo: string
+    /** Harita katmanı için normalize koordinat (yüzde) */
+    x: number
+    y: number
+    // --- YENİ EKLENEN GERÇEK GPS ALANLARI ---
+    lat?: number
+    lng?: number
 }
 
 export interface DriverDto {
-  id: string
-  label: string
-  fullName: string
-  plate: string
-  vehicleType: string
-  colorKey: DriverKey
-  totalDistanceKm: number
-  totalDurationMin: number
-  capacityUsedKg: number
-  capacityMaxKg: number
-  shiftStart: string
-  shiftEnd: string
-  depotName?: string
-  depotX?: number
-  depotY?: number
-  stops: StopDto[]
+    id: string
+    label: string
+    fullName: string
+    plate: string
+    vehicleType: string
+    colorKey: DriverKey
+    totalDistanceKm: number
+    totalDurationMin: number
+    capacityUsedKg: number
+    capacityMaxKg: number
+    shiftStart: string
+    shiftEnd: string
+    depotName?: string
+    depotX?: number
+    depotY?: number
+    // --- YENİ EKLENEN DEPO GPS ALANLARI ---
+    depotLat?: number
+    depotLng?: number
+    stops: StopDto[]
 }
 
 export interface UnassignedTaskDto {
@@ -72,6 +79,47 @@ export const driverTheme: Record<string, { solid: string, soft: string, border: 
   j: { solid: 'bg-indigo-500', soft: 'bg-indigo-500/10', border: 'border-indigo-500/20', text: 'text-indigo-500', cssVar: '#6366f1' },
   k: { solid: 'bg-pink-500', soft: 'bg-pink-500/10', border: 'border-pink-500/20', text: 'text-pink-500', cssVar: '#ec4899' },
   l: { solid: 'bg-teal-500', soft: 'bg-teal-500/10', border: 'border-teal-500/20', text: 'text-teal-500', cssVar: '#14b8a6' },
+}
+
+/** 
+ * Semt ve İlçe Bazlı Detaylı İstanbul Koordinat Sözlüğü
+ */
+const locationCoordinates: Record<string, { lat: number; lng: number }> = {
+    // Depolar
+    'Avcılar Merkez Depo': { lat: 40.9833, lng: 28.7167 },
+    'Üsküdar Merkez Depo': { lat: 41.0250, lng: 29.0150 },
+
+    // Özel Semtler ve Mahalleler (Daha spesifik aramalar için önce yazılmalı)
+    'Mecidiyeköy': { lat: 41.0652, lng: 28.9920 },
+    'Fenerbahçe': { lat: 40.9780, lng: 29.0420 },
+    'Bostancı': { lat: 40.9570, lng: 29.1020 },
+    'İçerenköy': { lat: 40.9700, lng: 29.1120 },
+    'Kayışdağı': { lat: 40.9750, lng: 29.1500 },
+    'Çakmak': { lat: 41.0150, lng: 29.1300 },
+    'Kavacık': { lat: 41.0920, lng: 29.0780 },
+    'Çengelköy': { lat: 41.0450, lng: 29.0480 },
+    'Altunizade': { lat: 41.0220, lng: 29.0350 },
+
+    // Genel İlçeler
+    'Bahçelievler': { lat: 40.9981, lng: 28.8592 },
+    'Bakırköy': { lat: 40.9781, lng: 28.8731 },
+    'Beşiktaş': { lat: 41.0422, lng: 29.0077 },
+    'Şişli': { lat: 41.0602, lng: 28.9877 },
+    'Fatih': { lat: 41.0102, lng: 28.9500 },
+    'Eyüpsultan': { lat: 41.0470, lng: 28.9330 },
+    'Bayrampaşa': { lat: 41.0390, lng: 28.9050 },
+    'Bağcılar': { lat: 41.0322, lng: 28.8561 },
+    'Küçükçekmece': { lat: 40.9931, lng: 28.7915 },
+    'Beylikdüzü': { lat: 41.0015, lng: 28.6423 },
+    'Kadıköy': { lat: 40.9901, lng: 29.0264 },
+    'Maltepe': { lat: 40.9273, lng: 29.1352 },
+    'Pendik': { lat: 40.8756, lng: 29.2343 },
+    'Tuzla': { lat: 40.8147, lng: 29.3039 },
+    'Ümraniye': { lat: 41.0270, lng: 29.1000 },
+    'Ataşehir': { lat: 40.9850, lng: 29.1150 },
+    'Çekmeköy': { lat: 41.0390, lng: 29.1760 },
+    'Beykoz': { lat: 41.1150, lng: 29.0980 },
+    'Üsküdar': { lat: 41.0264, lng: 29.0154 },
 }
 
 export const kpiSummary = {
@@ -666,4 +714,26 @@ export function formatDuration(minutes: number) {
 export function toMinutes(time: string) {
   const [h, m] = time.split(':').map(Number)
   return h * 60 + m
+}
+
+/** 
+ * Adres içerisindeki özel semt veya ilçeyi akıllıca eşitleyen fonksiyon
+ */
+export function getCoordinatesForAddress(address: string, fallbackId: string): { lat: number; lng: number } {
+    // Önce adresin içinde tam eşleşen özel bir semt var mı diye kontrol edelim (örn: Mecidiyeköy)
+    for (const [key, coords] of Object.entries(locationCoordinates)) {
+        if (address.toLowerCase().includes(key.toLowerCase())) {
+            return coords
+        }
+    }
+
+    // Bulunamazsa ID bazlı güvenli fallback
+    let hash = 0
+    for (let i = 0; i < fallbackId.length; i++) {
+        hash = fallbackId.charCodeAt(i) + ((hash << 5) - hash)
+    }
+    return {
+        lat: 41.0082 + (Math.abs(hash) % 100) * 0.001,
+        lng: 28.9784 + (Math.abs(hash * 17) % 100) * 0.001,
+    }
 }

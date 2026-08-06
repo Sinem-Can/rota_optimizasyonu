@@ -6,16 +6,12 @@ import {
   Check,
   ChevronDown,
   Clock,
-  Filter,
   GripVertical,
   Lock,
   LockOpen,
   MapPin,
   Package,
   PackageCheck,
-  PackageOpen,
-  Plus,
-  RotateCcw,
   Sparkles,
   TriangleAlert,
   Truck,
@@ -168,16 +164,10 @@ export function TaskPanel({
           <Sparkles className={cn('size-5', isOptimizing && 'animate-spin')} />
           {isOptimizing ? 'Optimize Ediliyor…' : 'Rotaları Optimize Et'}
         </button>
-        <div className="mt-2 flex items-center justify-between px-0.5">
+        <div className="mt-2 px-0.5">
           <p className="text-[11px] font-medium text-muted-foreground">
             {localUnassigned.length} atanmamış görev kuyrukta
           </p>
-          <button
-            type="button"
-            className="text-[11px] font-semibold text-primary underline-offset-2 hover:underline"
-          >
-            Motor ayarları
-          </button>
         </div>
       </div>
 
@@ -224,14 +214,6 @@ export function TaskPanel({
           <span className="rounded bg-secondary px-1.5 py-0.5 font-mono text-[10px] font-bold text-secondary-foreground">
             {assignedCount}
           </span>
-        </button>
-        
-        <button
-          type="button"
-          aria-label="Filtrele"
-          className="ml-auto mb-1.5 grid size-7 place-items-center rounded text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-        >
-          <Filter className="size-3.5" />
         </button>
       </div>
 
@@ -345,20 +327,6 @@ export function TaskPanel({
                     />
                   </div>
 
-                  <p className="flex items-center gap-1.5 px-3 pb-2 font-mono text-[10px] font-medium text-muted-foreground">
-                    <PackageOpen className="size-3 shrink-0" />
-                    <span className="truncate">
-                      {'Depo Yükleme Sırası (LIFO): '}
-                      <span className="font-bold text-foreground">
-                        {driver.stops
-                          .map((s) => s.sequence)
-                          .slice()
-                          .reverse()
-                          .join(' → ')}
-                      </span>
-                    </span>
-                  </p>
-
                   {isOpen ? (
                     <ol className="space-y-1.5 border-t border-border bg-secondary/30 px-3 py-2.5">
                       {filteredStops.map((stop) => {
@@ -461,42 +429,6 @@ export function TaskPanel({
                           </li>
                         )
                       })}
-                      <li>
-                        <button
-                          type="button"
-                          className="flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-border py-2 text-[12px] font-semibold text-muted-foreground transition-colors hover:border-ring/50 hover:bg-card hover:text-foreground"
-                        >
-                          <Plus className="size-3.5" />
-                          Bu rotaya durak ekle
-                        </button>
-                      </li>
-                      <li className="pt-0.5">
-                        {isBroken ? (
-                          <div className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-2 py-1.5">
-                            <TriangleAlert className="size-3.5 shrink-0 text-destructive" />
-                            <p className="min-w-0 flex-1 text-[11px] font-semibold leading-relaxed text-destructive">
-                              Araç arızalandı — teslim edilmeyen duraklar açık siparişe düştü.
-                            </p>
-                            <button
-                              type="button"
-                              onClick={() => toggleBreakdown(driver.id)}
-                              className="flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-semibold text-destructive transition-colors hover:bg-destructive/15"
-                            >
-                              <RotateCcw className="size-3" />
-                              Geri Al
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => handleBreakdown(driver.id, driver.label)}
-                            className="flex w-full items-center justify-center gap-1.5 rounded-md border border-destructive/50 bg-transparent py-2 text-[12px] font-bold text-destructive transition-colors hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/40"
-                          >
-                            <TriangleAlert className="size-3.5 shrink-0" />
-                            Araç Arızalandı!
-                          </button>
-                        )}
-                      </li>
                     </ol>
                   ) : null}
                 </li>
@@ -578,15 +510,6 @@ export function TaskPanel({
         )}
       </div>
 
-      <div className="flex shrink-0 items-center justify-between border-t border-border bg-secondary/40 px-3 py-2">
-        <span className="font-mono text-[11px] text-muted-foreground">
-          Plan #PLN-2026-0725-01
-        </span>
-        <span className="flex items-center gap-1.5 text-[11px] font-semibold text-success">
-          <span className="size-1.5 rounded-full bg-success" />
-          Senkronize
-        </span>
-      </div>
     </aside>
   )
 }

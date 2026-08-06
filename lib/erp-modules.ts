@@ -595,13 +595,8 @@ export const erpModules: ErpModule[] = [
   },
   { key: 'filo', label: 'Filo & Araçlar', icon: Truck, views: [aracKartlari] },
   { key: 'depo', label: 'Depo & Stok', icon: Boxes, views: [stokKartlari, depolar] },
-  { key: 'satis', label: 'Satış & Sipariş', icon: ShoppingCart, views: [teklifler, siparisler] },
-  { key: 'satinalma', label: 'Satınalma', icon: ShoppingBag, views: [satinalmaSiparisleri] },
+  { key: 'satis', label: 'Satış & Sipariş', icon: ShoppingCart, views: [siparisler] },
   { key: 'fatura', label: 'Fatura & İrsaliye', icon: FileText, views: [faturalar, irsaliyeler] },
-  { key: 'banka', label: 'Banka & Kasa', icon: Landmark, views: [bankaHesaplari, kasaHareketleri] },
-  { key: 'cek', label: 'Çek Defteri', icon: ReceiptText, views: [alinanCekler, verilenCekler] },
-  { key: 'fiyat', label: 'Fiyat Listeleri', icon: Tags, views: [fiyatListeleri] },
-  { key: 'rapor', label: 'Raporlar', icon: ChartColumn, views: [raporlar] },
 ]
 
 /** Hücreyi düz metne çevirir; İncele/Düzelt formlarında ve kopyalamada kullanılır. */
