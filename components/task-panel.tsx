@@ -220,7 +220,7 @@ export function TaskPanel({
                         ) : null}
                         
                       </span>
-                      <span className="mt-0.5 flex items-center gap-2.5 font-mono text-[10px] text-muted-foreground/75">
+                      <span className="mt-0.5 flex items-center gap-2.5 font-mono text-[10px] font-semibold text-foreground/80">
                         <span>{driver.plate}</span>
                         <span>{driver.totalDistanceKm} km</span>
                         <span>{formatDuration(driver.totalDurationMin)}</span>
@@ -408,11 +408,11 @@ export function TaskPanel({
                       </span>
                     </p>
                     <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                      <span className="inline-flex items-center gap-1 rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground">
+                      <span className="inline-flex items-center gap-1 rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] font-semibold text-foreground/90">
                         <Clock className="size-2.5" />
                         {task.windowStart} - {task.windowEnd}
                       </span>
-                      <span className="inline-flex items-center gap-1 rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground">
+                      <span className="inline-flex items-center gap-1 rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] font-bold text-foreground">
                         <Weight className="size-2.5" />
                         {task.weightKg} kg
                       </span>

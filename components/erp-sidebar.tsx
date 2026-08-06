@@ -11,6 +11,7 @@ interface ErpSidebarProps {
   onToggleCollapsed: () => void
   openModules: string[]
   onToggleModule: (moduleKey: string) => void
+  counts: Record<string, number>
 }
 
 export function ErpSidebar({
@@ -20,6 +21,7 @@ export function ErpSidebar({
   onToggleCollapsed,
   openModules,
   onToggleModule,
+  counts,
 }: ErpSidebarProps) {
   return (
     <aside
@@ -131,7 +133,7 @@ export function ErpSidebar({
                                 active ? 'text-accent-foreground/70' : 'text-muted-foreground/70',
                               )}
                             >
-                              {view.rows.length}
+                              {counts[view.key] !== undefined ? counts[view.key] : view.rows.length}
                             </span>
                           </button>
                         </li>
