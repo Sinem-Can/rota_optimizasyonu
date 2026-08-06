@@ -6,13 +6,14 @@ import {
   Check,
   ChevronDown,
   Clock,
+  FileText,
   GripVertical,
   Lock,
   LockOpen,
   MapPin,
   Package,
   PackageCheck,
-  Sparkles,
+  Route,
   TriangleAlert,
   Truck,
   Weight,
@@ -153,7 +154,7 @@ export function TaskPanel({
               : 'Rotaları yeniden optimize et'
           }
           className={cn(
-            'group flex w-full items-center justify-center gap-2.5 rounded-lg bg-primary px-4 py-3.5 text-[15px] font-bold tracking-tight text-primary-foreground shadow-sm transition-all',
+            'group relative flex h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-3 text-[13px] font-semibold text-primary-foreground shadow-sm transition-all',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
             localUnassigned.length === 0
               ? 'cursor-not-allowed opacity-40 saturate-50'
@@ -161,14 +162,14 @@ export function TaskPanel({
             isOptimizing && 'cursor-wait opacity-80',
           )}
         >
-          <Sparkles className={cn('size-5', isOptimizing && 'animate-spin')} />
-          {isOptimizing ? 'Optimize Ediliyor…' : 'Rotaları Optimize Et'}
+          <Route className={cn('size-4', isOptimizing && 'animate-spin')} />
+          <span>{isOptimizing ? 'Optimize Ediliyor…' : 'Rotaları Optimize Et'}</span>
+          {localUnassigned.length > 0 ? (
+            <span className="absolute right-2 rounded-full bg-primary-foreground/20 px-1.5 py-0.5 font-mono text-[10px] font-bold text-primary-foreground">
+              {localUnassigned.length}
+            </span>
+          ) : null}
         </button>
-        <div className="mt-2 px-0.5">
-          <p className="text-[11px] font-medium text-muted-foreground">
-            {localUnassigned.length} atanmamış görev kuyrukta
-          </p>
-        </div>
       </div>
 
       <div className="flex shrink-0 items-center gap-1 border-b border-border px-3 pt-2">
@@ -178,7 +179,7 @@ export function TaskPanel({
           className={cn(
             'flex items-center gap-1.5 border-b-2 px-2.5 pb-2 pt-1 text-[13px] font-semibold transition-colors',
             tab === 'unassigned'
-              ? 'border-primary text-foreground'
+              ? 'border-muted-foreground text-foreground'
               : 'border-transparent text-muted-foreground hover:text-foreground',
           )}
         >
@@ -206,8 +207,8 @@ export function TaskPanel({
           className={cn(
             'flex items-center gap-1.5 border-b-2 px-2.5 pb-2 pt-1 text-[13px] font-semibold transition-colors',
             tab === 'assigned'
-              ? 'border-primary text-foreground'
-              : 'border-transparent text-muted-foreground hover:text-foreground hover:border-primary/50'
+              ? 'border-muted-foreground text-foreground'
+              : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/40'
           )}
         >
           Atananlar
@@ -246,23 +247,16 @@ export function TaskPanel({
                     const taskId = e.dataTransfer.getData('taskId')
                     if (taskId) handleDropTask(taskId, driver.id)
                   }}
-                  className="transition-colors hover:bg-secondary/20"
+                  className={cn(
+                    'transition-colors hover:bg-secondary/20',
+                    isOpen && 'border-l-2 border-muted-foreground bg-muted/40',
+                  )}
                 >
                   <div
                     onClick={() => toggleDriver(driver.id)}
-                    className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-secondary/50"
+                    className="group flex w-full cursor-pointer items-center gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-secondary/50"
                   >
-                    <span className={cn('h-9 w-1 shrink-0 rounded-full', theme.solid)} />
-                    <span
-                      className={cn(
-                        'grid size-8 shrink-0 place-items-center rounded-md border',
-                        theme.soft,
-                        theme.border,
-                        theme.text,
-                      )}
-                    >
-                      <Truck className="size-4" />
-                    </span>
+                    <Truck className="size-[18px] shrink-0 text-muted-foreground" strokeWidth={1.6} />
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center gap-1.5">
                         <span className="truncate text-[13px] font-semibold text-foreground">
@@ -280,34 +274,33 @@ export function TaskPanel({
                           </span>
                         ) : null}
                         
-                        {!isBroken && waybills[driver.id] ? (
-                          <span className="shrink-0 rounded border border-blue-400 bg-blue-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-blue-700">
-                            📄 {waybills[driver.id]} ile Yolda
-                          </span>
-                        ) : (
-                          !isBroken && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation(); 
-                                generateWaybill(driver.id, driver.label);
-                              }}
-                              className="shrink-0 rounded border border-ring/50 bg-card px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
-                            >
-                              İrsaliye Kes
-                            </button>
-                          )
-                        )}
-
                       </span>
-                      <span className="mt-0.5 flex items-center gap-2 font-mono text-[11px] text-muted-foreground">
+                      <span className="mt-0.5 flex items-center gap-2.5 font-mono text-[10px] text-muted-foreground/75">
                         <span>{driver.plate}</span>
-                        <span className="text-border">|</span>
                         <span>{driver.totalDistanceKm} km</span>
-                        <span className="text-border">|</span>
                         <span>{formatDuration(driver.totalDurationMin)}</span>
                       </span>
                     </span>
+                    {!isBroken ? (
+                      <button
+                        type="button"
+                        disabled={Boolean(waybills[driver.id])}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          generateWaybill(driver.id, driver.label)
+                        }}
+                        aria-label={`${driver.label} için irsaliye kes`}
+                        title={waybills[driver.id] ? `${waybills[driver.id]} oluşturuldu` : 'İrsaliye kes'}
+                        className={cn(
+                          'grid size-7 shrink-0 place-items-center rounded-md text-muted-foreground transition-all hover:bg-secondary hover:text-foreground focus-visible:opacity-100',
+                          waybills[driver.id]
+                            ? 'cursor-default opacity-100 text-primary'
+                            : 'opacity-0 group-hover:opacity-100',
+                        )}
+                      >
+                        <FileText className="size-3.5" strokeWidth={1.6} />
+                      </button>
+                    ) : null}
                     <span className="shrink-0 text-right">
                       <span className="block font-mono text-[11px] font-semibold text-foreground">
                         %{loadPct}
@@ -348,7 +341,7 @@ export function TaskPanel({
                               className={cn(
                                 'flex items-stretch rounded-md border bg-card transition-all',
                                 isSelected
-                                  ? 'border-primary ring-2 ring-primary/25'
+                                  ? 'border-muted-foreground bg-muted/50'
                                   : isUndeliverable
                                     ? 'border-destructive/40'
                                     : 'border-border hover:border-ring/40 hover:shadow-sm',
@@ -385,11 +378,11 @@ export function TaskPanel({
                                   </span>
                                 </span>
                                 <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                                  <span className="inline-flex items-center gap-1 rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground">
+                                  <span className="inline-flex items-center gap-1 font-mono text-[10px] font-medium text-muted-foreground">
                                     <Clock className="size-2.5" />
                                     {stop.windowStart} - {stop.windowEnd}
                                   </span>
-                                  <span className="inline-flex items-center gap-1 rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground">
+                                  <span className="inline-flex items-center gap-1 font-mono text-[10px] font-medium text-muted-foreground">
                                     <Weight className="size-2.5" />
                                     {stop.weightKg} kg
                                   </span>

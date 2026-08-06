@@ -72,8 +72,8 @@ export function MapPanel({ selectedStopId, onSelectStop, isOptimizing, drivers }
       className="relative flex h-full min-h-0 flex-col overflow-hidden bg-muted"
     >
       {/* Harita araç çubuğu */}
-      <div className="absolute left-3 right-3 top-3 z-30 flex items-start justify-between gap-2">
-        <div className="flex items-center gap-1.5 rounded-md border border-border bg-card/95 p-1 shadow-sm backdrop-blur">
+      <div className="absolute left-3 top-3 z-30">
+        <div className="flex items-center gap-1 rounded-lg border border-border bg-background/95 p-1 shadow-sm backdrop-blur">
           {[
             { icon: Route, label: 'Rotalar', active: true },
             { icon: Layers, label: 'Katmanlar', active: false },
@@ -88,7 +88,7 @@ export function MapPanel({ selectedStopId, onSelectStop, isOptimizing, drivers }
               className={cn(
                 'grid size-7 place-items-center rounded transition-colors',
                 tool.active
-                  ? 'bg-primary text-primary-foreground'
+                  ? 'bg-muted text-foreground'
                   : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
               )}
             >
@@ -99,19 +99,18 @@ export function MapPanel({ selectedStopId, onSelectStop, isOptimizing, drivers }
           <span className="pr-1.5 font-mono text-[11px] font-semibold text-muted-foreground">
             İstanbul · Avrupa/Anadolu
           </span>
-        </div>
-
-        <div className="flex items-center gap-1.5">
-          <div className="flex items-center gap-2 rounded-md border border-border bg-card/95 px-2.5 py-1.5 shadow-sm backdrop-blur">
-            <Navigation className="size-3.5 text-primary" />
+          <div className="mx-0.5 h-5 w-px bg-border" />
+          <div className="flex items-center gap-2 px-1.5">
+            <Navigation className="size-3.5 text-muted-foreground" />
             <span className="font-mono text-[11px] font-semibold text-foreground">
               {activeRouteCount} rota · {activeStopCount} aktif durak
             </span>
           </div>
+          <div className="mx-0.5 h-5 w-px bg-border" />
           <button
             type="button"
             aria-label="Tam ekran"
-            className="grid size-8 place-items-center rounded-md border border-border bg-card/95 text-muted-foreground shadow-sm backdrop-blur transition-colors hover:text-foreground"
+            className="grid size-7 place-items-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
             <Maximize2 className="size-3.5" />
           </button>
@@ -271,9 +270,11 @@ export function MapPanel({ selectedStopId, onSelectStop, isOptimizing, drivers }
                       className={cn(
                         'grid size-7 place-items-center rounded-full font-mono text-[11px] font-bold shadow-md transition-colors',
                         // Griye düşme durumu:
-                        isFaded 
-                          ? 'bg-muted text-muted-foreground border-2 border-background' 
-                          : `${theme.solid} text-white ring-2 ring-background/40`,
+                        isFaded
+                          ? 'bg-muted text-muted-foreground border-2 border-background'
+                          : isSelected
+                            ? 'bg-primary text-primary-foreground ring-2 ring-background/40'
+                            : `${theme.solid} text-white ring-2 ring-background/40`,
                         isSelected && 'ring-4 ring-foreground ring-offset-1 ring-offset-background'
                       )}
                     >
