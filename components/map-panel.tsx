@@ -17,12 +17,12 @@ import {
 import { driverTheme, type StopDto, type DriverDto } from '@/lib/route-data'
 import { cn } from '@/lib/utils'
 
-// Next.js SSR hatasını önlemek için Leaflet haritasını dinamik yüklüyoruz
+// Leaflet bileşenini sunucu tarafında (SSR) devre dışı bırakarak sadece tarayıcılarda yüklüyoruz
 const LeafletMapCore = dynamic(() => import('@/components/leaflet-map-core'), {
     ssr: false,
     loading: () => (
-        <div className="flex size-full items-center justify-center bg-muted text-sm text-muted-foreground">
-            Harita yükleniyor...
+        <div className="flex size-full items-center justify-center bg-muted/20 text-xs text-muted-foreground">
+            Harita Yükleniyor...
         </div>
     ),
 })
