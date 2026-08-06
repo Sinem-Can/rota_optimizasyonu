@@ -44,10 +44,11 @@ namespace Uyumsoft.RouteOptimizer
                 {
                     while (reader.Read())
                     {
-                        weightCaps.Add(reader.IsDBNull(0) ? 0 : Convert.ToInt64(reader.GetDecimal(0)));
-                        volCaps.Add(reader.IsDBNull(1) ? 0 : Convert.ToInt64(reader.GetDecimal(1)));
-                        depots.Add(reader.IsDBNull(2) ? 0 : reader.GetInt32(2));
-                        kmCosts.Add(reader.IsDBNull(3) ? 0 : Convert.ToInt64(reader.GetDecimal(3)));
+                        weightCaps.Add(reader.IsDBNull(0) ? 0 : Convert.ToInt64(reader.GetValue(0)));
+                        volCaps.Add(reader.IsDBNull(1) ? 0 : Convert.ToInt64(reader.GetValue(1)));
+                        string depoKodu = reader.IsDBNull(2) ? "" : Convert.ToString(reader.GetValue(2));
+                        depots.Add((depoKodu == "DP002" || depoKodu == "1") ? 1 : 0);
+                        kmCosts.Add(reader.IsDBNull(3) ? 0 : Convert.ToInt64(reader.GetValue(3)));
                     }
                 }
 
@@ -79,9 +80,9 @@ namespace Uyumsoft.RouteOptimizer
                 {
                     while (reader.Read())
                     {
-                        if (int.TryParse(reader.GetString(0), out int k) && int.TryParse(reader.GetString(1), out int v))
+                        if (int.TryParse(Convert.ToString(reader.GetValue(0)), out int k) && int.TryParse(Convert.ToString(reader.GetValue(1)), out int v))
                         {
-                            long m = reader.IsDBNull(2) ? 0 : Convert.ToInt64(reader.GetDecimal(2));
+                            long m = reader.IsDBNull(2) ? 0 : Convert.ToInt64(reader.GetValue(2));
                             distList.Add((k, v, m));
                             if (k > maxNode) maxNode = k;
                             if (v > maxNode) maxNode = v;
@@ -96,13 +97,13 @@ namespace Uyumsoft.RouteOptimizer
                 {
                     while (reader.Read())
                     {
-                        if (int.TryParse(reader.GetString(0), out int k) && int.TryParse(reader.GetString(1), out int v))
+                        if (int.TryParse(Convert.ToString(reader.GetValue(0)), out int k) && int.TryParse(Convert.ToString(reader.GetValue(1)), out int v))
                         {
-                            long ss = reader.IsDBNull(2) ? 0 : Convert.ToInt64(reader.GetDecimal(2));
-                            long so = reader.IsDBNull(3) ? 0 : Convert.ToInt64(reader.GetDecimal(3));
-                            long sa = reader.IsDBNull(4) ? 0 : Convert.ToInt64(reader.GetDecimal(4));
-                            int ky = reader.IsDBNull(5) ? 0 : reader.GetInt32(5);
-                            int vy = reader.IsDBNull(6) ? 0 : reader.GetInt32(6);
+                            long ss = reader.IsDBNull(2) ? 0 : Convert.ToInt64(reader.GetValue(2));
+                            long so = reader.IsDBNull(3) ? 0 : Convert.ToInt64(reader.GetValue(3));
+                            long sa = reader.IsDBNull(4) ? 0 : Convert.ToInt64(reader.GetValue(4));
+                            int ky = reader.IsDBNull(5) ? 0 : Convert.ToInt32(reader.GetValue(5));
+                            int vy = reader.IsDBNull(6) ? 0 : Convert.ToInt32(reader.GetValue(6));
 
                             timeList.Add((k, v, ss, so, sa, ky, vy));
                             if (k > maxNode) maxNode = k;
@@ -156,8 +157,8 @@ namespace Uyumsoft.RouteOptimizer
                         int dIdx = 0;
                         while (reader.Read())
                         {
-                            string kod = reader.GetString(0);
-                            string adi = reader.IsDBNull(1) ? kod : reader.GetString(1);
+                            string kod = Convert.ToString(reader.GetValue(0));
+                            string adi = reader.IsDBNull(1) ? kod : Convert.ToString(reader.GetValue(1));
                             if (kod == "DP001" || dIdx == 0) { data.NodeNames[0] = adi; data.NodeCodes[0] = kod; }
                             else if (kod == "DP002" || dIdx == 1) { data.NodeNames[1] = adi; data.NodeCodes[1] = kod; }
                             dIdx++;
@@ -170,7 +171,7 @@ namespace Uyumsoft.RouteOptimizer
                 {
                     while (reader.Read())
                     {
-                        string cariKodu = reader.IsDBNull(0) ? "" : reader.GetString(0);
+                        string cariKodu = reader.IsDBNull(0) ? "" : Convert.ToString(reader.GetValue(0));
 
                         if (!reader.IsDBNull(1))
                         {
@@ -178,13 +179,13 @@ namespace Uyumsoft.RouteOptimizer
 
                             if (nodeIndex >= 2 && nodeIndex < nodeCount)
                             {
-                                string unvan = reader.IsDBNull(4) ? "" : reader.GetString(4);
-                                string adres = reader.IsDBNull(5) ? "" : reader.GetString(5);
+                                string unvan = reader.IsDBNull(4) ? "" : Convert.ToString(reader.GetValue(4));
+                                string adres = reader.IsDBNull(5) ? "" : Convert.ToString(reader.GetValue(5));
                                 data.NodeNames[nodeIndex] = string.IsNullOrWhiteSpace(unvan) ? cariKodu : unvan;
                                 data.NodeCodes[nodeIndex] = cariKodu;
                                 data.NodeAddresses[nodeIndex] = string.IsNullOrWhiteSpace(adres) ? "Adres Yok" : adres;
-                                data.WeightDemands[nodeIndex] = reader.IsDBNull(2) ? 0 : Convert.ToInt64(reader.GetDecimal(2));
-                                data.VolumeDemands[nodeIndex] = reader.IsDBNull(3) ? 0 : Convert.ToInt64(reader.GetDecimal(3));
+                                data.WeightDemands[nodeIndex] = reader.IsDBNull(2) ? 0 : Convert.ToInt64(reader.GetValue(2));
+                                data.VolumeDemands[nodeIndex] = reader.IsDBNull(3) ? 0 : Convert.ToInt64(reader.GetValue(3));
                             }
                         }
                     }
@@ -209,8 +210,8 @@ namespace Uyumsoft.RouteOptimizer
 
                             if (nodeIndex >= 2 && nodeIndex < nodeCount)
                             {
-                                string startStr = reader.IsDBNull(2) ? "" : reader.GetString(2);
-                                string endStr = reader.IsDBNull(3) ? "" : reader.GetString(3);
+                                string startStr = reader.IsDBNull(2) ? "" : Convert.ToString(reader.GetValue(2));
+                                string endStr = reader.IsDBNull(3) ? "" : Convert.ToString(reader.GetValue(3));
 
                                 if (TimeSpan.TryParse(startStr, out TimeSpan startTs))
                                     data.TimeWindows[nodeIndex, 0] = (long)startTs.TotalMinutes;

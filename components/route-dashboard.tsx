@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useCallback, useState, useEffect } from 'react'
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react'
