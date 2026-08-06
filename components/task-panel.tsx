@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, type Dispatch, type SetStateAction } from 'react'
+import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import {
   Check,
@@ -30,7 +30,6 @@ import {
   type DriverDto,
 } from '@/lib/route-data'
 import { cn } from '@/lib/utils'
-import { NewOrderDialog } from "@/components/new-order-dialog"
 
 interface TaskPanelProps {
   selectedStopId: string | null
@@ -39,8 +38,6 @@ interface TaskPanelProps {
   onOptimize: () => void
   drivers: DriverDto[]
   unassigned: StopDto[]
-  setUnassigned: Dispatch<SetStateAction<StopDto[]>>
-  setDrivers: Dispatch<SetStateAction<DriverDto[]>>
   searchQuery?: string
 }
 
@@ -57,8 +54,6 @@ export function TaskPanel({
   onOptimize,
   drivers: localDrivers,
   unassigned: localUnassigned,
-  setUnassigned: setLocalUnassigned,
-  setDrivers: setLocalDrivers,
   searchQuery = '',
 }: TaskPanelProps) {
   const [tab, setTab] = useState<'assigned' | 'unassigned'>('unassigned')
@@ -69,38 +64,6 @@ export function TaskPanel({
   const [brokenDrivers, setBrokenDrivers] = useState<string[]>([])
   
   const [waybills, setWaybills] = useState<Record<string, string>>({})
-
-  const handleDropTask = (taskId: string, driverId: string) => {
-    const taskToMove = localUnassigned.find((t) => t.id === taskId)
-    if (!taskToMove) return
-
-    const targetDriver = localDrivers.find((d) => d.id === driverId)
-    if (!targetDriver) return
-
-    // HATA ÇÖZÜMÜ: Sürükle bırakta da ID çakışmasını engellemek için benzersiz ID
-    const newStop = {
-      ...taskToMove,
-      id: `ST-DRP-${taskToMove.id}-${Date.now()}`,
-      sequence: targetDriver.stops.length + 1,
-      volumeM3: 1.5,
-      status: 'pending',
-      eta: taskToMove.windowStart,
-      serviceMinutes: 15,
-      phone: '0555 000 0000',
-      x: 55,
-      y: 55,
-    } as StopDto
-
-    setLocalUnassigned((prev) => prev.filter((t) => t.id !== taskId))
-    
-    setLocalDrivers((prev) =>
-      prev.map((d) => (d.id === driverId ? { ...d, stops: [...d.stops, newStop] } : d))
-    )
-
-    toast.success("Sipariş araca atandı!", {
-      description: `${taskToMove.customerName}, ${targetDriver.label} rotasına eklendi.`,
-    })
-  }
 
   const generateWaybill = (driverId: string, driverLabel: string) => {
     const waybillNo = `UYM-2026-${Math.floor(1000 + Math.random() * 9000)}`
@@ -192,18 +155,6 @@ export function TaskPanel({
         <button
           type="button"
           onClick={() => setTab('assigned')}
-          onDragOver={(e) => {
-            e.preventDefault()
-            e.dataTransfer.dropEffect = "move"
-          }}
-          onDrop={(e) => {
-            e.preventDefault()
-            const taskId = e.dataTransfer.getData('taskId')
-            if (taskId && localDrivers.length > 0) {
-              handleDropTask(taskId, localDrivers[0].id)
-              setTab('assigned')
-            }
-          }}
           className={cn(
             'flex items-center gap-1.5 border-b-2 px-2.5 pb-2 pt-1 text-[13px] font-semibold transition-colors',
             tab === 'assigned'
@@ -239,14 +190,8 @@ export function TaskPanel({
               const isBroken = brokenDrivers.includes(driver.id)
 
               return (
-                <li 
+                <li
                   key={driver.id}
-                  onDragOver={(e) => e.preventDefault()} 
-                  onDrop={(e) => {
-                    e.preventDefault()
-                    const taskId = e.dataTransfer.getData('taskId')
-                    if (taskId) handleDropTask(taskId, driver.id)
-                  }}
                   className={cn(
                     'transition-colors hover:bg-secondary/20',
                     isOpen && 'border-l-2 border-muted-foreground bg-muted/40',
@@ -430,28 +375,12 @@ export function TaskPanel({
           </ul>
         ) : (
           <ul className="divide-y divide-border">
-            <li className="px-3 py-2">
-                <NewOrderDialog 
-                  triggerLabel="Yeni Sipariş Ekle"
-                  triggerClassName="flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-border px-3 py-2 text-xs font-semibold text-muted-foreground hover:border-primary/50 hover:bg-secondary/50 hover:text-primary transition-colors"
-                  onAddOrder={(newOrder) => {
-                    setLocalUnassigned((prev) => [newOrder, ...prev])
-                  }} 
-                />
-              </li>
             {localUnassigned.filter(task => 
               !searchQuery || 
               task.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
               task.orderNo.toLowerCase().includes(searchQuery.toLowerCase())
             ).map((task) => (
-              <li 
-                key={task.id}
-                draggable
-                onDragStart={(e) => {
-                  e.dataTransfer.setData('taskId', task.id)
-                }}
-                className="cursor-grab active:cursor-grabbing"
-              >
+              <li key={task.id}>
                 <div className="flex items-start gap-2.5 px-3 py-2.5 transition-colors hover:bg-secondary/50">
                   <GripVertical className="mt-1 size-3.5 shrink-0 text-muted-foreground/60" />
                   <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-md border border-dashed border-border bg-muted text-muted-foreground">
