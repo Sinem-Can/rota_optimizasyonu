@@ -1,20 +1,16 @@
 'use client'
 
-import { AlertTriangle, ArrowUpDown, ChevronRight, FileSearch, Plus, CheckSquare, Loader2 } from 'lucide-react'
+import { AlertTriangle, ArrowUpDown, ChevronRight, FileSearch, CheckSquare, Loader2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { toast } from 'sonner' // YENİ: Şık bildirimler için
-import { ErpRecordDialog } from '@/components/erp-record-dialog'
 import { GibDocumentDialog } from '@/components/gib-document-dialog'
-import { ErpRowDialog, type ErpRowMode } from '@/components/erp-row-dialog'
 import { ErpSidebar } from '@/components/erp-sidebar'
 import { ErpToolbar } from '@/components/erp-toolbar'
-import { NewVehicleDialog } from '@/components/new-vehicle-dialog'
 import { Badge } from '@/components/ui/badge'
 import { erpStatusMeta } from '@/lib/erp-data'
 import { findGibDocument, type GibDocument } from '@/lib/erp-document'
 import { erpModules, findView, type ErpCell, type ErpTone } from '@/lib/erp-modules'
 import { cn } from '@/lib/utils'
-import { NewOrderDialog } from '@/components/new-order-dialog'
 
 /** Serbest metinli pill'ler için ton eşlemesi. */
 const toneClass: Record<ErpTone, string> = {
@@ -179,7 +175,6 @@ export function ErpPanel() {
   const [query, setQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [rowMode, setRowMode] = useState<ErpRowMode | null>(null)
   
   // Toplu işlemler için seçilen satırların ID'lerini tutan state
   const [selectedIdsForBatch, setSelectedIdsForBatch] = useState<string[]>([])
@@ -188,8 +183,6 @@ export function ErpPanel() {
   
   /** Açık GİB matbu evrak önizlemesi (e-İrsaliye / e-Fatura). */
   const [gibDoc, setGibDoc] = useState<GibDocument | null>(null)
-  /** UI mock: silinen kayıtlar yalnızca istemci tarafında gizlenir. */
-  const [deletedIds, setDeletedIds] = useState<string[]>([])
 
   const { module, view } = findView(activeViewKey)
 
@@ -228,11 +221,9 @@ async function handleSendToRoutePool() {
   const rows = useMemo(() => {
     const q = query.trim().toLocaleLowerCase('tr-TR')
     return view.rows.filter(
-      (r) =>
-        !deletedIds.includes(r.id) &&
-        (q.length === 0 || r.search.toLocaleLowerCase('tr-TR').includes(q)),
+      (r) => q.length === 0 || r.search.toLocaleLowerCase('tr-TR').includes(q),
     )
-  }, [view, query, deletedIds])
+  }, [view, query])
 
   const selectedRow = rows.find((r) => r.id === selectedId) ?? null
 
@@ -252,28 +243,6 @@ async function handleSendToRoutePool() {
   function toggleModule(key: string) {
     setOpenModules((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]))
   }
-
-  // '+ Yeni' aksiyonu
-  const newTriggerClass =
-    'flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-primary px-2.5 text-[12px] font-semibold text-primary-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40'
-
-  const newAction =
-    view.dialog === 'arac' ? (
-      <NewVehicleDialog triggerLabel="Yeni" triggerClassName={newTriggerClass} />
-    ) : view.dialog === 'siparis' ? (
-      <NewOrderDialog triggerLabel="Yeni" triggerClassName={newTriggerClass} /> 
-    ) : view.dialog ? (
-      <ErpRecordDialog
-        kind={view.dialog}
-        triggerLabel="Yeni"
-        triggerClassName={newTriggerClass}
-      />
-    ) : (
-      <button type="button" onClick={() => setRowMode('new')} className={newTriggerClass}>
-        <Plus className="size-4" />
-        Yeni
-      </button>
-    )
 
   return (
     <div className="flex min-h-0 flex-1 overflow-hidden bg-background">
@@ -328,12 +297,6 @@ async function handleSendToRoutePool() {
         )}
 
         <ErpToolbar
-          newAction={newAction}
-          hasSelection={selectedRow !== null}
-          onEdit={() => setRowMode('edit')}
-          onDelete={() => setRowMode('delete')}
-          onInspect={() => setRowMode('inspect')}
-          onCopy={() => setRowMode('new')}
           searchOpen={searchOpen}
           onToggleSearch={() => {
             setSearchOpen((s) => {
@@ -400,10 +363,6 @@ async function handleSendToRoutePool() {
                     <tr
                       key={row.id}
                       onClick={() => setSelectedId(active ? null : row.id)}
-                      onDoubleClick={() => {
-                        setSelectedId(row.id)
-                        setRowMode('inspect')
-                      }}
                       aria-selected={active}
                       className={cn(
                         'cursor-pointer border-b border-border transition-colors last:border-0',
@@ -465,19 +424,6 @@ async function handleSendToRoutePool() {
           </div>
         </div>
       </section>
-
-      <ErpRowDialog
-        mode={rowMode}
-        onClose={() => setRowMode(null)}
-        onConfirmDelete={() => {
-          if (selectedRow) setDeletedIds((prev) => [...prev, selectedRow.id])
-          setSelectedId(null)
-          setRowMode(null)
-        }}
-        columns={view.columns}
-        row={rowMode === 'new' && !selectedRow ? null : selectedRow}
-        recordName={view.recordName}
-      />
 
       <GibDocumentDialog doc={gibDoc} onClose={() => setGibDoc(null)} />
     </div>

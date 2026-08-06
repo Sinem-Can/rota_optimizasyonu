@@ -142,10 +142,10 @@ export function DetailPanel({ stop, driverId, drivers, onClose }: DetailPanelPro
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 space-y-3.5 overflow-y-auto px-3.5 py-3">
+      <div className="min-h-0 flex-1 divide-y divide-border overflow-y-auto px-3.5">
         {/* Zaman Penceresi */}
-        <fieldset>
-          <legend className="mb-1.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+        <fieldset className="py-3">
+          <legend className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
             <Clock className="size-3.5" />
             Zaman Penceresi
           </legend>
@@ -166,7 +166,7 @@ export function DetailPanel({ stop, driverId, drivers, onClose }: DetailPanelPro
           ) : (
             <p className="font-mono text-[14px] font-bold text-foreground">{stop.windowStart} <span className="mx-1 text-muted-foreground">–</span> {stop.windowEnd}</p>
           )}
-          <div className="mt-1.5 flex items-center justify-between rounded-md border border-border bg-secondary/50 px-2 py-1.5">
+          <div className="mt-2 flex items-center justify-between text-[12px]">
             <span className="text-[11px] font-medium text-muted-foreground">Planlanan ETA</span>
             <span
               className={cn(
@@ -178,7 +178,7 @@ export function DetailPanel({ stop, driverId, drivers, onClose }: DetailPanelPro
             </span>
           </div>
           {stop.status === 'risk' ? (
-            <p className="mt-1.5 flex items-start gap-1.5 rounded-md border border-destructive/25 bg-destructive/5 px-2 py-1.5 text-[11px] font-medium leading-relaxed text-destructive">
+            <p className="mt-2 flex items-start gap-1.5 border-l-2 border-destructive bg-destructive/5 px-2 py-1.5 text-[11px] font-medium leading-relaxed text-destructive">
               <TriangleAlert className="mt-px size-3.5 shrink-0" />
               ETA, pencere bitişini 20 dk aşıyor.
             </p>
@@ -186,8 +186,8 @@ export function DetailPanel({ stop, driverId, drivers, onClose }: DetailPanelPro
         </fieldset>
 
         {/* Kapasite / Ağırlık */}
-        <fieldset>
-          <legend className="mb-1.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
+        <fieldset className={cn('py-3', capacityPct >= 90 && 'border-l-2 border-destructive bg-destructive/5 px-2')}>
+          <legend className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
             <Weight className="size-3.5" />
             Kapasite / Ağırlık
           </legend>
@@ -208,7 +208,7 @@ export function DetailPanel({ stop, driverId, drivers, onClose }: DetailPanelPro
               <span>{stop.volumeM3} <span className="text-[11px] font-medium text-muted-foreground">m³</span></span>
             </div>
           )}
-          <div className="mt-2 rounded-md border border-border bg-secondary/50 p-2">
+          <div className="mt-2">
             <div className="flex items-center justify-between text-[11px]">
               <span className="font-medium text-muted-foreground">Araç doluluk katkısı</span>
               <span className="font-mono font-bold text-foreground">%{capacityPct}</span>
@@ -227,7 +227,7 @@ export function DetailPanel({ stop, driverId, drivers, onClose }: DetailPanelPro
           </div>
         </fieldset>
 
-        <div className="flex items-center justify-between rounded-lg border border-border bg-secondary/40 px-3 py-2.5">
+        <div className="flex items-center justify-between py-3">
           <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
             <Clock className="size-3.5" />
             Teslim Edilen Saat
@@ -237,23 +237,27 @@ export function DetailPanel({ stop, driverId, drivers, onClose }: DetailPanelPro
           </span>
         </div>
 
-        {/* Notlar */}
-        <label className="block">
-          <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-muted-foreground">
-            Sürücü Notu
-          </span>
+        <details className="group py-3">
+          <summary className="cursor-pointer list-none text-[11px] font-bold uppercase tracking-wide text-muted-foreground marker:hidden">
+            Sürücü Notu <span className="ml-1 text-muted-foreground/60 group-open:hidden">· Göster</span>
+          </summary>
+          <label className="mt-2 block">
+            <span className="sr-only">Sürücü Notu</span>
           <textarea
             rows={2}
             defaultValue="Arka giriş kullanılacak, güvenlikten kayıt yapılmalı."
             className="w-full resize-none rounded-md border border-input bg-background p-2 text-[12px] leading-relaxed text-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20"
           />
-        </label>
+          </label>
+        </details>
       </div>
 
-      {/* Eylemler */}
-      <div className="shrink-0 space-y-2 border-t border-border p-3">
-        <div className="flex items-center justify-between">
-          <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Hızlı İşlemler</span>
+      <details className="group shrink-0 border-t border-border px-3 py-3">
+        <summary className="cursor-pointer list-none text-[11px] font-bold uppercase tracking-wide text-muted-foreground marker:hidden">
+          Hızlı İşlemler <span className="ml-1 text-muted-foreground/60 group-open:hidden">· Göster</span>
+        </summary>
+        <div className="mt-2 flex items-center justify-between">
+          <span className="text-[11px] text-muted-foreground">Sürücü bildirimi</span>
           <div className="flex items-center gap-1">
             <button type="button" disabled={isSendingNotification} onClick={handleSendNotification} aria-label="Sürücüye E-Mail Gönder" title="Sürücüye E-Mail Gönder" className="grid size-8 place-items-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-60">
               {isSendingNotification ? <Loader2 className="size-4 animate-spin" /> : <BellRing className="size-4" />}
@@ -275,7 +279,7 @@ export function DetailPanel({ stop, driverId, drivers, onClose }: DetailPanelPro
             Değişiklikleri Kaydet
           </button>
         ) : null}
-      </div>
+      </details>
     </aside>
   )
 }
