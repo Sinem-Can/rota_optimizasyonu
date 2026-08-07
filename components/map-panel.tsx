@@ -1,7 +1,26 @@
 'use client'
 
+<<<<<<< HEAD
 import { useState } from 'react'
 import { Route, Layers, Ruler, Crosshair, Maximize2, Navigation, TriangleAlert, Warehouse, Plus, Minus } from 'lucide-react'
+=======
+import { useEffect, useState } from 'react'
+import dynamic from 'next/dynamic'
+import {
+    Crosshair,
+    Layers,
+    Maximize2,
+    Minus,
+    Navigation,
+    Plus,
+    Route,
+    Ruler,
+    TriangleAlert,
+    Warehouse,
+    FileText,
+} from 'lucide-react'
+import { driverTheme, type StopDto, type DriverDto } from '@/lib/route-data'
+>>>>>>> e8a4237 (Fatura/İrsaliye listeleme düzeltildi, PDF gerçek ürün ve fiyat verileriyle entegre edildi)
 import { cn } from '@/lib/utils'
 import { driverTheme, type StopDto, type DriverDto } from '@/lib/route-data'
 import dynamic from 'next/dynamic'
@@ -22,7 +41,36 @@ interface MapPanelProps {
 export function MapPanel({ selectedStopId, onSelectStop, isOptimizing, drivers }: MapPanelProps) {
     // HANGİ ARACIN ODAKTA OLDUĞUNU BULUYORUZ
     const activeDriver = drivers.find((d) => d.stops.some((s) => s.id === selectedStopId))
-    const activeDriverId = activeDriver?.id
+    const activeDriverId = activeDriver?.id 
+
+    // --- YENİ: İRSALİYE KESME FONKSİYONU ---
+    const handleFaturaKes = async (arac: DriverDto) => {
+        const istekPaketi = {
+            irsaliyeNo: `IRS-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+            cariAdi: arac.stops[0]?.customerName || "Genel Müşteri",
+            aracPlaka: arac.label || "Bilinmeyen Araç",
+            cikisDeposu: "Merkez Depo",
+            kalemSayisi: arac.stops?.length || 1
+        };
+
+        try {
+            const response = await fetch("http://localhost:5100/api/erp/kes", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(istekPaketi)
+            });
+
+            if (response.ok) {
+                alert(`Başarılı! ${arac.label} için irsaliye ERP'ye aktarıldı.`);
+            } else {
+                alert("Bir sorun oluştu, API'yi kontrol et.");
+            }
+        } catch (error) {
+            console.error("API Bağlantı Hatası:", error);
+            alert("Sunucuya bağlanılamadı.");
+        }
+    };
+    // ----------------------------------------
 
     const activeRouteCount = drivers.filter(d => d.stops.length > 0).length
     const activeStopCount = drivers.reduce((acc, d) => acc + d.stops.length, 0)
@@ -72,7 +120,22 @@ export function MapPanel({ selectedStopId, onSelectStop, isOptimizing, drivers }
                             {activeRouteCount} rota · {activeStopCount} aktif durak
                         </span>
                     </div>
+<<<<<<< HEAD
                     <div className="mx-0.5 h-5 w-px bg-border" />
+=======
+                    {/* --- YENİ EKLENEN İRSALİYE BUTONU --- */}
+                    {activeDriver && (
+                        <button
+                            type="button"
+                            onClick={() => handleFaturaKes(activeDriver)}
+                            className="flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-[11px] font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+                        >
+                            <FileText className="size-3.5" />
+                            İrsaliye Kes
+                        </button>
+                    )}
+                    {/* ------------------------------------- */}
+>>>>>>> e8a4237 (Fatura/İrsaliye listeleme düzeltildi, PDF gerçek ürün ve fiyat verileriyle entegre edildi)
                     <button
                         type="button"
                         aria-label="Tam ekran"

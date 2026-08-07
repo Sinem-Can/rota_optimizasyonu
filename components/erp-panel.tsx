@@ -224,6 +224,9 @@ async function handleSendToRoutePool() {
   const [dbStokRows, setDbStokRows] = useState<ErpRow[]>([])
   const [dbDepoRows, setDbDepoRows] = useState<ErpRow[]>([])
   const [dbSiparisRows, setDbSiparisRows] = useState<ErpRow[]>([])
+  // YENİ: İrsaliye ve Faturaları ayrı tutacağımız stateler
+  const [dbIrsaliyeRows, setDbIrsaliyeRows] = useState<ErpRow[]>([])
+  const [dbFaturaRows, setDbFaturaRows] = useState<ErpRow[]>([])
 
   useEffect(() => {
     async function fetchData() {
@@ -346,6 +349,78 @@ async function handleSendToRoutePool() {
             ],
           }))
           setDbSiparisRows(siparisMapped)
+         const irsRes = await fetch(`${apiUrl}/api/erp/liste`, { cache: 'no-store' })
+        if (irsRes.ok) {
+          const data = await irsRes.json()
+          
+          // BURAYA EKLE: Gelen veriyi konsola yazdırıp gözümüzle görelim
+          console.log("C#'tan gelen ham veri:", data);
+
+          // 1. İRSALİYELER İÇİN MAPPING
+          const irsaliyeMapped = data
+            .filter((i: any) => i.irsaliyeNo)
+            .map((i: any) => {
+              
+              // GERÇEK KALEM SAYISINI JSON'DAN ÇÖZME (Kurşun Geçirmez Yöntem)
+              let kalemSayisi = 0;
+              try {
+                let parsedLines = [];
+                const jsonStr = i.kalemlerJson || i.KalemlerJson || "[]";
+                
+                // Gelen veriyi parse et
+                parsedLines = typeof jsonStr === 'string' ? JSON.parse(jsonStr) : jsonStr;
+                
+                // Eğer backend veriyi iki kere string'e çevirdiyse (Double Stringify önlemi)
+                if (typeof parsedLines === 'string') {
+                  parsedLines = JSON.parse(parsedLines);
+                }
+                
+                // Dizi ise uzunluğunu al (kaç farklı kalem ürün varsa o sayıyı verir)
+                if (Array.isArray(parsedLines)) {
+                  kalemSayisi = parsedLines.length;
+                }
+              } catch (err) {
+                console.error("Kalem sayısı hesaplanırken hata:", err);
+              }
+
+              return {
+                id: i.irsaliyeNo,
+                search: (i.irsaliyeNo || "") + " " + (i.cariAdi || "") + " " + (i.cikisDeposu || "") + " " + (i.aracPlaka || ""),
+                cells: [
+                  { t: 'code', v: i.irsaliyeNo, sub: i.faturaNo && i.faturaNo !== 'FTR-BEKLEYEN' ? i.faturaNo : '' }, 
+                  { t: 'text', v: i.cariAdi || 'Genel Müşteri', strong: true },                        
+                  { t: 'text', v: '07.08.2026' }, 
+                  { t: 'badge', v: i.aracPlaka || '-', variant: 'outline' },                            
+                  
+                  // BURASI DEĞİŞTİ: Artık sabit 5 değil, hesaplanan gerçek kalem sayısını basıyor
+                  { t: 'num', v: kalemSayisi, unit: 'Adet' }, 
+                  
+                  { t: 'badge', v: i.durum || 'Planlandı', variant: 'secondary' }                      
+                ],
+                rawData: i 
+              }
+            })
+          setDbIrsaliyeRows(irsaliyeMapped)
+
+         // 2. FATURALAR İÇİN MAPPING
+          const faturaMapped = data
+            // İŞTE KURŞUN GEÇİRMEZ FİLTRE BURADA:
+            .filter((i: any) => i.faturaNo && !i.faturaNo.toUpperCase().includes('BEKLEYEN'))
+            .map((i: any) => ({
+              id: i.faturaNo,
+              search: s(i.faturaNo, i.irsaliyeNo, i.cariAdi, i.cikisDeposu, i.aracPlaka),
+              cells: [
+                { t: 'code', v: i.faturaNo, sub: i.irsaliyeNo },                                     
+                { t: 'text', v: i.cariAdi || 'Genel Müşteri', strong: true },                        
+                { t: 'text', v: '07.08.2026' }, 
+                { t: 'badge', v: 'e-Fatura', variant: 'secondary' },                                  
+                { t: 'money', v: i.tutar || 0 },                                                     
+                { t: 'text', v: i.odemeTuru || 'Banka Transferi' } 
+              ],
+              rawData: i 
+            }))
+          setDbFaturaRows(faturaMapped)
+        }
         }
       } catch (err) {
         console.error("Data fetch error", err)
@@ -363,6 +438,8 @@ async function handleSendToRoutePool() {
     if (activeViewKey === 'stok-kartlari') sourceRows = dbStokRows
     if (activeViewKey === 'depolar') sourceRows = dbDepoRows
     if (activeViewKey === 'siparisler') sourceRows = dbSiparisRows
+    if (activeViewKey === 'irsaliyeler') sourceRows = dbIrsaliyeRows
+    if (activeViewKey === 'faturalar') sourceRows = dbFaturaRows // Faturalar sekmesine kendi datasını bağladık
 
     return sourceRows.filter(
       (r) => q.length === 0 || r.search.toLocaleLowerCase('tr-TR').includes(q),
@@ -548,7 +625,104 @@ async function handleSendToRoutePool() {
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation()
-                              setGibDoc(findGibDocument(row.id))
+                              
+                              const raw = (row as any).rawData || {};
+                              const isFatura = row.id.startsWith('FTR');
+                              const today = new Date().toLocaleDateString('tr-TR');
+                              const time = new Date().toLocaleTimeString('tr-TR');
+
+                              // 1. ADIM: GERÇEK ÜRÜNLERİ JSON'DAN ÇÖZME
+                              let parsedLines = [];
+                              try {
+                                // C#'tan gelen JSON string'i JavaScript dizisine çeviriyoruz
+                                parsedLines = raw.kalemlerJson ? JSON.parse(raw.kalemlerJson) : [];
+                              } catch (err) {
+                                console.error("JSON parse hatası:", err);
+                              }
+
+                              const productLines = parsedLines.length > 0 ? parsedLines : [
+                                // Eğer veritabanından veri gelmezse çökmemesi için boş/test yedeği
+                                { code: 'YOK', name: 'Ürün Bulunamadı', qty: 1, unit: 'Adet', price: 0 }
+                              ];
+
+                              // 2. ADIM: FATURA / İRSALİYE AYRIMI (Fiyatları Sıfırlama)
+                              const calculatedLines = productLines.map((l: any, index: number) => {
+                                const unitPrice = isFatura ? (l.price || 0) : 0;
+                                
+                                return {
+                                  no: index + 1,
+                                  code: l.code,
+                                  name: l.name,
+                                  qty: l.qty,
+                                  unit: l.unit || 'Adet',
+                                  price: unitPrice,
+                                  amount: l.qty * unitPrice
+                                };
+                              });
+
+                              // 3. ADIM: DİP TOPLAMLARI OTOMATİK BELİRLEME
+                              const calculatedSubtotal = calculatedLines.reduce((acc: number, curr: any) => acc + curr.amount, 0);
+                              const calculatedVat = calculatedSubtotal * 0.20; // %20 KDV
+                              const calculatedTotal = calculatedSubtotal + calculatedVat;
+
+                              // Orijinal "GibDocument" tipine birebir uyumlu veri objesi
+                              const dynamicDoc = {
+                                title: isFatura ? 'e-FATURA' : 'e-İRSALİYE',
+                                no: row.id,
+                                date: today,
+                                time: time,
+                                uuid: 'feb4c0c6-244d-4456-a6b9-38684779c945', 
+                                customizationNo: 'TR1.2',
+                                scenario: isFatura ? 'TEMELFATURA' : 'TEMELIRSALIYE',
+                                kind: isFatura ? 'fatura' : 'irsaliye',
+                                docType: 'SATIŞ',
+                                
+                                sender: {
+                                  name: 'UYUMSOFT BİLGİ SİSTEMLERİ VE TEKNOLOJİLERİ A.Ş.',
+                                  addressLines: ['YTÜ Teknopark, Teknoloji Geliştirme Bölgesi'],
+                                  district: 'Esenler',
+                                  city: 'İstanbul',
+                                  phone: '0212 555 44 33',
+                                  email: 'destek@uyumsoft.com.tr',
+                                  web: 'www.uyumsoft.com.tr',
+                                  taxOffice: 'BÜYÜKMÜKELLEFLER',
+                                  vkn: '8990159422'
+                                },
+                                
+                                receiver: {
+                                  name: raw.cariAdi || 'GENEL MÜŞTERİ',
+                                  addressLines: [raw.cikisDeposu || 'Merkez Depo'],
+                                  district: '-',
+                                  city: 'İstanbul',
+                                  phone: '-',
+                                  email: '-',
+                                  web: '',
+                                  taxOffice: 'İSTANBUL VD.',
+                                  vkn: '1112223344'
+                                },
+                                
+                                // Fatura/İrsaliye ayrımı yapılmış dinamik listeler ve toplamlar
+                                lines: calculatedLines,
+                                subtotal: calculatedSubtotal,
+                                vatRate: 20,
+                                vatTotal: calculatedVat,
+                                grandTotal: calculatedTotal,
+                                
+                                relatedDocs: [],
+                                
+                                carrier: {
+                                  company: 'Lojistik A.Ş.',
+                                  vkn: '9998887766',
+                                  driverName: 'Sistem Üzerinden Atanan Şoför',
+                                  driverTckn: '11111111111',
+                                  plate: raw.aracPlaka || '34 ABC 123',
+                                  vehicleType: 'Kamyon',
+                                  dispatchDate: today,
+                                  dispatchTime: time
+                                }
+                              };
+
+                              setGibDoc(dynamicDoc as any);
                             }}
                             title={`${row.id} belgesini görüntüle / indir`}
                             className="inline-flex h-7 items-center gap-1.5 rounded-md border border-border bg-card px-2 text-[11px] font-semibold text-foreground transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"

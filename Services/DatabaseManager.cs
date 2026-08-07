@@ -314,5 +314,147 @@ namespace Uyumsoft.RouteOptimizer
                 return filteredData;
             }
         }
+        // 1. Arayüzden gelen veriyi PostgreSQL'e kaydeder (Hem İrsaliye Hem Fatura)
+        public void FaturaKesVeKaydet(string irsaliyeNo, string cariAdi, string plaka, string depo, int kalemSayisi)
+        {
+            using (var conn = GetConnection())
+            {
+                conn.Open();
+                
+                // İki tabloya birden kayıt atacağımız için Transaction başlatıyoruz
+                using (var transaction = conn.BeginTransaction())
+                {
+                    try
+                    {
+                        // --- ADIM 1: İRSALİYE TABLOSUNA KAYIT ---
+                        string insertIrsaliyeQuery = @"
+                            INSERT INTO irsaliye (irsaliye_no, depo_adi, plaka, teslimat_durumu) 
+                            VALUES (@i1, @i2, @i3, 'Planlandı')";
+
+                        using (var cmdIrsaliye = new NpgsqlCommand(insertIrsaliyeQuery, conn, transaction))
+                        {
+                            cmdIrsaliye.Parameters.AddWithValue("i1", irsaliyeNo);
+                            cmdIrsaliye.Parameters.AddWithValue("i2", string.IsNullOrEmpty(depo) ? "Merkez Depo" : depo);
+                            cmdIrsaliye.Parameters.AddWithValue("i3", string.IsNullOrEmpty(plaka) ? "" : plaka);
+                            
+                            cmdIrsaliye.ExecuteNonQuery();
+                        }
+
+                        // --- ADIM 2: FATURA TABLOSUNA KAYIT ---
+                        // Otomatik bir fatura numarası ve temsili bir tutar oluşturuyoruz
+                        string faturaNo = "FTR-" + DateTime.Now.ToString("yyyyMMddHHmmss");
+                        decimal rastgeleTutar = kalemSayisi > 0 ? kalemSayisi * 1500.50m : 2500.00m; 
+
+                        string insertFaturaQuery = @"
+                            INSERT INTO fatura (fatura_no, irsaliye_no, cari_kodu, cari_adi, tutar, odeme) 
+                            VALUES (@f1, @f2, @f3, @f4, @f5, @f6)";
+
+                        using (var cmdFatura = new NpgsqlCommand(insertFaturaQuery, conn, transaction))
+                        {
+                            cmdFatura.Parameters.AddWithValue("f1", faturaNo);
+                            cmdFatura.Parameters.AddWithValue("f2", irsaliyeNo);
+                            cmdFatura.Parameters.AddWithValue("f3", "C-1001"); // Varsayılan cari kodu
+                            cmdFatura.Parameters.AddWithValue("f4", string.IsNullOrEmpty(cariAdi) ? "Genel Müşteri" : cariAdi);
+                            cmdFatura.Parameters.AddWithValue("f5", rastgeleTutar);
+                            cmdFatura.Parameters.AddWithValue("f6", "Banka Transferi"); // Varsayılan ödeme yöntemi
+                            
+                            cmdFatura.ExecuteNonQuery();
+                        }
+
+                        // Hata yoksa işlemi onayla ve veritabanına yaz
+                        transaction.Commit();
+                    }
+                    catch (System.Exception)
+                    {
+                        // Bir hata olursa tüm işlemleri geri al (Rollback)
+                        transaction.Rollback();
+                        throw; 
+                    }
+                }
+            }
+        }
+public System.Collections.Generic.List<Models.FaturaIrsaliyeGorunum> GetFaturaVeIrsaliyeler()
+        {
+            var liste = new System.Collections.Generic.List<Models.FaturaIrsaliyeGorunum>();
+
+            try 
+            {
+                using (var conn = GetConnection())
+                {
+                    conn.Open();
+                    
+                    string query = @"
+                        SELECT 
+                            f.fatura_no, 
+                            i.irsaliye_no, 
+                            f.cari_adi, 
+                            i.depo_adi, 
+                            i.plaka, 
+                            
+                            -- 3. DEĞİŞİKLİK: Rastgele 'f.tutar' yerine ürünlerin (Fiyat * Adet) + %20 KDV toplamını anlık hesaplıyoruz
+                            COALESCE(
+                                (
+                                    SELECT SUM(ABS(t_sum.gercek_miktar::numeric) * COALESCE((SELECT fiyat::numeric FROM fiyat_listesi WHERE stok = t_sum.stok AND liste = 'FL001' LIMIT 1), 0)) * 1.20
+                                    FROM (
+                                        SELECT stok, MAX(miktar) as gercek_miktar
+                                        FROM stok_hareketleri
+                                        WHERE siparis = i.siparis
+                                        GROUP BY stok
+                                    ) t_sum
+                                ), 0
+                            ) AS tutar,
+                            
+                            f.odeme, 
+                            COALESCE(i.teslimat_durumu, 'Planlandı') AS durum,
+                            (
+                                SELECT COALESCE(json_agg(
+                                    json_build_object(
+                                        'code', t.stok,
+                                        'name', COALESCE((SELECT urun FROM stok_karti WHERE stok_kodu = t.stok LIMIT 1), t.stok),
+                                        'qty', ABS(t.gercek_miktar::numeric),                 
+                                        'unit', COALESCE((SELECT birim FROM stok_karti WHERE stok_kodu = t.stok LIMIT 1), 'Adet'),                         
+                                        'price', COALESCE((SELECT fiyat::numeric FROM fiyat_listesi WHERE stok = t.stok AND liste = 'FL001' LIMIT 1), 0)
+                                    )
+                                )::text, '[]')
+                                FROM (
+                                    SELECT stok, MAX(miktar) as gercek_miktar
+                                    FROM stok_hareketleri
+                                    WHERE siparis = i.siparis
+                                    GROUP BY stok
+                                ) t
+                            ) AS kalemler_json
+                        FROM irsaliye i
+                        LEFT JOIN fatura f ON i.irsaliye_no = f.irsaliye_no";
+
+                    using (var cmd = new NpgsqlCommand(query, conn))
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            liste.Add(new Models.FaturaIrsaliyeGorunum
+                            {
+                                FaturaNo = reader.IsDBNull(0) ? "FTR-BEKLEYEN" : reader.GetString(0),
+                                IrsaliyeNo = reader.IsDBNull(1) ? "" : reader.GetString(1),
+                                CariAdi = reader.IsDBNull(2) ? "Genel Müşteri" : reader.GetString(2),
+                                CikisDeposu = reader.IsDBNull(3) ? "" : reader.GetString(3),
+                                AracPlaka = reader.IsDBNull(4) ? "" : reader.GetString(4),
+                                Tutar = reader.IsDBNull(5) ? 0 : reader.GetDecimal(5),
+                                OdemeTuru = reader.IsDBNull(6) ? "-" : reader.GetString(6),
+                                Durum = reader.IsDBNull(7) ? "Belirsiz" : reader.GetString(7),
+                                KalemlerJson = reader.IsDBNull(8) ? "[]" : reader.GetString(8) 
+                            });
+                        }
+                    }
+                }
+            }
+            catch (System.Exception ex)
+            {
+                System.Console.WriteLine("\n=== [ UYARI: VERİTABANI HATASI YAKALANDI ] ===");
+                System.Console.WriteLine(ex.Message);
+                System.Console.WriteLine("==============================================\n");
+            }
+            
+            return liste;
+        }
     }
 }
