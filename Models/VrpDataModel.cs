@@ -18,6 +18,8 @@ public class VrpDataModel
     public long[]? VehicleWeightCapacities { get; set; }
     public long[]? VehicleVolumeCapacities { get; set; }
     public long[]? VehicleKmCosts { get; set; }
+    public string[]? VehiclePlates { get; set; }
+    public string[]? VehicleNames { get; set; }
 
     public int VehicleNumber { get; set; }
 

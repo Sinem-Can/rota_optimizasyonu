@@ -40,6 +40,80 @@ namespace Uyumsoft.RouteOptimizer.Controllers
             }
         }
 
+        [HttpPost("import-erp-only")]
+        public IActionResult ImportErpOnly()
+        {
+            string? connString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
+            string? erpFilePath = Environment.GetEnvironmentVariable("ERP_EXCEL_PATH");
+
+            if (string.IsNullOrEmpty(connString) || string.IsNullOrEmpty(erpFilePath))
+            {
+                return BadRequest("⚠️ UYARI: .env dosyasındaki veritabanı veya excel yolları eksik.");
+            }
+
+            try
+            {
+                DatabaseManager dbManager = new DatabaseManager(connString);
+                ExcelProcessor excelProcessor = new ExcelProcessor(dbManager);
+                
+                excelProcessor.TransferErpData(erpFilePath);
+
+                return Ok("🎉 Sadece ERP verileri başarıyla aktarıldı (Matrisler es geçildi)!");
+            }
+            catch (Exception ex)
+            {
+                return Problem($"❌ Veritabanı/ETL Hatası: {ex.Message}");
+            }
+        }
+
+        [HttpGet("clean-web-orders")]
+        public IActionResult CleanWebOrders()
+        {
+            string? connString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
+            if (string.IsNullOrEmpty(connString)) return BadRequest("DB_CONNECTION_STRING eksik.");
+            try
+            {
+                using (var conn = new Npgsql.NpgsqlConnection(connString))
+                {
+                    conn.Open();
+                    using (var cmd = new Npgsql.NpgsqlCommand("DELETE FROM satis_siparisi WHERE siparis_no LIKE 'WEB%';", conn))
+                        cmd.ExecuteNonQuery();
+                    using (var cmd = new Npgsql.NpgsqlCommand("ALTER TABLE stok_hareketleri DROP COLUMN IF EXISTS id;", conn))
+                        cmd.ExecuteNonQuery();
+                }
+                return Ok("Web siparişleri temizlendi ve ID kolonu düşürüldü.");
+            }
+            catch (Exception ex)
+            {
+                return Problem($"Hata: {ex.Message}");
+            }
+        }
+
+        [HttpGet("reset-db-hard")]
+        public IActionResult ResetDbHard()
+        {
+            string? connString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
+            if (string.IsNullOrEmpty(connString)) return BadRequest("DB_CONNECTION_STRING eksik.");
+
+            try
+            {
+                string sql = System.IO.File.ReadAllText("postgreyeyazilacak.sql");
+                using (var conn = new Npgsql.NpgsqlConnection(connString))
+                {
+                    conn.Open();
+                    using (var cmd = new Npgsql.NpgsqlCommand(sql, conn))
+                    {
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+                return Ok("DB tamamen silinip baştan oluşturuldu!");
+            }
+            catch (Exception ex)
+            {
+                return Problem($"DB Reset Hatası: {ex.Message}");
+            }
+        }
+
         [HttpPost("optimize")]
         public IActionResult RunOptimization()
         {
@@ -96,13 +170,16 @@ namespace Uyumsoft.RouteOptimizer.Controllers
                 string dName = (data.NodeNames != null && startNode < data.NodeNames.Length && !string.IsNullOrWhiteSpace(data.NodeNames[startNode])) ? data.NodeNames[startNode] : "Merkez Depo";
                 double dX = (startNode == 1) ? 30 : 50;
                 double dY = (startNode == 1) ? 70 : 50;
+                
+                string dbPlate = data.VehiclePlates != null && i < data.VehiclePlates.Length && !string.IsNullOrWhiteSpace(data.VehiclePlates[i]) ? data.VehiclePlates[i] : $"34 VHC 0{i + 1}";
+                string dbName = data.VehicleNames != null && i < data.VehicleNames.Length && !string.IsNullOrWhiteSpace(data.VehicleNames[i]) ? data.VehicleNames[i] : $"Araç {i + 1}";
 
                 drivers.Add(new DriverDto
                 {
                     id = $"VHC-00{i + 1}",
-                    label = $"Araç {i + 1}",
+                    label = dbName,
                     fullName = $"Şoför {i + 1}",
-                    plate = $"34 VHC 0{i + 1}",
+                    plate = dbPlate,
                     vehicleType = "Panelvan",
                     capacityMaxKg = data.VehicleWeightCapacities != null && i < data.VehicleWeightCapacities.Length ? data.VehicleWeightCapacities[i] : 1500,
                     colorKey = colorKeys[i % colorKeys.Length],

@@ -28,6 +28,7 @@ CREATE TABLE public.cari_kart (
     cari_kodu VARCHAR(255) PRIMARY KEY,
     cari_adi VARCHAR(255),
     tip VARCHAR(255),
+    adres_metni VARCHAR(255),
     mal_kabul_baslangic VARCHAR(50),
     mal_kabul_bitis VARCHAR(50),
     matris_id INT
@@ -115,8 +116,7 @@ CREATE TABLE public.sevkiyat_plani (
     plaka VARCHAR(255),
     toplam_kg NUMERIC(10, 2),
     toplam_hacim_m3 NUMERIC(10, 2),
-    sevkiyat_durumu VARCHAR(255),
-    FOREIGN KEY (arac_kodu) REFERENCES public.arac_kartlari(arac_kodu) ON DELETE SET NULL
+    sevkiyat_durumu VARCHAR(255)
 );
 
 CREATE TABLE public.finans_fisi (
@@ -145,9 +145,7 @@ CREATE TABLE public.satis_siparisi (
     siparis_durumu VARCHAR(255),
     teslimat_pencere_baslangic VARCHAR(50),
     teslimat_penceresi_bitis VARCHAR(50),
-    matris_id INT,
-    FOREIGN KEY (cari_kodu) REFERENCES public.cari_kart(cari_kodu) ON DELETE SET NULL,
-    FOREIGN KEY (arac_kodu) REFERENCES public.arac_kartlari(arac_kodu) ON DELETE SET NULL
+    matris_id INT
 );
 
 CREATE TABLE public.mesafe_matrisi (
@@ -174,10 +172,7 @@ CREATE TABLE public.trafik_matrisi (
 CREATE TABLE public.stok_hareketleri (
     siparis VARCHAR(255),
     stok VARCHAR(255),
-    miktar INT,
-    PRIMARY KEY (siparis, stok),
-    FOREIGN KEY (siparis) REFERENCES public.satis_siparisi(siparis_no) ON DELETE CASCADE,
-    FOREIGN KEY (stok) REFERENCES public.stok_karti(stok_kodu) ON DELETE CASCADE
+    miktar INT
 );
 
 CREATE TABLE public.irsaliye (

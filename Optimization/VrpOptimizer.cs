@@ -381,13 +381,16 @@ public class VrpOptimizer
                 string dName = (data.NodeNames != null && startNode < data.NodeNames.Length && !string.IsNullOrWhiteSpace(data.NodeNames[startNode])) ? data.NodeNames[startNode] : "Merkez Depo";
                 double dX = (startNode == 1) ? 30 : 50;
                 double dY = (startNode == 1) ? 70 : 50;
+                
+                string dbPlate = data.VehiclePlates != null && i < data.VehiclePlates.Length && !string.IsNullOrWhiteSpace(data.VehiclePlates[i]) ? data.VehiclePlates[i] : $"34 VHC 0{i + 1}";
+                string dbName = data.VehicleNames != null && i < data.VehicleNames.Length && !string.IsNullOrWhiteSpace(data.VehicleNames[i]) ? data.VehicleNames[i] : $"Araç {i + 1}";
 
                 var driver = new DriverDto
                 {
                     id = $"VHC-00{i + 1}",
-                    label = $"Araç {i + 1}",
+                    label = dbName,
                     fullName = $"Şoför {i + 1}",
-                    plate = $"34 VHC 0{i + 1}",
+                    plate = dbPlate,
                     vehicleType = "Panelvan",
                     capacityMaxKg = data.VehicleWeightCapacities != null && i < data.VehicleWeightCapacities.Length ? data.VehicleWeightCapacities[i] : 1500,
                     colorKey = colorKeys[i % colorKeys.Length],
@@ -397,7 +400,7 @@ public class VrpOptimizer
                     stops = new List<StopDto>()
                 };
 
-                Console.WriteLine($"\n--- Araç {i + 1} Rotası ---");
+                Console.WriteLine($"\n--- Araç {i + 1} ({dbPlate}) Rotası ---");
                 Console.WriteLine($"  [Çıkış] {driver.depotName}");
 
                 long routeDistance = 0;
@@ -514,7 +517,7 @@ public class VrpOptimizer
                             y = 10 + (rnd.NextDouble() * 80)
                         };
                         driver.stops.Add(stop);
-                        Console.WriteLine($"  -> Ziyaret: {cariKodu} (Mesafe: {legDistance} km | Sürüş: {travelTime} dk, İndirme: {printServiceTime} dk, Bekleme: {waitTime} dk)");
+                        Console.WriteLine($"  -> Ziyaret: {cariKodu} - {gercekIsim} (Mesafe: {legDistance} km | Sürüş: {travelTime} dk, İndirme: {printServiceTime} dk, Bekleme: {waitTime} dk)");
                     }
                     else
                     {

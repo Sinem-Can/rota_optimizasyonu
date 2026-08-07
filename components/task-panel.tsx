@@ -208,7 +208,7 @@ export function TaskPanel({
                           {driver.label}
                         </span>
                         <span className="truncate text-[11px] text-muted-foreground">
-                          · {driver.fullName}
+                          {/* Removed driver.fullName */}
                         </span>
                         {hasRisk && !isBroken ? (
                           <TriangleAlert className="size-3.5 shrink-0 text-destructive" />

@@ -39,7 +39,9 @@ namespace Uyumsoft.RouteOptimizer
                 var volCaps = new System.Collections.Generic.List<long>();
                 var depots = new System.Collections.Generic.List<int>();
                 var kmCosts = new System.Collections.Generic.List<long>();
-                using (var cmd = new NpgsqlCommand("SELECT maks_agirlik_kg, maks_hacim_m3, bagli_oldugu_depo, km_maliyeti_tl FROM arac_kartlari", conn))
+                var plates = new System.Collections.Generic.List<string>();
+                var names = new System.Collections.Generic.List<string>();
+                using (var cmd = new NpgsqlCommand("SELECT maks_agirlik_kg, maks_hacim_m3, bagli_oldugu_depo, km_maliyeti_tl, plaka, arac_kodu FROM arac_kartlari ORDER BY arac_kodu ASC", conn))
                 using (var reader = cmd.ExecuteReader())
                 {
                     while (reader.Read())
@@ -49,6 +51,8 @@ namespace Uyumsoft.RouteOptimizer
                         string depoKodu = reader.IsDBNull(2) ? "" : Convert.ToString(reader.GetValue(2));
                         depots.Add((depoKodu == "DP002" || depoKodu == "1") ? 1 : 0);
                         kmCosts.Add(reader.IsDBNull(3) ? 0 : Convert.ToInt64(reader.GetValue(3)));
+                        plates.Add(reader.IsDBNull(4) ? "" : Convert.ToString(reader.GetValue(4)));
+                        names.Add(reader.IsDBNull(5) ? "" : Convert.ToString(reader.GetValue(5)));
                     }
                 }
 
@@ -56,6 +60,8 @@ namespace Uyumsoft.RouteOptimizer
                 data.VehicleWeightCapacities = weightCaps.ToArray();
                 data.VehicleVolumeCapacities = volCaps.ToArray();
                 data.VehicleKmCosts = kmCosts.ToArray();
+                data.VehiclePlates = plates.ToArray();
+                data.VehicleNames = names.ToArray();
 
                 data.Starts = depots.ToArray();
                 data.Ends = depots.ToArray();
@@ -166,7 +172,7 @@ namespace Uyumsoft.RouteOptimizer
                     }
                 } catch { } // Depo tablosu yoksa veya hatalıysa yoksay
 
-                using (var cmd = new NpgsqlCommand("SELECT s.cari_kodu, s.matris_id, SUM(s.toplam_kg), SUM(s.toplam_hacim_m3), MAX(c.cari_adi), MAX(c.adres_metni) FROM satis_siparisi s LEFT JOIN cari_kart c ON s.cari_kodu = c.cari_kodu GROUP BY s.cari_kodu, s.matris_id", conn))
+                using (var cmd = new NpgsqlCommand("SELECT s.cari_kodu, s.matris_id, SUM(s.toplam_kg), SUM(s.toplam_hacim_m3), MAX(c.cari_adi), MAX(c.adres_metni) as adres_metni FROM satis_siparisi s LEFT JOIN cari_kart c ON s.cari_kodu = c.cari_kodu GROUP BY s.cari_kodu, s.matris_id", conn))
                 using (var reader = cmd.ExecuteReader())
                 {
                     while (reader.Read())
@@ -245,6 +251,8 @@ namespace Uyumsoft.RouteOptimizer
                 filteredData.VehicleMaxTimes = data.VehicleMaxTimes;
                 filteredData.VehicleMaxStops = data.VehicleMaxStops;
                 filteredData.VehicleAllowedRegions = data.VehicleAllowedRegions;
+                filteredData.VehiclePlates = data.VehiclePlates;
+                filteredData.VehicleNames = data.VehicleNames;
 
                 filteredData.Starts = new int[data.VehicleNumber];
                 filteredData.Ends = new int[data.VehicleNumber];
