@@ -5,7 +5,7 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, useMapEvents 
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
 import { driverTheme, getCoordinatesForStop, getCoordinatesForDepot, type StopDto, type DriverDto } from '@/lib/route-data'
-import { fetchRealRoadRoute } from '@/lib/route-service' // Yukarıdaki servis
+import { fetchRealRoadRoute, fetchExactLocations } from '@/lib/route-service'
 
 interface LeafletMapCoreProps {
     drivers: DriverDto[]
@@ -44,17 +44,54 @@ export default function LeafletMapCore({
     const istanbulCenter: [number, number] = [41.0082, 28.9784]
     const [currentZoom, setCurrentZoom] = useState<number>(11)
 
+    // Veritabanından gelen dinamik konum sözlüğü state'i
+    const [exactLocations, setExactLocations] = useState<Record<string, { lat: number; lng: number }>>({})
+
     // Her sürücünün gerçek yol koordinatlarını tutacağımız state
     const [routeGeometries, setRouteGeometries] = useState<Record<string, [number, number][]>>({})
 
-    // Sürücüler değiştiğinde OSRM'den gerçek yolları çekelim
+    // 1. Bileşen ilk açıldığında veritabanından koordinatları çek
+    useEffect(() => {
+        fetchExactLocations().then((data) => {
+            if (Object.keys(data).length > 0) {
+                setExactLocations(data)
+            }
+        })
+    }, [])
+
+    // Yardımcı: Durum koordinatlarını veritabanı öncelikli çözümler
+    const resolveStopCoords = (stop: StopDto) => {
+        if (stop?.lat && stop?.lng) {
+            return { lat: Number(stop.lat), lng: Number(stop.lng) }
+        }
+        const targetKey = stop?.cariKod || stop?.id
+        const cleanKey = targetKey ? String(targetKey).trim().toUpperCase() : ''
+        if (cleanKey && exactLocations[cleanKey]) {
+            return exactLocations[cleanKey]
+        }
+        return getCoordinatesForStop(stop)
+    }
+
+    // Yardımcı: Depo koordinatlarını veritabanı öncelikli çözümler
+    const resolveDepotCoords = (depotName: string) => {
+        const name = (depotName || '').toLowerCase()
+        if (name.includes('üsküdar') && exactLocations['DP002']) {
+            return exactLocations['DP002']
+        }
+        if (exactLocations['DP001']) {
+            return exactLocations['DP001']
+        }
+        return getCoordinatesForDepot(depotName)
+    }
+
+    // 2. Sürücüler veya veritabanı konumları yüklendiğinde OSRM'den gerçek yolları çekelim
     useEffect(() => {
         async function loadAllRoutes() {
             const newGeometries: Record<string, [number, number][]> = {}
 
             for (const driver of drivers) {
-                const depotCoords = getCoordinatesForDepot(driver.depotName || 'Avcılar')
-                const stopCoordsList = driver.stops.map((stop) => getCoordinatesForStop(stop))
+                const depotCoords = resolveDepotCoords(driver.depotName || 'Avcılar')
+                const stopCoordsList = driver.stops.map((stop) => resolveStopCoords(stop))
 
                 // Rota sırası: Depo -> Duraklar -> Depo (Döngü)
                 const fullWaypoints = [
@@ -71,7 +108,7 @@ export default function LeafletMapCore({
         }
 
         loadAllRoutes()
-    }, [drivers])
+    }, [drivers, exactLocations])
 
     const depotScale = currentZoom < 11 ? Math.max(0.25, Math.pow(currentZoom / 11, 2)) : 1
 
@@ -108,10 +145,10 @@ export default function LeafletMapCore({
                 )
             })}
 
-            {/* MERKEZ DEPOLAR ve DURAK PİNLERİ (Önceki kodlarınla aynı kalabilir) */}
+            {/* MERKEZ DEPOLAR */}
             {[
-                { name: 'Avcılar Merkez Depo', ...getCoordinatesForDepot('Avcılar') },
-                { name: 'Üsküdar Merkez Depo', ...getCoordinatesForDepot('Üsküdar') }
+                { name: 'Avcılar Merkez Depo', ...resolveDepotCoords('Avcılar') },
+                { name: 'Üsküdar Merkez Depo', ...resolveDepotCoords('Üsküdar') }
             ].map((depot) => (
                 <Marker
                     key={depot.name}
@@ -130,12 +167,13 @@ export default function LeafletMapCore({
                 />
             ))}
 
+            {/* DURAK PİNLERİ */}
             {drivers.map((driver) => {
                 const theme = driverTheme[driver.colorKey]
                 const isFaded = activeDriverId ? activeDriverId !== driver.id : false
 
                 return driver.stops.map((stop) => {
-                    const coords = getCoordinatesForStop(stop)
+                    const coords = resolveStopCoords(stop)
                     const isSelected = selectedStopId === stop.id
                     const isRisk = stop.status === 'risk'
 

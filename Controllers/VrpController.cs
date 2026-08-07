@@ -467,5 +467,41 @@ namespace Uyumsoft.RouteOptimizer.Controllers
             }
             return Ok(orders.Values);
         }
+
+        [HttpGet("erp/konumlar")]
+        public IActionResult GetCariKonumlar()
+        {
+            string? connString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
+            if (string.IsNullOrEmpty(connString)) return BadRequest("DB_CONNECTION_STRING eksik.");
+            DatabaseManager dbManager = new DatabaseManager(connString);
+
+            var records = new System.Collections.Generic.List<object>();
+            try
+            {
+                using (var conn = dbManager.GetConnection())
+                {
+                    conn.Open();
+                    // Sütun isimlerini veritabanındaki tablo ile birebir eşleştirdik
+                    using (var cmd = new Npgsql.NpgsqlCommand("SELECT cari_kodu, lat, lng FROM cari_konumlar ORDER BY cari_kodu ASC", conn))
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            records.Add(new
+                            {
+                                cariCode = reader.IsDBNull(0) ? "" : reader.GetString(0),
+                                lat = reader.IsDBNull(1) ? 0 : reader.GetDecimal(1),
+                                lng = reader.IsDBNull(2) ? 0 : reader.GetDecimal(2)
+                            });
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Veritabanı hatası", error = ex.Message });
+            }
+            return Ok(records);
+        }
     }
 }

@@ -1,3 +1,6 @@
+/**
+ * OSRM üzerinden iki nokta arasındaki gerçek yol güzergahını çeker.
+ */
 export async function fetchRealRoadRoute(coordinates: { lat: number; lng: number }[]): Promise<[number, number][]> {
     if (coordinates.length < 2) return []
 
@@ -19,4 +22,37 @@ export async function fetchRealRoadRoute(coordinates: { lat: number; lng: number
 
     // Hata durumunda düz çizgi fallback (yedek)
     return coordinates.map((c) => [c.lat, c.lng])
+}
+
+/**
+ * Veritabanından (cari_konumlar tablosundan) tüm kesin nokta atışı koordinatlarını 
+ * { [cariKodu]: { lat, lng } } formatında çeker.
+ */
+export async function fetchExactLocations(): Promise<Record<string, { lat: number; lng: number }>> {
+    try {
+        const response = await fetch('http://localhost:5100/api/erp/konumlar')
+
+        if (!response.ok) {
+            const errText = await response.text()
+            console.error('Backend hata detayı:', errText)
+            throw new Error(`Sunucu Hatası (${response.status})`)
+        }
+
+        const data = await response.json()
+        const locationMap: Record<string, { lat: number; lng: number }> = {}
+
+        for (const item of data) {
+            if (item.cariCode) {
+                locationMap[item.cariCode] = {
+                    lat: Number(item.lat),
+                    lng: Number(item.lng)
+                }
+            }
+        }
+
+        return locationMap
+    } catch (error) {
+        console.error('❌ fetchExactLocations Hatası:', error)
+        return {}
+    }
 }
