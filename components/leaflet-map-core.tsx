@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMapEvents } from 'react-leaflet'
+import { useEffect, useState } from 'react'
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, useMapEvents } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
 import { driverTheme, getCoordinatesForStop, getCoordinatesForDepot, type StopDto, type DriverDto } from '@/lib/route-data'
+import { fetchRealRoadRoute } from '@/lib/route-service' // Yukarıdaki servis
 
 interface LeafletMapCoreProps {
     drivers: DriverDto[]
@@ -13,50 +14,25 @@ interface LeafletMapCoreProps {
     onSelectStop: (stop: StopDto, driverId: string) => void
 }
 
-function MapZoomObserver({ onZoomChange }: { onZoomChange: (zoom: number) => void }) {
-    const map = useMapEvents({
-        zoomend: () => {
-            onZoomChange(map.getZoom())
-        },
-    })
+function MapResizeHandler() {
+    const map = useMap()
+    useEffect(() => {
+        const container = map.getContainer()
+        if (!container) return
+        const observer = new ResizeObserver(() => {
+            setTimeout(() => { map.invalidateSize() }, 100)
+        })
+        observer.observe(container)
+        return () => observer.disconnect()
+    }, [map])
     return null
 }
 
-function generateCurvedPoints(
-    lat1: number,
-    lng1: number,
-    lat2: number,
-    lng2: number,
-    bendDirection = 1,
-    numPoints = 20
-): [number, number][] {
-    const points: [number, number][] = []
-    const midLat = (lat1 + lat2) / 2
-    const midLng = (lng1 + lng2) / 2
-
-    const dLat = lat2 - lat1
-    const dLng = lng2 - lng1
-    const dist = Math.sqrt(dLat * dLat + dLng * dLng)
-
-    const offset = dist * 0.18 * bendDirection
-    const perpLat = -dLng * (offset / (dist || 1))
-    const perpLng = dLat * (offset / (dist || 1))
-
-    const ctrlLat = midLat + perpLat
-    const ctrlLng = midLng + perpLng
-
-    for (let i = 0; i <= numPoints; i++) {
-        const t = i / numPoints
-        const u = 1 - t
-        const tt = t * t
-        const uu = u * u
-
-        const currLat = uu * lat1 + 2 * u * t * ctrlLat + tt * lat2
-        const currLng = uu * lng1 + 2 * u * t * ctrlLng + tt * lng2
-        points.push([currLat, currLng])
-    }
-
-    return points
+function MapZoomObserver({ onZoomChange }: { onZoomChange: (zoom: number) => void }) {
+    useMapEvents({
+        zoomend: (e) => { onZoomChange(e.target.getZoom()) },
+    })
+    return null
 }
 
 export default function LeafletMapCore({
@@ -67,6 +43,35 @@ export default function LeafletMapCore({
 }: LeafletMapCoreProps) {
     const istanbulCenter: [number, number] = [41.0082, 28.9784]
     const [currentZoom, setCurrentZoom] = useState<number>(11)
+
+    // Her sürücünün gerçek yol koordinatlarını tutacağımız state
+    const [routeGeometries, setRouteGeometries] = useState<Record<string, [number, number][]>>({})
+
+    // Sürücüler değiştiğinde OSRM'den gerçek yolları çekelim
+    useEffect(() => {
+        async function loadAllRoutes() {
+            const newGeometries: Record<string, [number, number][]> = {}
+
+            for (const driver of drivers) {
+                const depotCoords = getCoordinatesForDepot(driver.depotName || 'Avcılar')
+                const stopCoordsList = driver.stops.map((stop) => getCoordinatesForStop(stop))
+
+                // Rota sırası: Depo -> Duraklar -> Depo (Döngü)
+                const fullWaypoints = [
+                    { lat: depotCoords.lat, lng: depotCoords.lng },
+                    ...stopCoordsList,
+                    { lat: depotCoords.lat, lng: depotCoords.lng }
+                ]
+
+                const realPoints = await fetchRealRoadRoute(fullWaypoints)
+                newGeometries[driver.id] = realPoints
+            }
+
+            setRouteGeometries(newGeometries)
+        }
+
+        loadAllRoutes()
+    }, [drivers])
 
     const depotScale = currentZoom < 11 ? Math.max(0.25, Math.pow(currentZoom / 11, 2)) : 1
 
@@ -79,49 +84,31 @@ export default function LeafletMapCore({
             attributionControl={false}
         >
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+            <MapResizeHandler />
             <MapZoomObserver onZoomChange={setCurrentZoom} />
 
-            {/* ROTA ÇİZGİLERİ (Çevrim Döngüleri) */}
-            {drivers.map((driver, driverIdx) => {
+            {/* GERÇEK KARAYOLU ROTA ÇİZGİLERİ */}
+            {drivers.map((driver) => {
                 const theme = driverTheme[driver.colorKey]
                 const isFaded = activeDriverId ? activeDriverId !== driver.id : false
+                const positions = routeGeometries[driver.id] || []
 
-                const depotCoords = getCoordinatesForDepot(driver.depotName || 'Avcılar')
-                const depotLatLng: [number, number] = [depotCoords.lat, depotCoords.lng]
-
-                const stopCoordsList = driver.stops.map((stop) => {
-                    return getCoordinatesForStop(stop)
-                })
-
-                const fullRoutePoints: [number, number][] = []
-                let currentLat = depotLatLng[0]
-                let currentLng = depotLatLng[1]
-
-                const allNodes = [...stopCoordsList, { lat: depotLatLng[0], lng: depotLatLng[1] }]
-                const driverBend = driverIdx % 2 === 0 ? 1 : -1
-
-                allNodes.forEach((node) => {
-                    const segment = generateCurvedPoints(currentLat, currentLng, node.lat, node.lng, driverBend)
-                    fullRoutePoints.push(...segment)
-                    currentLat = node.lat
-                    currentLng = node.lng
-                })
+                if (positions.length === 0) return null
 
                 return (
-                    <div key={`route-${driver.id}`}>
-                        <Polyline
-                            positions={fullRoutePoints}
-                            pathOptions={{
-                                color: theme.cssVar,
-                                weight: activeDriverId === driver.id ? 5 : 3,
-                                opacity: isFaded ? 0.15 : 0.85,
-                            }}
-                        />
-                    </div>
+                    <Polyline
+                        key={`route-${driver.id}`}
+                        positions={positions}
+                        pathOptions={{
+                            color: theme.cssVar,
+                            weight: activeDriverId === driver.id ? 5 : 3,
+                            opacity: isFaded ? 0.15 : 0.85,
+                        }}
+                    />
                 )
             })}
 
-            {/* MERKEZ DEPOLAR */}
+            {/* MERKEZ DEPOLAR ve DURAK PİNLERİ (Önceki kodlarınla aynı kalabilir) */}
             {[
                 { name: 'Avcılar Merkez Depo', ...getCoordinatesForDepot('Avcılar') },
                 { name: 'Üsküdar Merkez Depo', ...getCoordinatesForDepot('Üsküdar') }
@@ -143,7 +130,6 @@ export default function LeafletMapCore({
                 />
             ))}
 
-            {/* MÜŞTERİ DURAK PİNLERİ */}
             {drivers.map((driver) => {
                 const theme = driverTheme[driver.colorKey]
                 const isFaded = activeDriverId ? activeDriverId !== driver.id : false

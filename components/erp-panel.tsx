@@ -1,7 +1,7 @@
 'use client'
 
 import { AlertTriangle, ArrowUpDown, ChevronRight, FileSearch, CheckSquare, Loader2 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { toast } from 'sonner' // YENİ: Şık bildirimler için
 import { GibDocumentDialog } from '@/components/gib-document-dialog'
 import { ErpSidebar } from '@/components/erp-sidebar'
@@ -9,7 +9,7 @@ import { ErpToolbar } from '@/components/erp-toolbar'
 import { Badge } from '@/components/ui/badge'
 import { erpStatusMeta } from '@/lib/erp-data'
 import { findGibDocument, type GibDocument } from '@/lib/erp-document'
-import { erpModules, findView, type ErpCell, type ErpTone } from '@/lib/erp-modules'
+import { erpModules, findView, type ErpCell, type ErpTone, type ErpRow } from '@/lib/erp-modules'
 import { cn } from '@/lib/utils'
 
 /** Serbest metinli pill'ler için ton eşlemesi. */
@@ -62,7 +62,7 @@ function Cell({ cell }: { cell: ErpCell }) {
         <>
           <p
             className={cn(
-              'max-w-[260px] truncate text-[13px] text-foreground',
+              'max-w-[320px] text-[13px] text-foreground whitespace-normal break-words',
               cell.strong ? 'font-medium' : '',
             )}
             title={cell.v}
@@ -70,7 +70,7 @@ function Cell({ cell }: { cell: ErpCell }) {
             {cell.v}
           </p>
           {cell.sub ? (
-            <p className="max-w-[260px] truncate text-[12px] text-muted-foreground" title={cell.sub}>
+            <p className="max-w-[320px] text-[12px] text-muted-foreground whitespace-normal break-words" title={cell.sub}>
               {cell.sub}
             </p>
           ) : null}
@@ -218,12 +218,156 @@ async function handleSendToRoutePool() {
     }
   }
 
+  const [dbCariRows, setDbCariRows] = useState<ErpRow[]>([])
+  const [dbAdresRows, setDbAdresRows] = useState<ErpRow[]>([])
+  const [dbAracRows, setDbAracRows] = useState<ErpRow[]>([])
+  const [dbStokRows, setDbStokRows] = useState<ErpRow[]>([])
+  const [dbDepoRows, setDbDepoRows] = useState<ErpRow[]>([])
+  const [dbSiparisRows, setDbSiparisRows] = useState<ErpRow[]>([])
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5100'
+        const s = (...parts: (string | number)[]) => parts.join(' ')
+        
+        // Fetch Cari
+        const cariRes = await fetch(`${apiUrl}/api/erp/cari`, { cache: 'no-store' })
+        if (cariRes.ok) {
+          const data = await cariRes.json()
+          const cariMapped = data.map((a: any) => ({
+            id: a.id,
+            search: s(a.code, a.name, a.type, a.id),
+            cells: [
+              { t: 'code', v: a.code, sub: a.id },
+              { t: 'text', v: a.name, strong: true },
+              { t: 'badge', v: a.type, variant: 'outline' },
+            ],
+          }))
+          setDbCariRows(cariMapped)
+          
+          const adresMapped = data.map((c: any) => ({
+            id: c.id,
+            search: s(c.id, c.name, c.address),
+            cells: [
+              { t: 'code', v: c.id },
+              { t: 'text', v: c.name, sub: c.address, strong: true },
+              { t: 'code', v: `${c.windowStart} – ${c.windowEnd}` }, 
+              { t: 'num', v: c.avgVolumeM3, unit: 'm³' },
+            ],
+          }))
+          setDbAdresRows(adresMapped)
+        }
+
+        // Fetch Araclar
+        const aracRes = await fetch(`${apiUrl}/api/erp/araclar`, { cache: 'no-store' })
+        if (aracRes.ok) {
+          const data = await aracRes.json()
+          const aracMapped = data.map((v: any) => ({
+            id: v.id,
+            search: s(v.id, v.plate, v.driver, v.type, v.depot, v.features),
+            cells: [
+              { t: 'code', v: v.id },
+              { t: 'text', v: v.plate, sub: v.driver, strong: true },
+              { t: 'badge', v: v.type, variant: 'outline' },
+              { t: 'badge', v: v.depot, variant: 'secondary' },
+              {
+                t: 'num',
+                v: v.capacityKg,
+                unit: 'kg',
+                sub: `${v.volumeM3} m³ · donanım yok`,
+              },
+            ],
+          }))
+          setDbAracRows(aracMapped)
+        }
+
+        // Fetch Stoklar
+        const stokRes = await fetch(`${apiUrl}/api/erp/stoklar`, { cache: 'no-store' })
+        if (stokRes.ok) {
+          const data = await stokRes.json()
+          const stokMapped = data.map((i: any) => ({
+            id: i.id,
+            search: s(i.code, i.name, i.category, i.warehouse, i.unit, i.id),
+            cells: [
+              { t: 'code', v: i.code, sub: i.id },
+              { t: 'text', v: i.name, strong: true },
+              { t: 'badge', v: i.category, variant: 'secondary' },
+              { t: 'text', v: i.unit },
+              { t: 'num', v: i.weightKg ?? 0, unit: 'kg' },
+              { t: 'num', v: i.volumeM3 ?? 0, unit: 'm³' },
+              {
+                t: 'num',
+                v: i.quantity,
+                sub: `eşik: ${i.criticalLevel.toLocaleString('tr-TR')} ${i.unit}`,
+                alert: i.quantity < i.criticalLevel,
+                alertLabel: 'Kritik',
+              },
+              { t: 'text', v: i.warehouse },
+            ],
+          }))
+          setDbStokRows(stokMapped)
+        }
+
+        // Fetch Depolar
+        const depoRes = await fetch(`${apiUrl}/api/erp/depolar`, { cache: 'no-store' })
+        if (depoRes.ok) {
+          const data = await depoRes.json()
+          const depoMapped = data.map((w: any) => ({
+            id: w.id,
+            search: s(w.code, w.name, w.district, w.address, w.id),
+            cells: [
+              { t: 'code', v: w.code, sub: w.id },
+              { t: 'text', v: w.name, sub: w.address, strong: true },
+              { t: 'badge', v: w.district, variant: 'secondary' },
+            ],
+          }))
+          setDbDepoRows(depoMapped)
+        }
+
+        // Fetch Siparisler
+        const siparisRes = await fetch(`${apiUrl}/api/erp/siparisler`, { cache: 'no-store' })
+        if (siparisRes.ok) {
+          const data = await siparisRes.json()
+          const siparisMapped = data.map((o: any) => ({
+            id: o.id,
+            search: s(o.id, o.offerId, o.cariName, o.vehiclePlate, o.status, ...(o.lines || []).map((l:any) => l.stockName)),
+            cells: [
+              { t: 'code', v: o.id, sub: `Teklif: ${o.offerId}` },
+              { t: 'text', v: o.cariName, sub: o.cariCode, strong: true },
+              { 
+                t: 'text', 
+                v: (o.lines || []).map((l:any) => `${l.quantity}x ${l.stockName}`).join(', '), 
+                sub: (o.lines || []).map((l:any) => l.stockCode).join(', ') 
+              },
+              { t: 'text', v: o.vehicleCode, sub: o.vehiclePlate },
+              { t: 'num', v: o.totalKg, unit: 'kg', sub: `${o.totalM3} m³` },
+              { t: 'code', v: `${o.windowStart} - ${o.windowEnd}` },
+            ],
+          }))
+          setDbSiparisRows(siparisMapped)
+        }
+      } catch (err) {
+        console.error("Data fetch error", err)
+      }
+    }
+    fetchData()
+  }, [])
+
   const rows = useMemo(() => {
     const q = query.trim().toLocaleLowerCase('tr-TR')
-    return view.rows.filter(
+    let sourceRows = view.rows
+    if (activeViewKey === 'cari-kartlari') sourceRows = dbCariRows
+    if (activeViewKey === 'musteri-adresleri') sourceRows = dbAdresRows
+    if (activeViewKey === 'arac-kartlari') sourceRows = dbAracRows
+    if (activeViewKey === 'stok-kartlari') sourceRows = dbStokRows
+    if (activeViewKey === 'depolar') sourceRows = dbDepoRows
+    if (activeViewKey === 'siparisler') sourceRows = dbSiparisRows
+
+    return sourceRows.filter(
       (r) => q.length === 0 || r.search.toLocaleLowerCase('tr-TR').includes(q),
     )
-  }, [view, query])
+  }, [view, query, activeViewKey, dbCariRows, dbAdresRows, dbAracRows, dbStokRows, dbDepoRows, dbSiparisRows])
 
   const selectedRow = rows.find((r) => r.id === selectedId) ?? null
 
@@ -253,6 +397,14 @@ async function handleSendToRoutePool() {
         onToggleCollapsed={() => setCollapsed((c) => !c)}
         openModules={openModules}
         onToggleModule={toggleModule}
+        counts={{
+          'cari-kartlari': dbCariRows.length,
+          'musteri-adresleri': dbAdresRows.length,
+          'arac-kartlari': dbAracRows.length,
+          'stok-kartlari': dbStokRows.length,
+          'depolar': dbDepoRows.length,
+          'siparisler': dbSiparisRows.length,
+        }}
       />
 
       <section className="flex min-w-0 flex-1 flex-col overflow-hidden">
