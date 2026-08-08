@@ -390,49 +390,50 @@ public System.Collections.Generic.List<Models.FaturaIrsaliyeGorunum> GetFaturaVe
                 using (var conn = GetConnection())
                 {
                     conn.Open();
-                    
+
                     string query = @"
-                        SELECT 
-                            f.fatura_no, 
-                            i.irsaliye_no, 
-                            f.cari_adi, 
-                            i.depo_adi, 
-                            i.plaka, 
-                            
-                            -- 3. DEĞİŞİKLİK: Rastgele 'f.tutar' yerine ürünlerin (Fiyat * Adet) + %20 KDV toplamını anlık hesaplıyoruz
-                            COALESCE(
-                                (
-                                    SELECT SUM(ABS(t_sum.gercek_miktar::numeric) * COALESCE((SELECT fiyat::numeric FROM fiyat_listesi WHERE stok = t_sum.stok AND liste = 'FL001' LIMIT 1), 0)) * 1.20
-                                    FROM (
-                                        SELECT stok, MAX(miktar) as gercek_miktar
-                                        FROM stok_hareketleri
-                                        WHERE siparis = i.siparis
-                                        GROUP BY stok
-                                    ) t_sum
-                                ), 0
-                            ) AS tutar,
-                            
-                            f.odeme, 
-                            COALESCE(i.teslimat_durumu, 'Planlandı') AS durum,
-                            (
-                                SELECT COALESCE(json_agg(
-                                    json_build_object(
-                                        'code', t.stok,
-                                        'name', COALESCE((SELECT urun FROM stok_karti WHERE stok_kodu = t.stok LIMIT 1), t.stok),
-                                        'qty', ABS(t.gercek_miktar::numeric),                 
-                                        'unit', COALESCE((SELECT birim FROM stok_karti WHERE stok_kodu = t.stok LIMIT 1), 'Adet'),                         
-                                        'price', COALESCE((SELECT fiyat::numeric FROM fiyat_listesi WHERE stok = t.stok AND liste = 'FL001' LIMIT 1), 0)
-                                    )
-                                )::text, '[]')
-                                FROM (
-                                    SELECT stok, MAX(miktar) as gercek_miktar
-                                    FROM stok_hareketleri
-                                    WHERE siparis = i.siparis
-                                    GROUP BY stok
-                                ) t
-                            ) AS kalemler_json
-                        FROM irsaliye i
-                        LEFT JOIN fatura f ON i.irsaliye_no = f.irsaliye_no";
+                SELECT 
+                    f.fatura_no, 
+                    i.irsaliye_no, 
+                    COALESCE(f.cari_adi, c.cari_adi, 'Genel Müşteri') AS cari_adi, 
+                    i.depo_adi, 
+                    i.plaka, 
+                    
+                    COALESCE(
+                        (
+                            SELECT SUM(ABS(t_sum.gercek_miktar::numeric) * COALESCE((SELECT fiyat::numeric FROM fiyat_listesi WHERE stok = t_sum.stok AND liste = 'FL001' LIMIT 1), 0)) * 1.20
+                            FROM (
+                                SELECT stok, MAX(miktar) as gercek_miktar
+                                FROM stok_hareketleri
+                                WHERE siparis = i.siparis
+                                GROUP BY stok
+                            ) t_sum
+                        ), 0
+                    ) AS tutar,
+                    
+                    f.odeme, 
+                    COALESCE(i.teslimat_durumu, 'Planlandı') AS durum,
+                    (
+                        SELECT COALESCE(json_agg(
+                            json_build_object(
+                                'code', t.stok,
+                                'name', COALESCE((SELECT urun FROM stok_karti WHERE stok_kodu = t.stok LIMIT 1), t.stok),
+                                'qty', ABS(t.gercek_miktar::numeric),                 
+                                'unit', COALESCE((SELECT birim FROM stok_karti WHERE stok_kodu = t.stok LIMIT 1), 'Adet'),                       
+                                'price', COALESCE((SELECT fiyat::numeric FROM fiyat_listesi WHERE stok = t.stok AND liste = 'FL001' LIMIT 1), 0)
+                            )
+                        )::text, '[]')
+                        FROM (
+                            SELECT stok, MAX(miktar) as gercek_miktar
+                            FROM stok_hareketleri
+                            WHERE siparis = i.siparis
+                            GROUP BY stok
+                        ) t
+                    ) AS kalemler_json
+                FROM irsaliye i
+                LEFT JOIN fatura f ON i.irsaliye_no = f.irsaliye_no
+                LEFT JOIN satis_siparisi s ON i.siparis = s.siparis_no
+                LEFT JOIN cari_kart c ON s.cari_kodu = c.cari_kodu";
 
                     using (var cmd = new NpgsqlCommand(query, conn))
                     using (var reader = cmd.ExecuteReader())
@@ -463,6 +464,89 @@ public System.Collections.Generic.List<Models.FaturaIrsaliyeGorunum> GetFaturaVe
             }
             
             return liste;
+        }
+
+        // Rota optimizasyonu bittikten sonra tüm araçların duraklarını irsaliye tablosuna kaydeder
+        public void SaveOptimizationWaybills(VrpOptimizer.OptimizationResult optimizationResult)
+        {
+            using (var conn = GetConnection())
+            {
+                conn.Open();
+                using (var transaction = conn.BeginTransaction())
+                {
+                    try
+                    {
+                        string insertQuery = @"
+                    INSERT INTO irsaliye (
+                        irsaliye_no, siparis, depo_kodu, depo_adi, arac_kodu, 
+                        plaka, toplam_kg, toplam_hacim_m3, kapasite_durumu, teslimat_durumu
+                    )
+                    VALUES (@i1, @i2, @i3, @i4, @i5, @i6, @i7, @i8, @i9, @i10)
+                    ON CONFLICT (irsaliye_no) DO UPDATE SET 
+                        siparis = EXCLUDED.siparis,
+                        toplam_kg = EXCLUDED.toplam_kg,
+                        toplam_hacim_m3 = EXCLUDED.toplam_hacim_m3,
+                        kapasite_durumu = EXCLUDED.kapasite_durumu;";
+
+                        foreach (var driver in optimizationResult.drivers)
+                        {
+                            if (driver.stops == null || driver.stops.Count == 0) continue;
+
+                            foreach (var stop in driver.stops)
+                            {
+                                // 1. ADIM: Bu müşteri (cariKod) için veritabanındaki GERÇEK siparis_no'yu buluyoruz
+                                string gercekSiparisNo = null;
+                                string getOrderQuery = "SELECT siparis_no FROM satis_siparisi WHERE cari_kodu = @cari LIMIT 1";
+
+                                using (var cmdOrder = new NpgsqlCommand(getOrderQuery, conn, transaction))
+                                {
+                                    cmdOrder.Parameters.AddWithValue("cari", (object)stop.cariKod ?? DBNull.Value);
+                                    var res = cmdOrder.ExecuteScalar();
+                                    if (res != null) gercekSiparisNo = res.ToString();
+                                }
+
+                                // Eğer o cariye ait sipariş bulunamazsa, yabancı anahtar hatası vermemesi için boş geçebiliriz veya atlayabiliriz
+                                if (string.IsNullOrEmpty(gercekSiparisNo)) continue;
+
+                                string uniqueSuffix = Guid.NewGuid().ToString().Substring(0, 5).ToUpper();
+                                string cleanPlate = (driver.plate ?? "34VHC").Replace(" ", "");
+                                string irsaliyeNo = $"IRS-{cleanPlate}-{uniqueSuffix}";
+
+                                string depoAdi = driver.depotName ?? "Merkez Depo";
+                                string depoKodu = depoAdi.Contains("Üsküdar") ? "DP002" : "DP001";
+                                string kapasiteDurumu = driver.capacityMaxKg > 0
+                                    ? $"%{Math.Round((double)driver.capacityUsedKg / driver.capacityMaxKg * 100)}"
+                                    : "%0";
+
+                                using (var cmd = new NpgsqlCommand(insertQuery, conn, transaction))
+                                {
+                                    cmd.Parameters.AddWithValue("i1", irsaliyeNo);
+                                    cmd.Parameters.AddWithValue("i2", gercekSiparisNo); // Artık veritabanındaki gerçek sipariş numarası!
+                                    cmd.Parameters.AddWithValue("i3", depoKodu);
+                                    cmd.Parameters.AddWithValue("i4", depoAdi);
+                                    cmd.Parameters.AddWithValue("i5", driver.id);
+                                    cmd.Parameters.AddWithValue("i6", driver.plate);
+                                    cmd.Parameters.AddWithValue("i7", (decimal)stop.weightKg);
+                                    cmd.Parameters.AddWithValue("i8", (decimal)stop.volumeM3);
+                                    cmd.Parameters.AddWithValue("i9", kapasiteDurumu);
+                                    cmd.Parameters.AddWithValue("i10", "Planlandı");
+
+                                    cmd.ExecuteNonQuery();
+                                }
+                            }
+                        }
+
+                        transaction.Commit();
+                        Console.WriteLine("[INFO] Tüm irsaliyeler veritabanına başarıyla kaydedildi.");
+                    }
+                    catch (System.Exception ex)
+                    {
+                        transaction.Rollback();
+                        Console.WriteLine($"[SQL HATA DETAYI]: {ex.Message}");
+                        throw;
+                    }
+                }
+            }
         }
     }
 }

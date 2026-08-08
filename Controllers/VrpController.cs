@@ -121,9 +121,10 @@ namespace Uyumsoft.RouteOptimizer.Controllers
             if (string.IsNullOrEmpty(connString)) return BadRequest("DB_CONNECTION_STRING eksik.");
 
             VrpDataModel data;
+            DatabaseManager vrpDb;
             try
             {
-                DatabaseManager vrpDb = new DatabaseManager(connString);
+                vrpDb = new DatabaseManager(connString);
                 data = vrpDb.GetVrpData();
             }
             catch (Exception ex)
@@ -140,6 +141,24 @@ namespace Uyumsoft.RouteOptimizer.Controllers
             Console.WriteLine($"\n[INFO] Optimizasyon başlatılıyor. Araç Sayısı: {data.VehicleNumber}");
             var optimizer = new VrpOptimizer();
             var result = optimizer.Solve(data);
+
+            // =========================================================================
+            // KRİTİK EKLEME: Çıkan rota sonuçlarını irsaliye tablosuna kaydet!
+            // =========================================================================
+            try
+            {
+                if (result != null && result.drivers != null)
+                {
+                    vrpDb.SaveOptimizationWaybills(result);
+                    Console.WriteLine("[INFO] Optimizasyon sonucu oluşan irsaliyeler veritabanına başarıyla kaydedildi.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[HATA] İrsaliyeler kaydedilirken hata oluştu: {ex.Message}");
+            }
+            // =========================================================================
+
             Console.WriteLine($"[INFO] Optimizasyon tamamlandı. Çıkarılan rotalar başarıyla frontend'e gönderiliyor.\n");
 
             return Ok(result);
