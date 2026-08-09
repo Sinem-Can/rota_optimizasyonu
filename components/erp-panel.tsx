@@ -620,7 +620,19 @@ export function ErpPanel() {
                               const raw = (row as any).rawData || {};
                               const isFatura = row.id.startsWith('FTR');
                               const today = new Date().toLocaleDateString('tr-TR');
-                              const time = new Date().toLocaleTimeString('tr-TR');
+
+                              // 1. DÜZENLENME SAATİ (Optimizasyona Basılan Saat):
+                              // Numara formatı: FTR-34VHC-184522-A1B2
+                              const parts = row.id.split('-'); // ["FTR", "34VHC", "184522", "A1B2"]
+                              const timePart = parts.length >= 3 ? parts[2] : null; // Saati temsil eden 3. parçayı alıyoruz (184522)
+                              let duzenlemeSaati = "12:00:00"; 
+
+                              if (timePart && timePart.length === 6 && !isNaN(Number(timePart))) {
+                                  duzenlemeSaati = `${timePart.substring(0,2)}:${timePart.substring(2,4)}:${timePart.substring(4,6)}`;
+                              }
+
+                              // 2. SEVK SAATİ (Sabah 08:00)
+                              const sevkSaati = "08:00:00";
 
                               // 1. ADIM: GERÇEK ÜRÜNLERİ JSON'DAN ÇÖZME
                               let parsedLines = [];
@@ -661,7 +673,7 @@ export function ErpPanel() {
                                 title: isFatura ? 'e-FATURA' : 'e-İRSALİYE',
                                 no: row.id,
                                 date: today,
-                                time: time,
+                                time: duzenlemeSaati, // <--- BURASI DEĞİŞTİ (Fatura/İrsaliye Düzenleme Saati)
                                 uuid: 'feb4c0c6-244d-4456-a6b9-38684779c945', 
                                 customizationNo: 'TR1.2',
                                 scenario: isFatura ? 'TEMELFATURA' : 'TEMELIRSALIYE',
@@ -709,7 +721,7 @@ export function ErpPanel() {
                                   plate: raw.aracPlaka || '34 ABC 123',
                                   vehicleType: 'Kamyon',
                                   dispatchDate: today,
-                                  dispatchTime: time
+                                  dispatchTime: sevkSaati // <--- BURASI DEĞİŞTİ (Fiili Sevk Saati)
                                 }
                               };
 

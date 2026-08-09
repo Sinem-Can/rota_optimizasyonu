@@ -476,24 +476,34 @@ public System.Collections.Generic.List<Models.FaturaIrsaliyeGorunum> GetFaturaVe
                 {
                     try
                     {
+                        // --- 1. ADIM: ESKİ PLANLAMALARI TEMİZLEME (YENİ EKLENEN KISIM) ---
+                        // Önce henüz yola çıkmamış (Planlandı) irsaliyelerin faturalarını siliyoruz
+                        string deleteFaturaQuery = "DELETE FROM fatura WHERE irsaliye_no IN (SELECT irsaliye_no FROM irsaliye WHERE teslimat_durumu = 'Planlandı')";
+                        using (var cmdDelF = new NpgsqlCommand(deleteFaturaQuery, conn, transaction))
+                        {
+                            cmdDelF.ExecuteNonQuery();
+                        }
+
+                        // Sonra da 'Planlandı' durumundaki irsaliyeleri siliyoruz
+                        string deleteIrsaliyeQuery = "DELETE FROM irsaliye WHERE teslimat_durumu = 'Planlandı'";
+                        using (var cmdDelI = new NpgsqlCommand(deleteIrsaliyeQuery, conn, transaction))
+                        {
+                            cmdDelI.ExecuteNonQuery();
+                        }
+                        // ------------------------------------------------------------------
+
                         string insertQuery = @"
                     INSERT INTO irsaliye (
                         irsaliye_no, siparis, depo_kodu, depo_adi, arac_kodu, 
                         plaka, toplam_kg, toplam_hacim_m3, kapasite_durumu, teslimat_durumu
                     )
                     VALUES (@i1, @i2, @i3, @i4, @i5, @i6, @i7, @i8, @i9, @i10)
-                    ON CONFLICT (irsaliye_no) DO UPDATE SET 
-                        siparis = EXCLUDED.siparis,
-                        toplam_kg = EXCLUDED.toplam_kg,
-                        toplam_hacim_m3 = EXCLUDED.toplam_hacim_m3,
-                        kapasite_durumu = EXCLUDED.kapasite_durumu;";
+                    ON CONFLICT (irsaliye_no) DO NOTHING;";
 
-                        // --- SENİN EKLEDİĞİN YENİ FATURA SORGUSU ---
                         string insertFaturaQuery = @"
                     INSERT INTO fatura (fatura_no, irsaliye_no, cari_kodu, cari_adi, tutar, odeme) 
                     VALUES (@f1, @f2, @f3, @f4, @f5, @f6)
                     ON CONFLICT (fatura_no) DO NOTHING;";
-                        // -------------------------------------------
 
                         foreach (var driver in optimizationResult.drivers)
                         {
@@ -501,7 +511,6 @@ public System.Collections.Generic.List<Models.FaturaIrsaliyeGorunum> GetFaturaVe
 
                             foreach (var stop in driver.stops)
                             {
-                                // 1. ADIM: Bu müşteri (cariKod) için veritabanındaki GERÇEK siparis_no'yu buluyoruz
                                 string gercekSiparisNo = null;
                                 string getOrderQuery = "SELECT siparis_no FROM satis_siparisi WHERE cari_kodu = @cari LIMIT 1";
                                 string cariAdiStr = stop.customerName ?? "Genel Müşteri";
@@ -513,15 +522,14 @@ public System.Collections.Generic.List<Models.FaturaIrsaliyeGorunum> GetFaturaVe
                                     if (res != null) gercekSiparisNo = res.ToString();
                                 }
 
-                                // Eğer o cariye ait sipariş bulunamazsa atla
                                 if (string.IsNullOrEmpty(gercekSiparisNo)) continue;
 
-                                string uniqueSuffix = Guid.NewGuid().ToString().Substring(0, 5).ToUpper();
+                                string timeSuffix = DateTime.Now.ToString("HHmmss"); 
+                                string uniqueSuffix = Guid.NewGuid().ToString().Substring(0, 4).ToUpper(); 
                                 string cleanPlate = (driver.plate ?? "34VHC").Replace(" ", "");
                                 
-                                // İRSALİYE VE FATURA NUMARALARI ÜRETİLİYOR
-                                string irsaliyeNo = $"IRS-{cleanPlate}-{uniqueSuffix}";
-                                string faturaNo = $"FTR-{cleanPlate}-{uniqueSuffix}";
+                                string irsaliyeNo = $"IRS-{cleanPlate}-{timeSuffix}-{uniqueSuffix}";
+                                string faturaNo = $"FTR-{cleanPlate}-{timeSuffix}-{uniqueSuffix}";
 
                                 string depoAdi = driver.depotName ?? "Merkez Depo";
                                 string depoKodu = depoAdi.Contains("Üsküdar") ? "DP002" : "DP001";
@@ -529,7 +537,7 @@ public System.Collections.Generic.List<Models.FaturaIrsaliyeGorunum> GetFaturaVe
                                     ? $"%{Math.Round((double)driver.capacityUsedKg / driver.capacityMaxKg * 100)}"
                                     : "%0";
 
-                                // --- 1. İRSALİYE KAYIT İŞLEMİ (Melis'in Kodu) ---
+                                // 2. İRSALİYE KAYIT
                                 using (var cmd = new NpgsqlCommand(insertQuery, conn, transaction))
                                 {
                                     cmd.Parameters.AddWithValue("i1", irsaliyeNo);
@@ -546,8 +554,7 @@ public System.Collections.Generic.List<Models.FaturaIrsaliyeGorunum> GetFaturaVe
                                     cmd.ExecuteNonQuery();
                                 }
 
-                                // --- 2. FATURA KAYIT İŞLEMİ (Senin Kodun) ---
-                                // Fatura tutarını geçici olarak kilogram üzerinden varsayımsal hesaplayalım (daha sonra net fiyatlar eklenebilir)
+                                // 3. FATURA KAYIT
                                 decimal rastgeleTutar = (decimal)stop.weightKg * 15.5m; 
                                 
                                 using (var cmdFatura = new NpgsqlCommand(insertFaturaQuery, conn, transaction))
@@ -561,12 +568,11 @@ public System.Collections.Generic.List<Models.FaturaIrsaliyeGorunum> GetFaturaVe
                                     
                                     cmdFatura.ExecuteNonQuery();
                                 }
-                                // --------------------------------------------
                             }
                         }
 
                         transaction.Commit();
-                        Console.WriteLine("[INFO] Tüm irsaliyeler ve faturalar veritabanına başarıyla kaydedildi.");
+                        Console.WriteLine("[INFO] Eski planlamalar temizlendi, yeni optimizasyon sonuçları başarıyla kaydedildi.");
                     }
                     catch (System.Exception ex)
                     {
