@@ -2,7 +2,7 @@
 
 import { AlertTriangle, ArrowUpDown, ChevronRight, FileSearch, CheckSquare, Loader2 } from 'lucide-react'
 import { useMemo, useState, useEffect } from 'react'
-import { toast } from 'sonner' // YENİ: Şık bildirimler için
+import { toast } from 'sonner'
 import { GibDocumentDialog } from '@/components/gib-document-dialog'
 import { ErpSidebar } from '@/components/erp-sidebar'
 import { ErpToolbar } from '@/components/erp-toolbar'
@@ -186,8 +186,8 @@ export function ErpPanel() {
 
   const { module, view } = findView(activeViewKey)
 
-  // 3. ADIM: GERÇEKÇİ BACKEND FONKSİYONU (Buraya eklendi)
-async function handleSendToRoutePool() {
+  // 3. ADIM: GERÇEKÇİ BACKEND FONKSİYONU
+  async function handleSendToRoutePool() {
     setIsSending(true)
     
     try {
@@ -224,7 +224,7 @@ async function handleSendToRoutePool() {
   const [dbStokRows, setDbStokRows] = useState<ErpRow[]>([])
   const [dbDepoRows, setDbDepoRows] = useState<ErpRow[]>([])
   const [dbSiparisRows, setDbSiparisRows] = useState<ErpRow[]>([])
-  // YENİ: İrsaliye ve Faturaları ayrı tutacağımız stateler
+  
   const [dbIrsaliyeRows, setDbIrsaliyeRows] = useState<ErpRow[]>([])
   const [dbFaturaRows, setDbFaturaRows] = useState<ErpRow[]>([])
 
@@ -349,78 +349,67 @@ async function handleSendToRoutePool() {
             ],
           }))
           setDbSiparisRows(siparisMapped)
-         const irsRes = await fetch(`${apiUrl}/api/erp/liste`, { cache: 'no-store' })
-        if (irsRes.ok) {
-          const data = await irsRes.json()
-          
-          // BURAYA EKLE: Gelen veriyi konsola yazdırıp gözümüzle görelim
-          console.log("C#'tan gelen ham veri:", data);
 
-          // 1. İRSALİYELER İÇİN MAPPING
-          const irsaliyeMapped = data
-            .filter((i: any) => i.irsaliyeNo)
-            .map((i: any) => {
-              
-              // GERÇEK KALEM SAYISINI JSON'DAN ÇÖZME (Kurşun Geçirmez Yöntem)
-              let kalemSayisi = 0;
-              try {
-                let parsedLines = [];
-                const jsonStr = i.kalemlerJson || i.KalemlerJson || "[]";
-                
-                // Gelen veriyi parse et
-                parsedLines = typeof jsonStr === 'string' ? JSON.parse(jsonStr) : jsonStr;
-                
-                // Eğer backend veriyi iki kere string'e çevirdiyse (Double Stringify önlemi)
-                if (typeof parsedLines === 'string') {
-                  parsedLines = JSON.parse(parsedLines);
-                }
-                
-                // Dizi ise uzunluğunu al (kaç farklı kalem ürün varsa o sayıyı verir)
-                if (Array.isArray(parsedLines)) {
-                  kalemSayisi = parsedLines.length;
-                }
-              } catch (err) {
-                console.error("Kalem sayısı hesaplanırken hata:", err);
-              }
+          const irsRes = await fetch(`${apiUrl}/api/erp/liste`, { cache: 'no-store' })
+          if (irsRes.ok) {
+            const data = await irsRes.json()
+            
+            console.log("C#'tan gelen ham veri:", data);
 
-              return {
-                id: i.irsaliyeNo,
-                search: (i.irsaliyeNo || "") + " " + (i.cariAdi || "") + " " + (i.cikisDeposu || "") + " " + (i.aracPlaka || ""),
+            // 1. İRSALİYELER İÇİN MAPPING - SADECE TİRELİ OLANLARI (YENİLERİ) AL
+            const irsaliyeMapped = data
+              .filter((i: any) => i.irsaliyeNo && i.irsaliyeNo.includes('-'))
+              .map((i: any) => {
+                
+                let kalemSayisi = 0;
+                try {
+                  let parsedLines = [];
+                  const jsonStr = i.kalemlerJson || i.KalemlerJson || "[]";
+                  parsedLines = typeof jsonStr === 'string' ? JSON.parse(jsonStr) : jsonStr;
+                  if (typeof parsedLines === 'string') {
+                    parsedLines = JSON.parse(parsedLines);
+                  }
+                  if (Array.isArray(parsedLines)) {
+                    kalemSayisi = parsedLines.length;
+                  }
+                } catch (err) {
+                  console.error("Kalem sayısı hesaplanırken hata:", err);
+                }
+
+                return {
+                  id: i.irsaliyeNo,
+                  search: (i.irsaliyeNo || "") + " " + (i.cariAdi || "") + " " + (i.cikisDeposu || "") + " " + (i.aracPlaka || ""),
+                  cells: [
+                    { t: 'code', v: i.irsaliyeNo, sub: i.faturaNo && i.faturaNo !== 'FTR-BEKLEYEN' ? i.faturaNo : '' }, 
+                    { t: 'text', v: i.cariAdi || 'Genel Müşteri', strong: true },                        
+                    { t: 'text', v: '07.08.2026' }, 
+                    { t: 'badge', v: i.aracPlaka || '-', variant: 'outline' },                            
+                    { t: 'num', v: kalemSayisi, unit: 'Adet' }, 
+                    { t: 'badge', v: i.durum || 'Planlandı', variant: 'secondary' }                      
+                  ],
+                  rawData: i 
+                }
+              })
+            setDbIrsaliyeRows(irsaliyeMapped)
+
+            // 2. FATURALAR İÇİN MAPPING - SADECE TİRELİ OLANLARI (YENİLERİ) AL
+            const faturaMapped = data
+              .filter((i: any) => i.faturaNo && !i.faturaNo.toUpperCase().includes('BEKLEYEN') && i.faturaNo.includes('-'))
+              .map((i: any) => ({
+                id: i.faturaNo,
+                search: s(i.faturaNo, i.irsaliyeNo, i.cariAdi, i.cikisDeposu, i.aracPlaka),
                 cells: [
-                  { t: 'code', v: i.irsaliyeNo, sub: i.faturaNo && i.faturaNo !== 'FTR-BEKLEYEN' ? i.faturaNo : '' }, 
+                  { t: 'code', v: i.faturaNo, sub: i.irsaliyeNo },                                     
                   { t: 'text', v: i.cariAdi || 'Genel Müşteri', strong: true },                        
                   { t: 'text', v: '07.08.2026' }, 
-                  { t: 'badge', v: i.aracPlaka || '-', variant: 'outline' },                            
-                  
-                  // BURASI DEĞİŞTİ: Artık sabit 5 değil, hesaplanan gerçek kalem sayısını basıyor
-                  { t: 'num', v: kalemSayisi, unit: 'Adet' }, 
-                  
-                  { t: 'badge', v: i.durum || 'Planlandı', variant: 'secondary' }                      
+                  { t: 'badge', v: 'e-Fatura', variant: 'secondary' },                                  
+                  { t: 'money', v: i.tutar || 0 },                                                     
+                  { t: 'text', v: i.odemeTuru || 'Banka Transferi' } 
                 ],
                 rawData: i 
-              }
-            })
-          setDbIrsaliyeRows(irsaliyeMapped)
-
-         // 2. FATURALAR İÇİN MAPPING
-          const faturaMapped = data
-            // İŞTE KURŞUN GEÇİRMEZ FİLTRE BURADA:
-            .filter((i: any) => i.faturaNo && !i.faturaNo.toUpperCase().includes('BEKLEYEN'))
-            .map((i: any) => ({
-              id: i.faturaNo,
-              search: s(i.faturaNo, i.irsaliyeNo, i.cariAdi, i.cikisDeposu, i.aracPlaka),
-              cells: [
-                { t: 'code', v: i.faturaNo, sub: i.irsaliyeNo },                                     
-                { t: 'text', v: i.cariAdi || 'Genel Müşteri', strong: true },                        
-                { t: 'text', v: '07.08.2026' }, 
-                { t: 'badge', v: 'e-Fatura', variant: 'secondary' },                                  
-                { t: 'money', v: i.tutar || 0 },                                                     
-                { t: 'text', v: i.odemeTuru || 'Banka Transferi' } 
-              ],
-              rawData: i 
-            }))
-          setDbFaturaRows(faturaMapped)
-        }
+              }))
+            setDbFaturaRows(faturaMapped)
+          }
         }
       } catch (err) {
         console.error("Data fetch error", err)
@@ -439,12 +428,12 @@ async function handleSendToRoutePool() {
     if (activeViewKey === 'depolar') sourceRows = dbDepoRows
     if (activeViewKey === 'siparisler') sourceRows = dbSiparisRows
     if (activeViewKey === 'irsaliyeler') sourceRows = dbIrsaliyeRows
-    if (activeViewKey === 'faturalar') sourceRows = dbFaturaRows // Faturalar sekmesine kendi datasını bağladık
+    if (activeViewKey === 'faturalar') sourceRows = dbFaturaRows 
 
     return sourceRows.filter(
       (r) => q.length === 0 || r.search.toLocaleLowerCase('tr-TR').includes(q),
     )
-  }, [view, query, activeViewKey, dbCariRows, dbAdresRows, dbAracRows, dbStokRows, dbDepoRows, dbSiparisRows])
+  }, [view, query, activeViewKey, dbCariRows, dbAdresRows, dbAracRows, dbStokRows, dbDepoRows, dbSiparisRows, dbIrsaliyeRows, dbFaturaRows])
 
   const selectedRow = rows.find((r) => r.id === selectedId) ?? null
 
@@ -454,7 +443,7 @@ async function handleSendToRoutePool() {
     setQuery('')
     setSearchOpen(false)
     setSelectedId(null)
-    setSelectedIdsForBatch([]) // Sekme değişince eski seçimleri temizle
+    setSelectedIdsForBatch([]) 
     const owner = erpModules.find((m) => m.views.some((v) => v.key === key))
     if (owner && !openModules.includes(owner.key)) {
       setOpenModules((prev) => [...prev, owner.key])
@@ -481,6 +470,8 @@ async function handleSendToRoutePool() {
           'stok-kartlari': dbStokRows.length,
           'depolar': dbDepoRows.length,
           'siparisler': dbSiparisRows.length,
+          'irsaliyeler': dbIrsaliyeRows.length, // YENİ: Gerçek sayı eklendi!
+          'faturalar': dbFaturaRows.length,     // YENİ: Gerçek sayı eklendi!
         }}
       />
 

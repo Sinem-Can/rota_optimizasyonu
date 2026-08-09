@@ -488,6 +488,13 @@ public System.Collections.Generic.List<Models.FaturaIrsaliyeGorunum> GetFaturaVe
                         toplam_hacim_m3 = EXCLUDED.toplam_hacim_m3,
                         kapasite_durumu = EXCLUDED.kapasite_durumu;";
 
+                        // --- SENİN EKLEDİĞİN YENİ FATURA SORGUSU ---
+                        string insertFaturaQuery = @"
+                    INSERT INTO fatura (fatura_no, irsaliye_no, cari_kodu, cari_adi, tutar, odeme) 
+                    VALUES (@f1, @f2, @f3, @f4, @f5, @f6)
+                    ON CONFLICT (fatura_no) DO NOTHING;";
+                        // -------------------------------------------
+
                         foreach (var driver in optimizationResult.drivers)
                         {
                             if (driver.stops == null || driver.stops.Count == 0) continue;
@@ -497,6 +504,7 @@ public System.Collections.Generic.List<Models.FaturaIrsaliyeGorunum> GetFaturaVe
                                 // 1. ADIM: Bu müşteri (cariKod) için veritabanındaki GERÇEK siparis_no'yu buluyoruz
                                 string gercekSiparisNo = null;
                                 string getOrderQuery = "SELECT siparis_no FROM satis_siparisi WHERE cari_kodu = @cari LIMIT 1";
+                                string cariAdiStr = stop.customerName ?? "Genel Müşteri";
 
                                 using (var cmdOrder = new NpgsqlCommand(getOrderQuery, conn, transaction))
                                 {
@@ -505,12 +513,15 @@ public System.Collections.Generic.List<Models.FaturaIrsaliyeGorunum> GetFaturaVe
                                     if (res != null) gercekSiparisNo = res.ToString();
                                 }
 
-                                // Eğer o cariye ait sipariş bulunamazsa, yabancı anahtar hatası vermemesi için boş geçebiliriz veya atlayabiliriz
+                                // Eğer o cariye ait sipariş bulunamazsa atla
                                 if (string.IsNullOrEmpty(gercekSiparisNo)) continue;
 
                                 string uniqueSuffix = Guid.NewGuid().ToString().Substring(0, 5).ToUpper();
                                 string cleanPlate = (driver.plate ?? "34VHC").Replace(" ", "");
+                                
+                                // İRSALİYE VE FATURA NUMARALARI ÜRETİLİYOR
                                 string irsaliyeNo = $"IRS-{cleanPlate}-{uniqueSuffix}";
+                                string faturaNo = $"FTR-{cleanPlate}-{uniqueSuffix}";
 
                                 string depoAdi = driver.depotName ?? "Merkez Depo";
                                 string depoKodu = depoAdi.Contains("Üsküdar") ? "DP002" : "DP001";
@@ -518,10 +529,11 @@ public System.Collections.Generic.List<Models.FaturaIrsaliyeGorunum> GetFaturaVe
                                     ? $"%{Math.Round((double)driver.capacityUsedKg / driver.capacityMaxKg * 100)}"
                                     : "%0";
 
+                                // --- 1. İRSALİYE KAYIT İŞLEMİ (Melis'in Kodu) ---
                                 using (var cmd = new NpgsqlCommand(insertQuery, conn, transaction))
                                 {
                                     cmd.Parameters.AddWithValue("i1", irsaliyeNo);
-                                    cmd.Parameters.AddWithValue("i2", gercekSiparisNo); // Artık veritabanındaki gerçek sipariş numarası!
+                                    cmd.Parameters.AddWithValue("i2", gercekSiparisNo); 
                                     cmd.Parameters.AddWithValue("i3", depoKodu);
                                     cmd.Parameters.AddWithValue("i4", depoAdi);
                                     cmd.Parameters.AddWithValue("i5", driver.id);
@@ -533,11 +545,28 @@ public System.Collections.Generic.List<Models.FaturaIrsaliyeGorunum> GetFaturaVe
 
                                     cmd.ExecuteNonQuery();
                                 }
+
+                                // --- 2. FATURA KAYIT İŞLEMİ (Senin Kodun) ---
+                                // Fatura tutarını geçici olarak kilogram üzerinden varsayımsal hesaplayalım (daha sonra net fiyatlar eklenebilir)
+                                decimal rastgeleTutar = (decimal)stop.weightKg * 15.5m; 
+                                
+                                using (var cmdFatura = new NpgsqlCommand(insertFaturaQuery, conn, transaction))
+                                {
+                                    cmdFatura.Parameters.AddWithValue("f1", faturaNo);
+                                    cmdFatura.Parameters.AddWithValue("f2", irsaliyeNo);
+                                    cmdFatura.Parameters.AddWithValue("f3", stop.cariKod ?? "C-1001");
+                                    cmdFatura.Parameters.AddWithValue("f4", cariAdiStr);
+                                    cmdFatura.Parameters.AddWithValue("f5", rastgeleTutar);
+                                    cmdFatura.Parameters.AddWithValue("f6", "Banka Transferi"); 
+                                    
+                                    cmdFatura.ExecuteNonQuery();
+                                }
+                                // --------------------------------------------
                             }
                         }
 
                         transaction.Commit();
-                        Console.WriteLine("[INFO] Tüm irsaliyeler veritabanına başarıyla kaydedildi.");
+                        Console.WriteLine("[INFO] Tüm irsaliyeler ve faturalar veritabanına başarıyla kaydedildi.");
                     }
                     catch (System.Exception ex)
                     {
