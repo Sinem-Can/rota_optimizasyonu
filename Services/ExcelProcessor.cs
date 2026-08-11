@@ -175,6 +175,25 @@ namespace Uyumsoft.RouteOptimizer
             using (var conn = _dbManager.GetConnection())
             {
                 conn.Open();
+
+                // Clear all ERP tables before import to prevent duplicates on re-run
+                Console.WriteLine("🧹 Mevcut ERP tabloları temizleniyor...");
+                string[] tablesToClear = {
+                    "fatura", "irsaliye", "stok_hareketleri", "satis_siparisi", "satis_teklifi",
+                    "fiyat_listesi", "isyeri_stok", "arac_kartlari", "fiyat_listesi_kod",
+                    "cek_defteri", "kasa", "banka", "cari_kart", "stok_karti", "depo", "sevkiyat_plani"
+                };
+                foreach (var tbl in tablesToClear)
+                {
+                    try
+                    {
+                        using (var delCmd = new NpgsqlCommand($"TRUNCATE TABLE {tbl} CASCADE", conn))
+                            delCmd.ExecuteNonQuery();
+                    }
+                    catch { } // Skip if table doesn't exist
+                }
+                Console.WriteLine("✅ Tablolar temizlendi.\n");
+
                 using (var stream = File.Open(filePath, FileMode.Open, FileAccess.Read))
                 using (var reader = ExcelReaderFactory.CreateReader(stream))
                 {
@@ -225,19 +244,21 @@ namespace Uyumsoft.RouteOptimizer
                                         string cariAdi = val(1); // Excel'deki Cari Adi (Bakırköy Migros vb.)
 
                                         // SÖZLÜĞE SOR: "Bakırköy Migros" kaç numaralı ID?
-                                        int matrisId = _nameToIdMapping.ContainsKey(cariAdi) ? _nameToIdMapping[cariAdi] : -1;
+                                        int dictMatrisId = _nameToIdMapping.ContainsKey(cariAdi) ? _nameToIdMapping[cariAdi] : -1;
+                                        int excelMatrisId = toInt(2);
+                                        int matrisId = excelMatrisId > 0 ? excelMatrisId : dictMatrisId;
 
                                         if (matrisId == -1)
                                         {
                                             Console.WriteLine($"⚠️ UYARI: '{cariAdi}' matriste bulunamadı!");
                                         }
                                         cmd.CommandText = "INSERT INTO cari_kart (cari_kodu, cari_adi, tip, mal_kabul_baslangic, mal_kabul_bitis, matris_id) VALUES (@p1, @p2, @p3, @p4, @p5, @p6) ON CONFLICT (cari_kodu) DO UPDATE SET cari_adi = EXCLUDED.cari_adi, tip = EXCLUDED.tip, mal_kabul_baslangic = EXCLUDED.mal_kabul_baslangic, mal_kabul_bitis = EXCLUDED.mal_kabul_bitis, matris_id = EXCLUDED.matris_id;";
-                                        cmd.Parameters.AddWithValue("p1", val(0));
-                                        cmd.Parameters.AddWithValue("p2", val(1));
-                                        cmd.Parameters.AddWithValue("p3", val(2));
-                                        cmd.Parameters.AddWithValue("p4", val(3));
-                                        cmd.Parameters.AddWithValue("p5", val(4));
-                                        cmd.Parameters.AddWithValue("p6", matrisId);
+                                        cmd.Parameters.AddWithValue("p1", val(0)); // cari_kodu
+                                        cmd.Parameters.AddWithValue("p2", val(1)); // cari_adi
+                                        cmd.Parameters.AddWithValue("p3", val(3)); // tip
+                                        cmd.Parameters.AddWithValue("p4", val(4)); // mal_kabul_baslangic
+                                        cmd.Parameters.AddWithValue("p5", val(5)); // mal_kabul_bitis
+                                        cmd.Parameters.AddWithValue("p6", matrisId); // matris_id
                                         break;
 
                                     case "Banka":
@@ -266,17 +287,17 @@ namespace Uyumsoft.RouteOptimizer
 
                                     case "Arac Kartlari":
                                         cmd.CommandText = "INSERT INTO arac_kartlari (arac_kodu, plaka, marka_model, kasa_tipi, maks_agirlik_kg, maks_hacim_m3, km_maliyeti_tl, maks_mesai_suresi_dk, maks_durak_sayisi, kopru_gecis_izni, bagli_oldugu_depo) VALUES (@p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10, @p11) ON CONFLICT DO NOTHING";
-                                        cmd.Parameters.AddWithValue("p1", val(0));
-                                        cmd.Parameters.AddWithValue("p2", val(1));
-                                        cmd.Parameters.AddWithValue("p3", val(2));
-                                        cmd.Parameters.AddWithValue("p4", val(3));
-                                        cmd.Parameters.AddWithValue("p5", toDec(4));
-                                        cmd.Parameters.AddWithValue("p6", toDec(5));
-                                        cmd.Parameters.AddWithValue("p7", toDec(6));
-                                        cmd.Parameters.AddWithValue("p8", toInt(7));
-                                        cmd.Parameters.AddWithValue("p9", toInt(8));
-                                        cmd.Parameters.AddWithValue("p10", val(9));
-                                        cmd.Parameters.AddWithValue("p11", row.Table.Columns.Count > 10 && row[10] != DBNull.Value ? Convert.ToInt32(row[10]) : 0);
+                                        cmd.Parameters.AddWithValue("p1", val(0)); // arac_kodu
+                                        cmd.Parameters.AddWithValue("p2", val(1)); // plaka
+                                        cmd.Parameters.AddWithValue("p3", val(5)); // marka_model (shifted by bagli depo kodu, adi, matris id)
+                                        cmd.Parameters.AddWithValue("p4", val(6)); // kasa_tipi
+                                        cmd.Parameters.AddWithValue("p5", toDec(7)); // maks_agirlik_kg
+                                        cmd.Parameters.AddWithValue("p6", toDec(8)); // maks_hacim_m3
+                                        cmd.Parameters.AddWithValue("p7", toDec(9)); // km_maliyeti_tl
+                                        cmd.Parameters.AddWithValue("p8", toInt(10)); // maks_mesai_suresi_dk
+                                        cmd.Parameters.AddWithValue("p9", toInt(11)); // maks_durak_sayisi
+                                        cmd.Parameters.AddWithValue("p10", val(12)); // kopru_gecis_izni
+                                        cmd.Parameters.AddWithValue("p11", val(2)); // bagli_oldugu_depo (Bağlı Depo Kodu)
                                         break;
 
                                     case "İşyeri Stok":
@@ -313,23 +334,25 @@ namespace Uyumsoft.RouteOptimizer
                                         {
                                             Console.WriteLine($"⚠️ UYARI: Sipariş aktarılırken '{cariAdi}' matriste bulunamadı! Lütfen Excel isimlerini kontrol et.");
                                         }
-                                        cmd.Parameters.AddWithValue("p1", val(0));
-                                        cmd.Parameters.AddWithValue("p2", val(1));
-                                        cmd.Parameters.AddWithValue("p3", val(2));
-                                        cmd.Parameters.AddWithValue("p4", val(3));
-                                        cmd.Parameters.AddWithValue("p5", val(4));
-                                        cmd.Parameters.AddWithValue("p6", val(5));
-                                        cmd.Parameters.AddWithValue("p7", toDec(6));
-                                        cmd.Parameters.AddWithValue("p8", toDec(7));
-                                        cmd.Parameters.AddWithValue("p9", val(8));
-                                        cmd.Parameters.AddWithValue("p10", val(9));
-                                        cmd.Parameters.AddWithValue("p11", val(10));
-                                        cmd.Parameters.AddWithValue("p12", val(11));
-                                        cmd.Parameters.AddWithValue("p13", siparisMatrisId);
+                                        cmd.Parameters.AddWithValue("p1", val(0)); // siparis_no
+                                        cmd.Parameters.AddWithValue("p2", val(1)); // teklif
+                                        cmd.Parameters.AddWithValue("p3", val(2)); // cari_kodu
+                                        cmd.Parameters.AddWithValue("p4", val(3)); // cari_adi
+                                        cmd.Parameters.AddWithValue("p5", val(5)); // arac_kodu (shifted by matris ID)
+                                        cmd.Parameters.AddWithValue("p6", val(6)); // plaka
+                                        cmd.Parameters.AddWithValue("p7", toDec(7)); // toplam_kg
+                                        cmd.Parameters.AddWithValue("p8", toDec(8)); // toplam_hacim_m3
+                                        cmd.Parameters.AddWithValue("p9", val(9)); // kapasite_durumu
+                                        cmd.Parameters.AddWithValue("p10", val(10)); // siparis_durumu
+                                        cmd.Parameters.AddWithValue("p11", val(11)); // teslimat_pencere_baslangic
+                                        cmd.Parameters.AddWithValue("p12", val(12)); // teslimat_penceresi_bitis
+                                        
+                                        int excelSiparisMatrisId = toInt(4);
+                                        cmd.Parameters.AddWithValue("p13", excelSiparisMatrisId > 0 ? excelSiparisMatrisId : siparisMatrisId); // matris_id
                                         break;
 
                                     case "Stok Hareketleri":
-                                        cmd.CommandText = "INSERT INTO stok_hareketleri (siparis, stok, miktar) VALUES (@p1, @p2, @p3) ON CONFLICT DO NOTHING";
+                                        cmd.CommandText = "INSERT INTO stok_hareketleri (siparis, stok, miktar) VALUES (@p1, @p2, @p3)";
                                         cmd.Parameters.AddWithValue("p1", val(0));
                                         cmd.Parameters.AddWithValue("p2", val(1));
                                         cmd.Parameters.AddWithValue("p3", toInt(2));

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Http;
@@ -29,6 +29,18 @@ builder.Services.AddCors(options =>
              .AllowAnyHeader();
         });
 });
+
+// ==========================================
+// YENİ EKLENEN KISIM: Veritabanı Bağlantısı
+// ==========================================
+// .env dosyasındaki bağlantı dizesini çekiyoruz. 
+// (Eğer .env dosyasındaki değişken adı farklıysa "DB_CONNECTION_STRING" kısmını ona göre değiştirin)
+string dbConnectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING") 
+                            ?? Environment.GetEnvironmentVariable("DATABASE_URL") 
+                            ?? "Host=localhost;Database=UyumsoftERP;Username=postgres;Password=1234";
+
+builder.Services.AddScoped<DatabaseManager>(provider => new DatabaseManager(dbConnectionString));
+// ==========================================
 
 var app = builder.Build();
 
