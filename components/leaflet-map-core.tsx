@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, useMapEvents } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
+import { Minus, Plus } from 'lucide-react'
 import { driverTheme, getCoordinatesForStop, getCoordinatesForDepot, type StopDto, type DriverDto } from '@/lib/route-data'
 import { fetchRealRoadRoute, fetchExactLocations } from '@/lib/route-service'
 
@@ -33,6 +34,33 @@ function MapZoomObserver({ onZoomChange }: { onZoomChange: (zoom: number) => voi
         zoomend: (e) => { onZoomChange(e.target.getZoom()) },
     })
     return null
+}
+
+function MapZoomControls() {
+    const map = useMap()
+
+    return (
+        <div className="absolute left-3 top-3 z-[1000] flex flex-col overflow-hidden rounded-md border border-border bg-card/95 shadow-sm backdrop-blur">
+            <button
+                type="button"
+                aria-label="Haritayı yakınlaştır"
+                title="Yakınlaştır"
+                onClick={() => map.zoomIn()}
+                className="grid size-8 place-items-center border-b border-border text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+            >
+                <Plus className="size-4" />
+            </button>
+            <button
+                type="button"
+                aria-label="Haritayı uzaklaştır"
+                title="Uzaklaştır"
+                onClick={() => map.zoomOut()}
+                className="grid size-8 place-items-center text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+            >
+                <Minus className="size-4" />
+            </button>
+        </div>
+    )
 }
 
 export default function LeafletMapCore({
@@ -111,18 +139,22 @@ export default function LeafletMapCore({
     }, [drivers, exactLocations])
 
     const depotScale = currentZoom < 11 ? Math.max(0.25, Math.pow(currentZoom / 11, 2)) : 1
+    const activeDriver = activeDriverId ? drivers.find((driver) => driver.id === activeDriverId) : undefined
+    const activeDepotName = activeDriver?.depotName
 
     return (
         <MapContainer
             center={istanbulCenter}
             zoom={11}
             scrollWheelZoom={true}
-            className="size-full z-10"
+            zoomControl={false}
+            className="size-full z-10 transition-[filter] duration-300 dark:[&_.leaflet-tile-pane]:invert dark:[&_.leaflet-tile-pane]:hue-rotate-180 dark:[&_.leaflet-tile-pane]:brightness-75 dark:[&_.leaflet-tile-pane]:contrast-125"
             attributionControl={false}
         >
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             <MapResizeHandler />
             <MapZoomObserver onZoomChange={setCurrentZoom} />
+            <MapZoomControls />
 
             {/* GERÇEK KARAYOLU ROTA ÇİZGİLERİ */}
             {drivers.map((driver) => {
@@ -149,23 +181,28 @@ export default function LeafletMapCore({
             {[
                 { name: 'Avcılar Merkez Depo', ...resolveDepotCoords('Avcılar') },
                 { name: 'Üsküdar Merkez Depo', ...resolveDepotCoords('Üsküdar') }
-            ].map((depot) => (
-                <Marker
-                    key={depot.name}
-                    position={[depot.lat, depot.lng]}
-                    icon={L.divIcon({
-                        className: 'custom-depot-marker',
-                        html: `
-              <div style="transform: scale(${depotScale}); transform-origin: center;" class="flex items-center gap-1.5 rounded-full border border-border/40 bg-background/95 px-3 py-1.5 shadow-lg backdrop-blur-md transition-transform duration-200">
+            ].map((depot) => {
+                const isFaded = Boolean(activeDepotName && depot.name !== activeDepotName)
+
+                return (
+                    <Marker
+                        key={depot.name}
+                        position={[depot.lat, depot.lng]}
+                        opacity={isFaded ? 0.3 : 1}
+                        icon={L.divIcon({
+                            className: 'custom-depot-marker',
+                            html: `
+              <div style="transform: scale(${depotScale}); transform-origin: center;" class="flex items-center gap-1.5 rounded-full border border-border/40 bg-background/95 px-3 py-1.5 shadow-lg backdrop-blur-md transition-all duration-200 ${isFaded ? 'opacity-30 grayscale pointer-events-none' : 'opacity-100'}">
                 <svg class="size-3.5 text-primary" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
                 <span class="text-[10px] font-bold tracking-wider text-foreground">${depot.name}</span>
               </div>
             `,
-                        iconSize: [140, 32],
-                        iconAnchor: [70, 16],
-                    })}
-                />
-            ))}
+                            iconSize: [140, 32],
+                            iconAnchor: [70, 16],
+                        })}
+                    />
+                )
+            })}
 
             {/* DURAK PİNLERİ */}
             {drivers.map((driver) => {

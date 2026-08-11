@@ -165,6 +165,34 @@
   }
 }
 
+/* Leaflet, pop-up stilini Tailwind tema değişkenlerinden bağımsız olarak beyaz
+ * tanımlar. Karanlık temada harita üzerindeki bilgi balonları uygulamanın kart
+ * yüzeyiyle aynı görünümü korusun. */
+.dark .leaflet-popup-content-wrapper {
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--foreground);
+  box-shadow: 0 12px 28px color-mix(in oklab, var(--background) 72%, transparent);
+}
+
+.dark .leaflet-popup-content,
+.dark .leaflet-popup-content p {
+  color: var(--foreground);
+}
+
+.dark .leaflet-popup-tip {
+  background: var(--card);
+}
+
+.dark .leaflet-popup-close-button {
+  color: var(--muted-foreground) !important;
+}
+
+.dark .leaflet-popup-close-button:hover,
+.dark .leaflet-popup-close-button:focus-visible {
+  color: var(--foreground) !important;
+}
+
 /*
  * GİB matbu evrak (e-İrsaliye / e-Fatura) yazdırma kuralları.
  * Yazdırma veya "PDF olarak kaydet" sırasında uygulama arayüzü gizlenir ve
