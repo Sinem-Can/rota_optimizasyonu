@@ -3,16 +3,10 @@
 import { useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
 import {
-    Crosshair,
-    Layers,
     Maximize2,
-    Minus,
     Navigation,
-    Plus,
     Route,
-    Ruler,
     TriangleAlert,
-    Warehouse,
 } from 'lucide-react'
 import { driverTheme, type StopDto, type DriverDto } from '@/lib/route-data'
 import { cn } from '@/lib/utils'
@@ -62,31 +56,9 @@ export function MapPanel({ selectedStopId, onSelectStop, isOptimizing, drivers }
             className="relative flex h-full min-h-0 flex-col overflow-hidden bg-muted"
         >
             {/* Harita araç çubuğu (En üst katman - z-30) */}
-            <div className="absolute left-3 right-3 top-3 z-30 flex items-start justify-between gap-2 pointer-events-none">
-                <div className="flex items-center gap-1.5 rounded-md border border-border bg-card/95 p-1 shadow-sm backdrop-blur pointer-events-auto">
-                    {[
-                        { icon: Route, label: 'Rotalar', active: true },
-                        { icon: Layers, label: 'Katmanlar', active: false },
-                        { icon: Ruler, label: 'Mesafe ölç', active: false },
-                        { icon: Crosshair, label: 'Konum seç', active: false },
-                    ].map((tool) => (
-                        <button
-                            key={tool.label}
-                            type="button"
-                            title={tool.label}
-                            aria-label={tool.label}
-                            className={cn(
-                                'grid size-7 place-items-center rounded transition-colors',
-                                tool.active
-                                    ? 'bg-primary text-primary-foreground'
-                                    : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
-                            )}
-                        >
-                            <tool.icon className="size-3.5" />
-                        </button>
-                    ))}
-                    <div className="mx-0.5 h-5 w-px bg-border" />
-                    <span className="pr-1.5 font-mono text-[11px] font-semibold text-muted-foreground">
+            <div className="absolute left-14 right-3 top-3 z-30 flex items-start justify-between gap-2 pointer-events-none">
+                <div className="rounded-md border border-border bg-card/95 px-2.5 py-1.5 shadow-sm backdrop-blur pointer-events-auto">
+                    <span className="font-mono text-[11px] font-semibold text-muted-foreground">
                         İstanbul · Gerçek Harita (OSM)
                     </span>
                 </div>
@@ -98,6 +70,7 @@ export function MapPanel({ selectedStopId, onSelectStop, isOptimizing, drivers }
                             {activeRouteCount} rota · {activeStopCount} aktif durak
                         </span>
                     </div>
+
                     <button
                         type="button"
                         aria-label="Tam ekran"

@@ -83,17 +83,26 @@ export function RouteDashboard() {
         throw new Error('Optimizasyon motoru bir hata döndürdü.')
       }
 
-      const optimizedDrivers = await response.json()
+      const result = await response.json()
+      const optimizedDrivers = result.drivers ?? result
+      const droppedNodes = result.unassigned ?? []
       const colorKeys = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l']
       const coloredDrivers = optimizedDrivers.map((driver: DriverDto, index: number) => ({
         ...driver,
         colorKey: colorKeys[index % colorKeys.length],
       }))
       setLocalDrivers(coloredDrivers)
-      setLocalUnassigned([])
-      toast.success("Rotalar başarıyla oluşturuldu!", {
-        description: "C# OR-Tools motorundan veriler çekildi.",
-      })
+      setLocalUnassigned(droppedNodes)
+      
+      if (droppedNodes.length > 0) {
+        toast.warning(`Rotalar oluşturuldu! ${droppedNodes.length} sipariş atanamadı.`, {
+          description: "Atanamayan siparişleri 'Atanamamışlar' panelinde görebilirsiniz.",
+        })
+      } else {
+        toast.success("Rotalar başarıyla oluşturuldu!", {
+          description: "Tüm siparişler araçlara atandı.",
+        })
+      }
     } catch (error) {
       console.error(error)
       toast.error("Optimizasyon Hatası", {

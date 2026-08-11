@@ -96,18 +96,15 @@ const cariKartlari: ErpView = {
   label: 'Cari Kartları',
   recordName: 'Cari',
   dialog: 'cari',
-  searchPlaceholder: 'Cari kodu, ad veya bölge ara…',
-  columns: ['Cari Kodu', 'Cari Adı', 'Cari Tipi', 'Bölge', 'Bakiye', 'Durum'],
+  searchPlaceholder: 'Cari kodu veya ad ara…',
+  columns: ['Cari Kodu', 'Cari Adı', 'Cari Tipi'],
   rows: erpAccounts.map((a) => ({
     id: a.id,
-    search: s(a.code, a.name, a.type, a.district, a.id),
+    search: s(a.code, a.name, a.type, a.id),
     cells: [
       { t: 'code', v: a.code, sub: a.id },
       { t: 'text', v: a.name, strong: true },
       { t: 'badge', v: a.type, variant: 'outline' },
-      { t: 'badge', v: a.district, variant: 'secondary' },
-      { t: 'money', v: a.balance, signed: true, sub: a.balance < 0 ? 'borç' : 'alacak' },
-      { t: 'status', v: a.status },
     ],
   })),
 }
@@ -117,21 +114,15 @@ const musteriAdresleri: ErpView = {
   label: 'Teslimat Adresleri',
   recordName: 'Adres',
   searchPlaceholder: 'Cari kodu, ilçe veya adres ara…',
-  columns: ['Cari Kodu', 'Müşteri Adı', 'İlçe', 'Teslim Penceresi', 'Ort. Hacim', 'Öncelik'], // Müşteri Kodu -> Cari Kodu oldu
+  columns: ['Cari Kodu', 'Müşteri Adı', 'Teslim Penceresi', 'Ort. Hacim'], // Müşteri Kodu -> Cari Kodu oldu
   rows: customers.map((c) => ({
     id: c.id,
-    search: s(c.id, c.name, c.district, c.address, c.priority),
+    search: s(c.id, c.name, c.address),
     cells: [
       { t: 'code', v: c.id },
       { t: 'text', v: c.name, sub: c.address, strong: true },
-      { t: 'badge', v: c.district, variant: 'secondary' },
-      { t: 'code', v: `${c.windowStart} – ${c.windowEnd}` }, // Sipariş sayısı alt metni (sub) buradan silindi!
+      { t: 'code', v: `${c.windowStart} – ${c.windowEnd}` }, 
       { t: 'num', v: c.avgVolumeM3, unit: 'm³' },
-      {
-        t: 'tone',
-        v: c.priority,
-        tone: c.priority === 'Yüksek' ? 'destructive' : c.priority === 'Düşük' ? 'neutral' : 'primary',
-      },
     ],
   })),
 }
@@ -144,11 +135,11 @@ const aracKartlari: ErpView = {
   recordName: 'Araç',
   dialog: 'arac',
   searchPlaceholder: 'Plaka, sürücü veya araç tipi ara…',
-  columns: ['Araç Kodu', 'Plaka / Sürücü', 'Araç Tipi', 'Bağlı Depo', 'Kapasite', 'Durum'],
+  columns: ['Araç Kodu', 'Plaka / Sürücü', 'Araç Tipi', 'Bağlı Depo', 'Kapasite'],
   // YENİ: Excel ile uyumlu listemizden çekiyoruz (8 Araç)
   rows: erpVehicles.map((v) => ({
     id: v.id,
-    search: s(v.id, v.plate, v.driver, v.type, v.depot, v.status, v.features),
+    search: s(v.id, v.plate, v.driver, v.type, v.depot, v.features),
     cells: [
       { t: 'code', v: v.id },
       { t: 'text', v: v.plate, sub: v.driver, strong: true },
@@ -159,11 +150,6 @@ const aracKartlari: ErpView = {
         v: v.capacityKg,
         unit: 'kg',
         sub: `${v.volumeM3} m³ · ${v.features || 'donanım yok'}`,
-      },
-      {
-        t: 'tone',
-        v: v.status,
-        tone: v.status === 'Aktif' ? 'primary' : v.status === 'Arızalı' ? 'destructive' : 'warning',
       },
     ],
   })),
@@ -207,23 +193,15 @@ const depolar: ErpView = {
   recordName: 'Depo',
   dialog: 'depo',
   searchPlaceholder: 'Depo kodu, ad veya ilçe ara…',
-  columns: ['Depo Kodu', 'Depo Adı', 'İlçe', 'Sorumlu', 'Doluluk', 'Durum'],
+  columns: ['Depo Kodu', 'Depo Adı', 'İlçe'],
   rows: erpWarehouses.map((w) => {
-    const pct = Math.round((w.usedM3 / w.capacityM3) * 100)
     return {
       id: w.id,
-      search: s(w.code, w.name, w.district, w.manager, w.address, w.id),
+      search: s(w.code, w.name, w.district, w.address, w.id),
       cells: [
         { t: 'code', v: w.code, sub: w.id },
         { t: 'text', v: w.name, sub: w.address, strong: true },
         { t: 'badge', v: w.district, variant: 'secondary' },
-        { t: 'text', v: w.manager },
-        {
-          t: 'progress',
-          pct,
-          label: `${w.usedM3.toLocaleString('tr-TR')}/${w.capacityM3.toLocaleString('tr-TR')} m³`,
-        },
-        { t: 'status', v: w.status },
       ],
     }
   }),
@@ -267,10 +245,9 @@ const siparisler: ErpView = {
   
   columns: [
     'Sipariş No', 'Müşteri', 'Sipariş İçeriği', 'Araç / Plaka', 
-    'Toplam Kg / Hacim', 'Sipariş Durumu', 'Pencere'
+    'Toplam Kg / Hacim', 'Pencere'
   ],
   rows: erpOrders.map((o) => ({
-    // ... (içerideki kodlar daha önce yazdığımız gibi aynı kalacak)
     id: o.id,
     search: s(o.id, o.offerId, o.cariName, o.vehiclePlate, o.status, ...o.lines.map(l => l.stockName)),
     cells: [
@@ -283,11 +260,6 @@ const siparisler: ErpView = {
       },
       { t: 'text', v: o.vehicleCode, sub: o.vehiclePlate },
       { t: 'num', v: o.totalKg, unit: 'kg', sub: `${o.totalM3} m³` },
-      {
-        t: 'tone',
-        v: o.status,
-        tone: o.status === 'Teslim Edildi' ? 'success' : o.status === 'Yolda' ? 'primary' : 'warning',
-      },
       { t: 'code', v: `${o.windowStart} - ${o.windowEnd}` },
     ],
   })),

@@ -6,7 +6,6 @@ import {
   Check,
   ChevronDown,
   Clock,
-  FileText,
   GripVertical,
   Lock,
   LockOpen,
@@ -62,17 +61,6 @@ export function TaskPanel({
   const [lockPopoverOpen, setLockPopoverOpen] = useState(false)
   const [confirmedStops, setConfirmedStops] = useState<string[]>([])
   const [brokenDrivers, setBrokenDrivers] = useState<string[]>([])
-  
-  const [waybills, setWaybills] = useState<Record<string, string>>({})
-
-  const generateWaybill = (driverId: string, driverLabel: string) => {
-    const waybillNo = `UYM-2026-${Math.floor(1000 + Math.random() * 9000)}`
-    setWaybills(prev => ({ ...prev, [driverId]: waybillNo }))
-    
-    toast.success(`${driverLabel} İçin İrsaliye Kesildi`, {
-      description: `${waybillNo} numaralı e-İrsaliye oluşturuldu. Araç yola çıkmaya hazır.`,
-    })
-  }
 
   const confirmDeliveryWithInvoice = (stopId: string, customerName: string) => {
     setConfirmedStops((prev) => (prev.includes(stopId) ? prev : [...prev, stopId]))
@@ -207,9 +195,6 @@ export function TaskPanel({
                         <span className="truncate text-[13px] font-semibold text-foreground">
                           {driver.label}
                         </span>
-                        <span className="truncate text-[11px] text-muted-foreground">
-                          · {driver.fullName}
-                        </span>
                         {hasRisk && !isBroken ? (
                           <TriangleAlert className="size-3.5 shrink-0 text-destructive" />
                         ) : null}
@@ -218,34 +203,15 @@ export function TaskPanel({
                             Arızalı
                           </span>
                         ) : null}
-                        
                       </span>
-                      <span className="mt-0.5 flex items-center gap-2.5 font-mono text-[10px] text-muted-foreground/75">
+                      <span className="mt-0.5 flex items-center gap-2.5 font-mono text-[10px] font-semibold text-foreground/80">
                         <span>{driver.plate}</span>
                         <span>{driver.totalDistanceKm} km</span>
                         <span>{formatDuration(driver.totalDurationMin)}</span>
                       </span>
                     </span>
-                    {!isBroken ? (
-                      <button
-                        type="button"
-                        disabled={Boolean(waybills[driver.id])}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          generateWaybill(driver.id, driver.label)
-                        }}
-                        aria-label={`${driver.label} için irsaliye kes`}
-                        title={waybills[driver.id] ? `${waybills[driver.id]} oluşturuldu` : 'İrsaliye kes'}
-                        className={cn(
-                          'grid size-7 shrink-0 place-items-center rounded-md text-muted-foreground transition-all hover:bg-secondary hover:text-foreground focus-visible:opacity-100',
-                          waybills[driver.id]
-                            ? 'cursor-default opacity-100 text-primary'
-                            : 'opacity-0 group-hover:opacity-100',
-                        )}
-                      >
-                        <FileText className="size-3.5" strokeWidth={1.6} />
-                      </button>
-                    ) : null}
+                    
+                    {/* YÜZDE BARI VE OK BUTONU KISMI (İrsaliye ikonu buradan uçuruldu) */}
                     <span className="shrink-0 text-right">
                       <span className="block font-mono text-[11px] font-semibold text-foreground">
                         %{loadPct}
@@ -408,11 +374,11 @@ export function TaskPanel({
                       </span>
                     </p>
                     <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                      <span className="inline-flex items-center gap-1 rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground">
+                      <span className="inline-flex items-center gap-1 rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] font-semibold text-foreground/90">
                         <Clock className="size-2.5" />
                         {task.windowStart} - {task.windowEnd}
                       </span>
-                      <span className="inline-flex items-center gap-1 rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground">
+                      <span className="inline-flex items-center gap-1 rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] font-bold text-foreground">
                         <Weight className="size-2.5" />
                         {task.weightKg} kg
                       </span>

@@ -204,8 +204,8 @@ export function DetailPanel({ stop, driverId, drivers, onClose }: DetailPanelPro
             </div>
           ) : (
             <div className="flex items-baseline gap-4 font-mono text-[14px] font-bold text-foreground">
-              <span>{stop.weightKg.toLocaleString('tr-TR')} <span className="text-[11px] font-medium text-muted-foreground">kg</span></span>
-              <span>{stop.volumeM3} <span className="text-[11px] font-medium text-muted-foreground">m³</span></span>
+              <span className="font-bold">{stop.weightKg.toLocaleString('tr-TR')} <span className="text-[11px] font-bold text-foreground/80">kg</span></span>
+              <span className="font-bold">{stop.volumeM3.toLocaleString('tr-TR')} <span className="text-[11px] font-bold text-foreground/80">m³</span></span>
             </div>
           )}
           <div className="mt-2">

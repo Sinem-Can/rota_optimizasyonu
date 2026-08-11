@@ -4,8 +4,9 @@ import { useEffect, useState } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, useMapEvents } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
+import { Minus, Plus } from 'lucide-react'
 import { driverTheme, getCoordinatesForStop, getCoordinatesForDepot, type StopDto, type DriverDto } from '@/lib/route-data'
-import { fetchRealRoadRoute } from '@/lib/route-service' // Yukarıdaki servis
+import { fetchRealRoadRoute, fetchExactLocations } from '@/lib/route-service'
 
 interface LeafletMapCoreProps {
     drivers: DriverDto[]
@@ -35,6 +36,33 @@ function MapZoomObserver({ onZoomChange }: { onZoomChange: (zoom: number) => voi
     return null
 }
 
+function MapZoomControls() {
+    const map = useMap()
+
+    return (
+        <div className="absolute left-3 top-3 z-[1000] flex flex-col overflow-hidden rounded-md border border-border bg-card/95 shadow-sm backdrop-blur">
+            <button
+                type="button"
+                aria-label="Haritayı yakınlaştır"
+                title="Yakınlaştır"
+                onClick={() => map.zoomIn()}
+                className="grid size-8 place-items-center border-b border-border text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+            >
+                <Plus className="size-4" />
+            </button>
+            <button
+                type="button"
+                aria-label="Haritayı uzaklaştır"
+                title="Uzaklaştır"
+                onClick={() => map.zoomOut()}
+                className="grid size-8 place-items-center text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+            >
+                <Minus className="size-4" />
+            </button>
+        </div>
+    )
+}
+
 export default function LeafletMapCore({
     drivers,
     selectedStopId,
@@ -44,17 +72,54 @@ export default function LeafletMapCore({
     const istanbulCenter: [number, number] = [41.0082, 28.9784]
     const [currentZoom, setCurrentZoom] = useState<number>(11)
 
+    // Veritabanından gelen dinamik konum sözlüğü state'i
+    const [exactLocations, setExactLocations] = useState<Record<string, { lat: number; lng: number }>>({})
+
     // Her sürücünün gerçek yol koordinatlarını tutacağımız state
     const [routeGeometries, setRouteGeometries] = useState<Record<string, [number, number][]>>({})
 
-    // Sürücüler değiştiğinde OSRM'den gerçek yolları çekelim
+    // 1. Bileşen ilk açıldığında veritabanından koordinatları çek
+    useEffect(() => {
+        fetchExactLocations().then((data) => {
+            if (Object.keys(data).length > 0) {
+                setExactLocations(data)
+            }
+        })
+    }, [])
+
+    // Yardımcı: Durum koordinatlarını veritabanı öncelikli çözümler
+    const resolveStopCoords = (stop: StopDto) => {
+        if (stop?.lat && stop?.lng) {
+            return { lat: Number(stop.lat), lng: Number(stop.lng) }
+        }
+        const targetKey = stop?.cariKod || stop?.id
+        const cleanKey = targetKey ? String(targetKey).trim().toUpperCase() : ''
+        if (cleanKey && exactLocations[cleanKey]) {
+            return exactLocations[cleanKey]
+        }
+        return getCoordinatesForStop(stop)
+    }
+
+    // Yardımcı: Depo koordinatlarını veritabanı öncelikli çözümler
+    const resolveDepotCoords = (depotName: string) => {
+        const name = (depotName || '').toLowerCase()
+        if (name.includes('üsküdar') && exactLocations['DP002']) {
+            return exactLocations['DP002']
+        }
+        if (exactLocations['DP001']) {
+            return exactLocations['DP001']
+        }
+        return getCoordinatesForDepot(depotName)
+    }
+
+    // 2. Sürücüler veya veritabanı konumları yüklendiğinde OSRM'den gerçek yolları çekelim
     useEffect(() => {
         async function loadAllRoutes() {
             const newGeometries: Record<string, [number, number][]> = {}
 
             for (const driver of drivers) {
-                const depotCoords = getCoordinatesForDepot(driver.depotName || 'Avcılar')
-                const stopCoordsList = driver.stops.map((stop) => getCoordinatesForStop(stop))
+                const depotCoords = resolveDepotCoords(driver.depotName || 'Avcılar')
+                const stopCoordsList = driver.stops.map((stop) => resolveStopCoords(stop))
 
                 // Rota sırası: Depo -> Duraklar -> Depo (Döngü)
                 const fullWaypoints = [
@@ -71,21 +136,25 @@ export default function LeafletMapCore({
         }
 
         loadAllRoutes()
-    }, [drivers])
+    }, [drivers, exactLocations])
 
     const depotScale = currentZoom < 11 ? Math.max(0.25, Math.pow(currentZoom / 11, 2)) : 1
+    const activeDriver = activeDriverId ? drivers.find((driver) => driver.id === activeDriverId) : undefined
+    const activeDepotName = activeDriver?.depotName
 
     return (
         <MapContainer
             center={istanbulCenter}
             zoom={11}
             scrollWheelZoom={true}
-            className="size-full z-10"
+            zoomControl={false}
+            className="size-full z-10 transition-[filter] duration-300 dark:[&_.leaflet-tile-pane]:invert dark:[&_.leaflet-tile-pane]:hue-rotate-180 dark:[&_.leaflet-tile-pane]:brightness-75 dark:[&_.leaflet-tile-pane]:contrast-125"
             attributionControl={false}
         >
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             <MapResizeHandler />
             <MapZoomObserver onZoomChange={setCurrentZoom} />
+            <MapZoomControls />
 
             {/* GERÇEK KARAYOLU ROTA ÇİZGİLERİ */}
             {drivers.map((driver) => {
@@ -108,34 +177,40 @@ export default function LeafletMapCore({
                 )
             })}
 
-            {/* MERKEZ DEPOLAR ve DURAK PİNLERİ (Önceki kodlarınla aynı kalabilir) */}
+            {/* MERKEZ DEPOLAR */}
             {[
-                { name: 'Avcılar Merkez Depo', ...getCoordinatesForDepot('Avcılar') },
-                { name: 'Üsküdar Merkez Depo', ...getCoordinatesForDepot('Üsküdar') }
-            ].map((depot) => (
-                <Marker
-                    key={depot.name}
-                    position={[depot.lat, depot.lng]}
-                    icon={L.divIcon({
-                        className: 'custom-depot-marker',
-                        html: `
-              <div style="transform: scale(${depotScale}); transform-origin: center;" class="flex items-center gap-1.5 rounded-full border border-border/40 bg-background/95 px-3 py-1.5 shadow-lg backdrop-blur-md transition-transform duration-200">
+                { name: 'Avcılar Merkez Depo', ...resolveDepotCoords('Avcılar') },
+                { name: 'Üsküdar Merkez Depo', ...resolveDepotCoords('Üsküdar') }
+            ].map((depot) => {
+                const isFaded = Boolean(activeDepotName && depot.name !== activeDepotName)
+
+                return (
+                    <Marker
+                        key={depot.name}
+                        position={[depot.lat, depot.lng]}
+                        opacity={isFaded ? 0.3 : 1}
+                        icon={L.divIcon({
+                            className: 'custom-depot-marker',
+                            html: `
+              <div style="transform: scale(${depotScale}); transform-origin: center;" class="flex items-center gap-1.5 rounded-full border border-border/40 bg-background/95 px-3 py-1.5 shadow-lg backdrop-blur-md transition-all duration-200 ${isFaded ? 'opacity-30 grayscale pointer-events-none' : 'opacity-100'}">
                 <svg class="size-3.5 text-primary" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
                 <span class="text-[10px] font-bold tracking-wider text-foreground">${depot.name}</span>
               </div>
             `,
-                        iconSize: [140, 32],
-                        iconAnchor: [70, 16],
-                    })}
-                />
-            ))}
+                            iconSize: [140, 32],
+                            iconAnchor: [70, 16],
+                        })}
+                    />
+                )
+            })}
 
+            {/* DURAK PİNLERİ */}
             {drivers.map((driver) => {
                 const theme = driverTheme[driver.colorKey]
                 const isFaded = activeDriverId ? activeDriverId !== driver.id : false
 
                 return driver.stops.map((stop) => {
-                    const coords = getCoordinatesForStop(stop)
+                    const coords = resolveStopCoords(stop)
                     const isSelected = selectedStopId === stop.id
                     const isRisk = stop.status === 'risk'
 

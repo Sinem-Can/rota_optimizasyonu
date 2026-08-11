@@ -6,7 +6,13 @@ using Uyumsoft.RouteOptimizer.Models;
 
 public class VrpOptimizer
 {
-    public List<DriverDto> Solve(VrpDataModel data)
+    public class OptimizationResult
+    {
+        public List<DriverDto> drivers { get; set; } = new List<DriverDto>();
+        public List<StopDto> unassigned { get; set; } = new List<StopDto>();
+    }
+
+    public OptimizationResult Solve(VrpDataModel data)
     {
         // 1. Yöneticiyi Başlat (Node sayısı, Araç Sayısı, Başlangıç ve Bitiş Noktaları)
         RoutingIndexManager manager = new RoutingIndexManager(
@@ -303,6 +309,68 @@ public class VrpOptimizer
                 Console.WriteLine("Tüm siparişler başarıyla araçlara atandı!\n");
             }
 
+            // Dropped nodes için StopDto listesi oluştur (neden bilgisiyle)
+            var droppedStops = new List<StopDto>();
+            long maxVehicleWeight = 0;
+            long maxVehicleVolume = 0;
+            if (data.VehicleWeightCapacities != null)
+                foreach (var c in data.VehicleWeightCapacities) if (c > maxVehicleWeight) maxVehicleWeight = c;
+            if (data.VehicleVolumeCapacities != null)
+                foreach (var c in data.VehicleVolumeCapacities) if (c > maxVehicleVolume) maxVehicleVolume = c;
+
+            foreach (int origNode in droppedNodes)
+            {
+                // origNode -> filtered index bul
+                int filteredIdx = -1;
+                if (data.OriginalNodeIds != null)
+                {
+                    for (int fi = 0; fi < data.OriginalNodeIds.Length; fi++)
+                    {
+                        if (data.OriginalNodeIds[fi] == origNode) { filteredIdx = fi; break; }
+                    }
+                }
+                if (filteredIdx == -1) filteredIdx = origNode;
+
+                long wDemand = filteredIdx < data.WeightDemands.Length ? data.WeightDemands[filteredIdx] : 0;
+                long vDemand = data.VolumeDemands != null && filteredIdx < data.VolumeDemands.Length ? data.VolumeDemands[filteredIdx] : 0;
+
+                string reason = "Kapasite/Zaman Yetersiz";
+                if (wDemand > maxVehicleWeight)
+                    reason = $"Ağırlık Sınırı ({wDemand} kg > maks {maxVehicleWeight} kg)";
+                else if (vDemand > maxVehicleVolume)
+                    reason = $"Hacim Sınırı ({vDemand} m³ > maks {maxVehicleVolume} m³)";
+
+                string gercekIsim = (data.NodeNames != null && filteredIdx < data.NodeNames.Length && !string.IsNullOrEmpty(data.NodeNames[filteredIdx]))
+                                    ? data.NodeNames[filteredIdx] : $"Müşteri {origNode}";
+                string cariKodu = (data.NodeCodes != null && filteredIdx < data.NodeCodes.Length && !string.IsNullOrEmpty(data.NodeCodes[filteredIdx]))
+                                    ? data.NodeCodes[filteredIdx] : string.Empty;
+                string gercekAdres = (data.NodeAddresses != null && filteredIdx < data.NodeAddresses.Length && !string.IsNullOrEmpty(data.NodeAddresses[filteredIdx]))
+                                    ? data.NodeAddresses[filteredIdx] : $"Adres {origNode}";
+
+                var rnd = new Random(origNode);
+                droppedStops.Add(new StopDto
+                {
+                    id = $"DROP-{origNode}-{Guid.NewGuid().ToString().Substring(0, 4)}",
+                    cariKod = cariKodu,
+                    sequence = 0,
+                    customerName = gercekIsim,
+                    address = gercekAdres,
+                    district = reason,
+                    eta = "--:--",
+                    windowStart = "08:00",
+                    windowEnd = "18:00",
+                    serviceMinutes = 0,
+                    weightKg = wDemand,
+                    volumeM3 = vDemand,
+                    status = "risk",
+                    priority = "Yüksek",
+                    phone = "",
+                    orderNo = $"DROP-{origNode}",
+                    x = 10 + (rnd.NextDouble() * 80),
+                    y = 10 + (rnd.NextDouble() * 80)
+                });
+            }
+
             long gercekToplamSure = 0;
             var driverList = new List<DriverDto>();
             string[] colorKeys = new string[] { "a", "b", "c", "d", "e" };
@@ -313,13 +381,16 @@ public class VrpOptimizer
                 string dName = (data.NodeNames != null && startNode < data.NodeNames.Length && !string.IsNullOrWhiteSpace(data.NodeNames[startNode])) ? data.NodeNames[startNode] : "Merkez Depo";
                 double dX = (startNode == 1) ? 30 : 50;
                 double dY = (startNode == 1) ? 70 : 50;
+                
+                string dbPlate = data.VehiclePlates != null && i < data.VehiclePlates.Length && !string.IsNullOrWhiteSpace(data.VehiclePlates[i]) ? data.VehiclePlates[i] : $"34 VHC 0{i + 1}";
+                string dbName = data.VehicleNames != null && i < data.VehicleNames.Length && !string.IsNullOrWhiteSpace(data.VehicleNames[i]) ? data.VehicleNames[i] : $"Araç {i + 1}";
 
                 var driver = new DriverDto
                 {
                     id = $"VHC-00{i + 1}",
-                    label = $"Araç {i + 1}",
+                    label = dbName,
                     fullName = $"Şoför {i + 1}",
-                    plate = $"34 VHC 0{i + 1}",
+                    plate = dbPlate,
                     vehicleType = "Panelvan",
                     capacityMaxKg = data.VehicleWeightCapacities != null && i < data.VehicleWeightCapacities.Length ? data.VehicleWeightCapacities[i] : 1500,
                     colorKey = colorKeys[i % colorKeys.Length],
@@ -329,7 +400,7 @@ public class VrpOptimizer
                     stops = new List<StopDto>()
                 };
 
-                Console.WriteLine($"\n--- Araç {i + 1} Rotası ---");
+                Console.WriteLine($"\n--- Araç {i + 1} ({dbPlate}) Rotası ---");
                 Console.WriteLine($"  [Çıkış] {driver.depotName}");
 
                 long routeDistance = 0;
@@ -446,7 +517,7 @@ public class VrpOptimizer
                             y = 10 + (rnd.NextDouble() * 80)
                         };
                         driver.stops.Add(stop);
-                        Console.WriteLine($"  -> Ziyaret: {cariKodu} (Mesafe: {legDistance} km | Sürüş: {travelTime} dk, İndirme: {printServiceTime} dk, Bekleme: {waitTime} dk)");
+                        Console.WriteLine($"  -> Ziyaret: {cariKodu} - {gercekIsim} (Mesafe: {legDistance} km | Sürüş: {travelTime} dk, İndirme: {printServiceTime} dk, Bekleme: {waitTime} dk)");
                     }
                     else
                     {
@@ -473,12 +544,15 @@ public class VrpOptimizer
                 gercekToplamSure += routeTime;
             }
 
-            return driverList;
+            var result = new OptimizationResult();
+            result.drivers = driverList;
+            result.unassigned = droppedStops;
+            return result;
         }
         else
         {
             Console.WriteLine("Verilen kapasitelerle ve süre limitleriyle bu siparişler dağıtılamaz (Çözüm bulunamadı).");
-            return new List<DriverDto>();
+            return new OptimizationResult();
         }
     }
 }
