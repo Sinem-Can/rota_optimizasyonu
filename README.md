@@ -7,6 +7,11 @@ planlama uygulamasıdır.
 Uygulama; rota planlama ekranını, harita üzerinde görselleştirmeyi, zaman
 çizelgesini ve ERP yönetim modülünü tek bir arayüzde birleştirir.
 
+## Canlı Demo
+
+Uygulamanın canlı sürümüne buradan ulaşabilirsiniz:
+[rotaplan.vercel.app](https://rotaplan.vercel.app/)
+
 ## Proje Raporu
 
 Projenin analizi, geliştirme süreci, test çalışmaları ve çıktıları için
