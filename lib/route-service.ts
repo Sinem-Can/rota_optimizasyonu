@@ -30,7 +30,8 @@ export async function fetchRealRoadRoute(coordinates: { lat: number; lng: number
  */
 export async function fetchExactLocations(): Promise<Record<string, { lat: number; lng: number }>> {
     try {
-        const response = await fetch('http://localhost:5100/api/erp/konumlar')
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5100'
+        const response = await fetch(`${apiUrl}/api/erp/konumlar`)
 
         if (!response.ok) {
             const errText = await response.text()

@@ -86,7 +86,7 @@ npm install
 Kök dizinde `.env.local` dosyasını oluşturun:
 
 ```env
-NEXT_PUBLIC_API_BASE_URL=http://localhost:5099
+NEXT_PUBLIC_API_URL=http://localhost:5100
 ```
 
 > Backend farklı bir portta çalışıyorsa bu değeri backend adresiyle eşleştirin.
@@ -94,7 +94,7 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:5099
 ### 4. Backend'i başlatın
 
 ```bash
-ASPNETCORE_URLS=http://localhost:5099 dotnet run
+ASPNETCORE_URLS=http://localhost:5100 dotnet run
 ```
 
 ### 5. Frontend'i başlatın
