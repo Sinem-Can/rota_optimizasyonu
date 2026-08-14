@@ -7,6 +7,11 @@ planlama uygulamasıdır.
 Uygulama; rota planlama ekranını, harita üzerinde görselleştirmeyi, zaman
 çizelgesini ve ERP yönetim modülünü tek bir arayüzde birleştirir.
 
+## Proje Raporu
+
+Projenin analizi, geliştirme süreci, test çalışmaları ve çıktıları için
+[RotaPlan Staj Projesi Raporu (OneDrive)](https://onedrive.live.com/:w:/g/personal/cf043bba9744a23e/IQBSayvWeH80Tb70J25c9iY0AWsZeYE7SBkhcDAhJOpmM8I?rtime=0uTYrUf23kg&redeem=aHR0cHM6Ly8xZHJ2Lm1zL3cvYy9jZjA0M2JiYTk3NDRhMjNlL0lRQlNheXZXZUg4MFRiNzBKMjVjOWlZMEFXc1plWUU3U0JraGNEQWhKT3BtTThJP2U9VENaaEFD) bağlantısını inceleyebilirsiniz.
+
 ## Öne Çıkan Özellikler
 
 - Araç kapasitesi, ağırlık, hacim ve çalışma süresi kısıtlarıyla rota optimizasyonu
