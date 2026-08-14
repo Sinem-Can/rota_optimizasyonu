@@ -60,6 +60,8 @@ builder.Services.AddScoped<DatabaseManager>(provider => new DatabaseManager(dbCo
 
 var app = builder.Build();
 
+DatabaseInitializer.EnsureSchema(dbConnectionString, app.Environment.ContentRootPath);
+
 // Configure the HTTP request pipeline.
 app.UseCors("AllowAll"); // CORS'u aktif et
 app.UseSwagger();

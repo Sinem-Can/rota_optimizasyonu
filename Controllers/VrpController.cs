@@ -13,7 +13,7 @@ namespace Uyumsoft.RouteOptimizer.Controllers
         [HttpPost("import-excel")]
         public IActionResult ImportExcel()
         {
-            string? connString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
+            string? connString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING") ?? Environment.GetEnvironmentVariable("DATABASE_URL");
             string? erpFilePath = Environment.GetEnvironmentVariable("ERP_EXCEL_PATH");
             string? matrisFilePath = Environment.GetEnvironmentVariable("MATRIX_EXCEL_PATH");
             string? trafikFilePath = Environment.GetEnvironmentVariable("TRAFFIC_EXCEL_PATH");
@@ -43,7 +43,7 @@ namespace Uyumsoft.RouteOptimizer.Controllers
         [HttpPost("import-erp-only")]
         public IActionResult ImportErpOnly()
         {
-            string? connString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
+            string? connString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING") ?? Environment.GetEnvironmentVariable("DATABASE_URL");
             string? erpFilePath = Environment.GetEnvironmentVariable("ERP_EXCEL_PATH");
 
             if (string.IsNullOrEmpty(connString) || string.IsNullOrEmpty(erpFilePath))
@@ -69,7 +69,7 @@ namespace Uyumsoft.RouteOptimizer.Controllers
         [HttpGet("clean-web-orders")]
         public IActionResult CleanWebOrders()
         {
-            string? connString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
+            string? connString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING") ?? Environment.GetEnvironmentVariable("DATABASE_URL");
             if (string.IsNullOrEmpty(connString)) return BadRequest("DB_CONNECTION_STRING eksik.");
             try
             {
@@ -92,7 +92,7 @@ namespace Uyumsoft.RouteOptimizer.Controllers
         [HttpGet("reset-db-hard")]
         public IActionResult ResetDbHard()
         {
-            string? connString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
+            string? connString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING") ?? Environment.GetEnvironmentVariable("DATABASE_URL");
             if (string.IsNullOrEmpty(connString)) return BadRequest("DB_CONNECTION_STRING eksik.");
 
             try
@@ -117,7 +117,7 @@ namespace Uyumsoft.RouteOptimizer.Controllers
         [HttpPost("optimize")]
         public IActionResult RunOptimization()
         {
-            string? connString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
+            string? connString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING") ?? Environment.GetEnvironmentVariable("DATABASE_URL");
             if (string.IsNullOrEmpty(connString)) return BadRequest("DB_CONNECTION_STRING eksik.");
 
             VrpDataModel data;
@@ -166,7 +166,7 @@ namespace Uyumsoft.RouteOptimizer.Controllers
         [HttpGet("initial-state")]
         public IActionResult GetInitialState()
         {
-            string? connString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
+            string? connString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING") ?? Environment.GetEnvironmentVariable("DATABASE_URL");
             if (string.IsNullOrEmpty(connString)) return BadRequest("DB_CONNECTION_STRING eksik.");
 
             VrpDataModel data;
