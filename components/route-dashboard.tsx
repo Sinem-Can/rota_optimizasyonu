@@ -69,6 +69,28 @@ export function RouteDashboard() {
     setSelectedDriverId(driverId)
   }, [])
 
+  const handleConfirmDelivery = useCallback((stopId: string, driverId: string) => {
+    const deliveredAt = new Date().toLocaleTimeString('tr-TR', {
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+
+    setLocalDrivers((currentDrivers) =>
+      currentDrivers.map((driver) =>
+        driver.id !== driverId
+          ? driver
+          : {
+              ...driver,
+              stops: driver.stops.map((stop) =>
+                stop.id === stopId
+                  ? { ...stop, status: 'completed', deliveredAt }
+                  : stop,
+              ),
+            },
+      ),
+    )
+  }, [])
+
   const handleOptimize = async () => {
     setIsOptimizing(true)
     toast.info("Yapay zeka rotaları hesaplıyor...", { duration: 2000 })
@@ -144,6 +166,7 @@ export function RouteDashboard() {
               drivers={localDrivers}
               unassigned={localUnassigned}
               searchQuery={searchQuery}
+              onConfirmDelivery={handleConfirmDelivery}
                 />
                 <button
                   type="button"

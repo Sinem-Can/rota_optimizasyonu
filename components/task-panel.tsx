@@ -38,6 +38,7 @@ interface TaskPanelProps {
   drivers: DriverDto[]
   unassigned: StopDto[]
   searchQuery?: string
+  onConfirmDelivery: (stopId: string, driverId: string) => void
 }
 
 const priorityClass: Record<string, string> = {
@@ -54,6 +55,7 @@ export function TaskPanel({
   drivers: localDrivers,
   unassigned: localUnassigned,
   searchQuery = '',
+  onConfirmDelivery,
 }: TaskPanelProps) {
   const [tab, setTab] = useState<'assigned' | 'unassigned'>('unassigned')
 
@@ -62,11 +64,12 @@ export function TaskPanel({
   const [confirmedStops, setConfirmedStops] = useState<string[]>([])
   const [brokenDrivers, setBrokenDrivers] = useState<string[]>([])
 
-  const confirmDeliveryWithInvoice = (stopId: string, customerName: string) => {
+  const confirmDeliveryWithInvoice = (stopId: string, driverId: string, customerName: string) => {
     setConfirmedStops((prev) => (prev.includes(stopId) ? prev : [...prev, stopId]))
+    onConfirmDelivery(stopId, driverId)
     
-    toast.success(`${customerName} teslimatı onaylandı!`, {
-      description: "e-Fatura oluşturuldu ve tutar cari bakiyeye borç olarak işlendi.",
+    toast.success('Teslimat onaylandı', {
+      description: `${customerName} için teslim edilen saat güncellendi.`,
     })
   }
 
@@ -311,7 +314,7 @@ export function TaskPanel({
                             <div className="flex shrink-0 items-center border-l border-border px-1.5">
                               <button
                                 type="button"
-                                onClick={() => confirmDeliveryWithInvoice(stop.id, stop.customerName)}
+                                onClick={() => confirmDeliveryWithInvoice(stop.id, driver.id, stop.customerName)}
                                 disabled={isDelivered}
                                 aria-label={`${stop.customerName} teslimini onayla`}
                                 title={

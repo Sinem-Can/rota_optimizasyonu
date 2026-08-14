@@ -18,6 +18,8 @@ export interface StopDto {
     weightKg: number
     volumeM3: number
     status: StopStatus
+    /** Teslim onayının verildiği yerel saat (sayfa yenilenene kadar tutulur). */
+    deliveredAt?: string
     priority: 'Yüksek' | 'Normal' | 'Düşük'
     phone: string
     orderNo: string

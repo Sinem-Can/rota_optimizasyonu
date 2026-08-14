@@ -270,7 +270,9 @@ public class VrpOptimizer
         RoutingSearchParameters searchParameters = operations_research_constraint_solver.DefaultRoutingSearchParameters();
         searchParameters.FirstSolutionStrategy = FirstSolutionStrategy.Types.Value.PathCheapestArc;
         searchParameters.LocalSearchMetaheuristic = LocalSearchMetaheuristic.Types.Value.GuidedLocalSearch;
-        searchParameters.TimeLimit = new Google.Protobuf.WellKnownTypes.Duration { Seconds = 30 };
+        // Arayüzün uzun süre kilitli kalmaması için çözücüye kısa bir iyileştirme penceresi tanınır.
+        // PathCheapestArc ilk uygulanabilir çözümü hızla üretir; GuidedLocalSearch bu süre içinde iyileştirir.
+        searchParameters.TimeLimit = new Google.Protobuf.WellKnownTypes.Duration { Seconds = 8 };
 
         // 4. Çöz
         Assignment solution = routing.SolveWithParameters(searchParameters);
