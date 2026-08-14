@@ -53,6 +53,8 @@ app.UseSwaggerUI(c =>
     c.RoutePrefix = string.Empty; // Uygulama açılır açılmaz Swagger arayüzü gelsin
 });
 
+app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
+
 // API Uçları (Controllers'a Yönlendir)
 app.MapControllers();
 
