@@ -62,6 +62,24 @@ var app = builder.Build();
 
 DatabaseInitializer.EnsureSchema(dbConnectionString, app.Environment.ContentRootPath);
 
+// Railway'de yalnızca IMPORT_EXCEL_ON_STARTUP=true verildiğinde çalışır.
+// Aktarım tamamlandıktan sonra bu değişken kaldırılır; böylece sonraki açılışlarda tekrar veri silinmez.
+if (string.Equals(Environment.GetEnvironmentVariable("IMPORT_EXCEL_ON_STARTUP"), "true", StringComparison.OrdinalIgnoreCase))
+{
+    try
+    {
+        var importer = new ExcelProcessor(new DatabaseManager(dbConnectionString));
+        importer.TransferDistanceMatrix(Environment.GetEnvironmentVariable("MATRIX_EXCEL_PATH") ?? "");
+        importer.TransferTrafficMatrix(Environment.GetEnvironmentVariable("TRAFFIC_EXCEL_PATH") ?? "");
+        importer.TransferErpData(Environment.GetEnvironmentVariable("ERP_EXCEL_PATH") ?? "");
+        Console.WriteLine("[INFO] Excel verileri canlı veritabanına aktarıldı.");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[ERROR] Excel içe aktarma hatası: {ex.Message}");
+    }
+}
+
 // Configure the HTTP request pipeline.
 app.UseCors("AllowAll"); // CORS'u aktif et
 app.UseSwagger();
