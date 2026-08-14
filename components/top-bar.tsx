@@ -6,6 +6,7 @@ import type { DriverDto } from "@/lib/route-data"
 import {
   Boxes,
   Clock,
+  Download,
   Fuel,
   Route,
   Search,
@@ -18,6 +19,7 @@ import {
 // YENİ: Bütün özet bilgilerimizi artık erp-data.ts içindeki erpSummary'den alıyoruz!
 import { erpSummary } from '@/lib/erp-data'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { exportToPdf } from '@/lib/route-export'
 
 export type TabKey = 'planlama' | 'erp'
 
@@ -165,6 +167,18 @@ export function TopBar({ activeTab, onTabChange, drivers, onSearch }: TopBarProp
 
         <div className="ml-auto flex items-center gap-2 text-[11px] font-medium text-muted-foreground">
           {!isErp ? <span className="hidden lg:inline">İstanbul · Avrupa/Anadolu</span> : null}
+          {!isErp ? (
+            <button
+              type="button"
+              onClick={() => exportToPdf(drivers)}
+              disabled={drivers.length === 0}
+              aria-label="Rota planını PDF olarak dışa aktar"
+              title="Rota planını PDF olarak indir"
+              className="grid size-9 place-items-center rounded-md border border-border bg-card text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+            >
+              <Download className="size-4" />
+            </button>
+          ) : null}
           <div className={`flex h-9 items-center overflow-hidden rounded-md border border-border bg-secondary/50 transition-all duration-300 ease-in-out focus-within:ring-2 focus-within:ring-ring/30 ${isSearchExpanded ? 'w-72' : 'w-9'}`}>
             {isSearchExpanded ? (
               <>

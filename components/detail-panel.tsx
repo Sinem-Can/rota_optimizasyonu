@@ -1,13 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   BellRing,
   Boxes,
   Clock,
   Fuel,
-  Loader2,
   MapPin,
+  MessageCircle,
   Pencil,
   Route,
   Timer,
@@ -29,9 +29,13 @@ interface DetailPanelProps {
 }
 
 export function DetailPanel({ stop, driverId, drivers, onClose }: DetailPanelProps) {
-  // Yükleme animasyonları için state'ler
-  const [isSendingNotification, setIsSendingNotification] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
+  const [currentTime, setCurrentTime] = useState(() => new Date())
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setCurrentTime(new Date()), 60_000)
+    return () => window.clearInterval(interval)
+  }, [])
 
   const driver = drivers.find((d) => d.id === driverId) ?? null
 
@@ -77,16 +81,32 @@ export function DetailPanel({ stop, driverId, drivers, onClose }: DetailPanelPro
 
   const theme = driverTheme[driver.colorKey]
   const capacityPct = Math.round((stop.weightKg / driver.capacityMaxKg) * 100)
-  const deliveredAt = stop.status === 'completed' ? stop.eta : null
+  const deliveredAt = stop.status === 'completed'
+    ? stop.deliveredAt ?? currentTime.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
+    : null
 
-  const handleSendNotification = () => {
-    setIsSendingNotification(true)
-    setTimeout(() => {
-      setIsSendingNotification(false)
-      toast.info("Sürücüye e-posta bildirimi gönderildi.", {
-        description: `${driver.fullName} (${driver.plate})`,
-      })
-    }, 1200)
+  const buildRouteMessage = (activeDriver: DriverDto) => {
+    const routeStops = [...activeDriver.stops]
+      .sort((first, second) => first.sequence - second.sequence)
+      .map((routeStop) => `${routeStop.sequence + 1}) ${routeStop.customerName} - ${routeStop.eta}`)
+
+    return [
+      `Merhaba ${activeDriver.fullName},`,
+      'bugünkü rota planın aşağıdadır:',
+      `1) ${activeDriver.depotName || 'Merkez Depo'} - ${activeDriver.shiftStart}`,
+      ...routeStops,
+      `Dönüş: ${activeDriver.depotName || 'Merkez Depo'}`,
+    ].join('\n')
+  }
+
+  const sendRouteViaWhatsApp = (activeDriver: DriverDto) => {
+    window.open(`https://wa.me/?text=${encodeURIComponent(buildRouteMessage(activeDriver))}`, '_blank', 'noopener,noreferrer')
+  }
+
+  const sendRouteViaEmail = (activeDriver: DriverDto) => {
+    const subject = `Günlük rota planı | ${activeDriver.plate}`
+    const mailtoUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(buildRouteMessage(activeDriver))}`
+    window.open(mailtoUrl, '_blank', 'noopener,noreferrer')
   }
 
   return (
@@ -232,7 +252,7 @@ export function DetailPanel({ stop, driverId, drivers, onClose }: DetailPanelPro
             <Clock className="size-3.5" />
             Teslim Edilen Saat
           </span>
-          <span className={cn('font-mono text-[13px] font-bold', deliveredAt ? 'text-success' : 'text-muted-foreground')}>
+          <span className={cn('font-mono text-[13px] font-bold', deliveredAt ? 'text-green-500' : 'text-muted-foreground')}>
             {deliveredAt ?? 'Bekleniyor'}
           </span>
         </div>
@@ -259,8 +279,17 @@ export function DetailPanel({ stop, driverId, drivers, onClose }: DetailPanelPro
         <div className="mt-2 flex items-center justify-between">
           <span className="text-[11px] text-muted-foreground">Sürücü bildirimi</span>
           <div className="flex items-center gap-1">
-            <button type="button" disabled={isSendingNotification} onClick={handleSendNotification} aria-label="Sürücüye E-Mail Gönder" title="Sürücüye E-Mail Gönder" className="grid size-8 place-items-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-60">
-              {isSendingNotification ? <Loader2 className="size-4 animate-spin" /> : <BellRing className="size-4" />}
+            <button
+              type="button"
+              onClick={() => sendRouteViaWhatsApp(driver)}
+              aria-label="Sürücüye rota gönder (WhatsApp)"
+              title="Sürücüye rota gönder (WhatsApp)"
+              className="grid size-8 place-items-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-emerald-500/10 hover:text-emerald-500"
+            >
+              <MessageCircle className="size-4" />
+            </button>
+            <button type="button" onClick={() => sendRouteViaEmail(driver)} aria-label="Sürücüye E-Mail Gönder" title="Sürücüye E-Mail Gönder" className="grid size-8 place-items-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+              <BellRing className="size-4" />
             </button>
           </div>
         </div>
