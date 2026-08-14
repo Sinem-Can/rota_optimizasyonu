@@ -286,18 +286,27 @@ namespace Uyumsoft.RouteOptimizer
                                         break;
 
                                     case "Arac Kartlari":
+                                        // Güncel ERP dosyasında araç bilgileri doğrudan 0-9.
+                                        // Eski şemadaki depo/matris sütunları artık bulunmadığı için
+                                        // doğru indeksleri kullanıyor ve araçları iki depoya dengeli dağıtıyoruz.
+                                        string aracKodu = val(0);
+                                        int aracNo = 0;
+                                        var aracNoMetni = new string(aracKodu.Reverse().TakeWhile(char.IsDigit).Reverse().ToArray());
+                                        int.TryParse(aracNoMetni, out aracNo);
+                                        string bagliDepo = aracNo > 4 ? "DP002" : "DP001";
+
                                         cmd.CommandText = "INSERT INTO arac_kartlari (arac_kodu, plaka, marka_model, kasa_tipi, maks_agirlik_kg, maks_hacim_m3, km_maliyeti_tl, maks_mesai_suresi_dk, maks_durak_sayisi, kopru_gecis_izni, bagli_oldugu_depo) VALUES (@p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9, @p10, @p11) ON CONFLICT DO NOTHING";
-                                        cmd.Parameters.AddWithValue("p1", val(0)); // arac_kodu
-                                        cmd.Parameters.AddWithValue("p2", val(1)); // plaka
-                                        cmd.Parameters.AddWithValue("p3", val(5)); // marka_model (shifted by bagli depo kodu, adi, matris id)
-                                        cmd.Parameters.AddWithValue("p4", val(6)); // kasa_tipi
-                                        cmd.Parameters.AddWithValue("p5", toDec(7)); // maks_agirlik_kg
-                                        cmd.Parameters.AddWithValue("p6", toDec(8)); // maks_hacim_m3
-                                        cmd.Parameters.AddWithValue("p7", toDec(9)); // km_maliyeti_tl
-                                        cmd.Parameters.AddWithValue("p8", toInt(10)); // maks_mesai_suresi_dk
-                                        cmd.Parameters.AddWithValue("p9", toInt(11)); // maks_durak_sayisi
-                                        cmd.Parameters.AddWithValue("p10", val(12)); // kopru_gecis_izni
-                                        cmd.Parameters.AddWithValue("p11", val(2)); // bagli_oldugu_depo (Bağlı Depo Kodu)
+                                        cmd.Parameters.AddWithValue("p1", aracKodu);
+                                        cmd.Parameters.AddWithValue("p2", val(1));
+                                        cmd.Parameters.AddWithValue("p3", val(2));
+                                        cmd.Parameters.AddWithValue("p4", val(3));
+                                        cmd.Parameters.AddWithValue("p5", toDec(4));
+                                        cmd.Parameters.AddWithValue("p6", toDec(5));
+                                        cmd.Parameters.AddWithValue("p7", toDec(6));
+                                        cmd.Parameters.AddWithValue("p8", toInt(7));
+                                        cmd.Parameters.AddWithValue("p9", toInt(8));
+                                        cmd.Parameters.AddWithValue("p10", val(9));
+                                        cmd.Parameters.AddWithValue("p11", bagliDepo);
                                         break;
 
                                     case "İşyeri Stok":
@@ -338,17 +347,16 @@ namespace Uyumsoft.RouteOptimizer
                                         cmd.Parameters.AddWithValue("p2", val(1)); // teklif
                                         cmd.Parameters.AddWithValue("p3", val(2)); // cari_kodu
                                         cmd.Parameters.AddWithValue("p4", val(3)); // cari_adi
-                                        cmd.Parameters.AddWithValue("p5", val(5)); // arac_kodu (shifted by matris ID)
-                                        cmd.Parameters.AddWithValue("p6", val(6)); // plaka
-                                        cmd.Parameters.AddWithValue("p7", toDec(7)); // toplam_kg
-                                        cmd.Parameters.AddWithValue("p8", toDec(8)); // toplam_hacim_m3
-                                        cmd.Parameters.AddWithValue("p9", val(9)); // kapasite_durumu
-                                        cmd.Parameters.AddWithValue("p10", val(10)); // siparis_durumu
-                                        cmd.Parameters.AddWithValue("p11", val(11)); // teslimat_pencere_baslangic
-                                        cmd.Parameters.AddWithValue("p12", val(12)); // teslimat_penceresi_bitis
+                                        cmd.Parameters.AddWithValue("p5", val(4)); // arac_kodu
+                                        cmd.Parameters.AddWithValue("p6", val(5)); // plaka
+                                        cmd.Parameters.AddWithValue("p7", toDec(6)); // toplam_kg
+                                        cmd.Parameters.AddWithValue("p8", toDec(7)); // toplam_hacim_m3
+                                        cmd.Parameters.AddWithValue("p9", val(8)); // kapasite_durumu
+                                        cmd.Parameters.AddWithValue("p10", val(9)); // siparis_durumu
+                                        cmd.Parameters.AddWithValue("p11", val(10)); // teslimat_pencere_baslangic
+                                        cmd.Parameters.AddWithValue("p12", val(11)); // teslimat_penceresi_bitis
                                         
-                                        int excelSiparisMatrisId = toInt(4);
-                                        cmd.Parameters.AddWithValue("p13", excelSiparisMatrisId > 0 ? excelSiparisMatrisId : siparisMatrisId); // matris_id
+                                        cmd.Parameters.AddWithValue("p13", siparisMatrisId); // matris_id
                                         break;
 
                                     case "Stok Hareketleri":

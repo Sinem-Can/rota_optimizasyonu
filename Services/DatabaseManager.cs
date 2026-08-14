@@ -10,15 +10,17 @@ namespace Uyumsoft.RouteOptimizer
 
         public DatabaseManager(string connectionString)
         {
-            // Tırnak işaretlerini temizle
-            if (!string.IsNullOrEmpty(connectionString) && connectionString.StartsWith("\""))
+            connectionString = connectionString?.Trim('"');
+            if (Uri.TryCreate(connectionString, UriKind.Absolute, out var uri) &&
+                (uri.Scheme == "postgres" || uri.Scheme == "postgresql"))
             {
-                _connectionString = connectionString.Trim('"');
+                var userInfo = uri.UserInfo.Split(':', 2);
+                _connectionString = $"Host={uri.Host};Port={(uri.IsDefaultPort ? 5432 : uri.Port)};" +
+                    $"Database={uri.AbsolutePath.Trim('/')};Username={Uri.UnescapeDataString(userInfo[0])};" +
+                    $"Password={Uri.UnescapeDataString(userInfo.Length > 1 ? userInfo[1] : string.Empty)};" +
+                    "SSL Mode=Require;Trust Server Certificate=true";
             }
-            else
-            {
-                _connectionString = connectionString;
-            }
+            else _connectionString = connectionString;
         }
 
         public NpgsqlConnection GetConnection()

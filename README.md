@@ -7,6 +7,16 @@ planlama uygulamasıdır.
 Uygulama; rota planlama ekranını, harita üzerinde görselleştirmeyi, zaman
 çizelgesini ve ERP yönetim modülünü tek bir arayüzde birleştirir.
 
+## Canlı Demo
+
+Uygulamanın canlı sürümüne buradan ulaşabilirsiniz:
+[rotaplan.vercel.app](https://rotaplan.vercel.app/)
+
+## Proje Raporu
+
+Projenin analizi, geliştirme süreci, test çalışmaları ve çıktıları için
+[RotaPlan Staj Projesi Raporu (OneDrive)](https://onedrive.live.com/:w:/g/personal/cf043bba9744a23e/IQBSayvWeH80Tb70J25c9iY0AWsZeYE7SBkhcDAhJOpmM8I?rtime=0uTYrUf23kg&redeem=aHR0cHM6Ly8xZHJ2Lm1zL3cvYy9jZjA0M2JiYTk3NDRhMjNlL0lRQlNheXZXZUg4MFRiNzBKMjVjOWlZMEFXc1plWUU3U0JraGNEQWhKT3BtTThJP2U9VENaaEFD) bağlantısını inceleyebilirsiniz.
+
 ## Öne Çıkan Özellikler
 
 - Araç kapasitesi, ağırlık, hacim ve çalışma süresi kısıtlarıyla rota optimizasyonu
@@ -81,7 +91,7 @@ npm install
 Kök dizinde `.env.local` dosyasını oluşturun:
 
 ```env
-NEXT_PUBLIC_API_BASE_URL=http://localhost:5099
+NEXT_PUBLIC_API_URL=http://localhost:5100
 ```
 
 > Backend farklı bir portta çalışıyorsa bu değeri backend adresiyle eşleştirin.
@@ -89,7 +99,7 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:5099
 ### 4. Backend'i başlatın
 
 ```bash
-ASPNETCORE_URLS=http://localhost:5099 dotnet run
+ASPNETCORE_URLS=http://localhost:5100 dotnet run
 ```
 
 ### 5. Frontend'i başlatın

@@ -35,14 +35,50 @@ builder.Services.AddCors(options =>
 // ==========================================
 // .env dosyasındaki bağlantı dizesini çekiyoruz. 
 // (Eğer .env dosyasındaki değişken adı farklıysa "DB_CONNECTION_STRING" kısmını ona göre değiştirin)
-string dbConnectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING") 
-                            ?? Environment.GetEnvironmentVariable("DATABASE_URL") 
+string dbConnectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING")
+                            ?? Environment.GetEnvironmentVariable("DATABASE_URL")
                             ?? "Host=localhost;Database=UyumsoftERP;Username=postgres;Password=1234";
+
+// Railway PostgreSQL bağlantı bilgisini postgres:// URI biçiminde sağlar.
+// Npgsql ise anahtar-değer biçiminde bir connection string beklediği için,
+// canlı ortamda URI geldiğinde bunu güvenli biçimde dönüştürüyoruz.
+if (Uri.TryCreate(dbConnectionString, UriKind.Absolute, out var databaseUri)
+    && (databaseUri.Scheme == "postgres" || databaseUri.Scheme == "postgresql"))
+{
+    var userInfo = databaseUri.UserInfo.Split(':', 2);
+    var databaseName = databaseUri.AbsolutePath.Trim('/');
+    var port = databaseUri.IsDefaultPort ? 5432 : databaseUri.Port;
+
+    dbConnectionString = $"Host={databaseUri.Host};Port={port};Database={databaseName};" +
+                         $"Username={Uri.UnescapeDataString(userInfo[0])};" +
+                         $"Password={Uri.UnescapeDataString(userInfo.Length > 1 ? userInfo[1] : string.Empty)};" +
+                         "SSL Mode=Require;Trust Server Certificate=true";
+}
 
 builder.Services.AddScoped<DatabaseManager>(provider => new DatabaseManager(dbConnectionString));
 // ==========================================
 
 var app = builder.Build();
+
+DatabaseInitializer.EnsureSchema(dbConnectionString, app.Environment.ContentRootPath);
+
+// Railway'de yalnızca IMPORT_EXCEL_ON_STARTUP=true verildiğinde çalışır.
+// Aktarım tamamlandıktan sonra bu değişken kaldırılır; böylece sonraki açılışlarda tekrar veri silinmez.
+if (string.Equals(Environment.GetEnvironmentVariable("IMPORT_EXCEL_ON_STARTUP"), "true", StringComparison.OrdinalIgnoreCase))
+{
+    try
+    {
+        var importer = new ExcelProcessor(new DatabaseManager(dbConnectionString));
+        importer.TransferDistanceMatrix(Environment.GetEnvironmentVariable("MATRIX_EXCEL_PATH") ?? "");
+        importer.TransferTrafficMatrix(Environment.GetEnvironmentVariable("TRAFFIC_EXCEL_PATH") ?? "");
+        importer.TransferErpData(Environment.GetEnvironmentVariable("ERP_EXCEL_PATH") ?? "");
+        Console.WriteLine("[INFO] Excel verileri canlı veritabanına aktarıldı.");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[ERROR] Excel içe aktarma hatası: {ex.Message}");
+    }
+}
 
 // Configure the HTTP request pipeline.
 app.UseCors("AllowAll"); // CORS'u aktif et
@@ -52,6 +88,8 @@ app.UseSwaggerUI(c =>
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "VRP API v1");
     c.RoutePrefix = string.Empty; // Uygulama açılır açılmaz Swagger arayüzü gelsin
 });
+
+app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
 // API Uçları (Controllers'a Yönlendir)
 app.MapControllers();
