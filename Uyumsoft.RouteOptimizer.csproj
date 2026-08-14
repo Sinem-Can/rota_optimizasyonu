@@ -8,6 +8,7 @@
   </PropertyGroup>
   <ItemGroup>
     <None Update="postgreyeyazilacak.sql" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="data/**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
